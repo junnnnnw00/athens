@@ -11,6 +11,7 @@ import 'features/profile/profile_screen.dart';
 import 'features/catalog/search_screen.dart';
 import 'features/spotify_connect/spotify_connect_screen.dart';
 import 'features/share/share_screen.dart';
+import 'features/library/item_detail_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -54,6 +55,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/share',
             builder: (context, state) => const ShareScreen(),
+          ),
+          GoRoute(
+            path: '/item/:id',
+            builder: (context, state) =>
+                ItemDetailScreen(itemId: state.pathParameters['id']!),
           ),
         ],
       ),
