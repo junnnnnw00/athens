@@ -1,0 +1,5 @@
+tags:
+  golden:
+    # Golden screens are rendered on macOS for the morning review. Font
+    # anti-aliasing differs across platforms, so CI excludes this tag
+    # (`flutter test --exclude-tags golden`) to avoid false negatives.

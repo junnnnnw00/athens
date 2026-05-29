@@ -151,7 +151,7 @@ export default async function ProfilePage({
                   style={{
                     fontWeight: 700,
                     fontSize: 20,
-                    color: '#6B4EFF',
+                    color: '#2E9E58',
                     minWidth: 36,
                     textAlign: 'right',
                   }}
@@ -165,7 +165,7 @@ export default async function ProfilePage({
       )}
 
       <footer style={{ marginTop: 48, textAlign: 'center', color: '#aaa', fontSize: 12 }}>
-        <a href="/" style={{ color: '#6B4EFF', textDecoration: 'none' }}>
+        <a href="/" style={{ color: '#2E9E58', textDecoration: 'none' }}>
           Rate your music on Athens →
         </a>
       </footer>

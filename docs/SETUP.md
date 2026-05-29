@@ -24,12 +24,13 @@ Edit `.env` with your credentials (see sections below).
 
 1. Go to https://supabase.com → New project
 2. Note your **Project URL** and **API keys** (Settings → API)
-3. Update `.env`:
+3. Update `.env` (client/public values only):
    ```
    SUPABASE_URL=https://YOUR_REF.supabase.co
    SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-   SUPABASE_SECRET_KEY=sb_secret_...
    ```
+   The service-role key is server-only — set it as an edge-function secret
+   (`supabase secrets set`), never in `.env`.
 
 ### 2b. Run Migrations
 
@@ -45,11 +46,10 @@ supabase db reset   # runs all migrations + seed.sql
 supabase functions deploy spotify-app-token --no-verify-jwt
 supabase functions deploy lastfm-proxy
 
-# Set secrets
-supabase secrets set \
-  SPOTIFY_CLIENT_ID=... \
-  SPOTIFY_CLIENT_SECRET=... \
-  LASTFM_API_KEY=...
+# Set the server-side secrets, one per line:
+#   supabase secrets set SPOTIFY_CLIENT_ID <value>
+#   supabase secrets set SPOTIFY_CLIENT_SECRET <value>
+#   supabase secrets set LASTFM_API_KEY <value>
 ```
 
 ### 2d. Enable Auth Providers

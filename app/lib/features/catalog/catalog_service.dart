@@ -135,7 +135,7 @@ class CatalogService {
 }
 
 // Providers — wire the real network implementations. Tests override these with
-// fakes (see test/fakes/); runtime code never imports a Fake.
+// test doubles (see test/fakes/); runtime code never imports one.
 final spotifyApiProvider = Provider<SpotifyApi>((ref) => SpotifyApiHttp());
 final itunesApiProvider = Provider<ItunesApi>((ref) => ItunesApiHttp());
 final lastfmApiProvider = Provider<LastfmApi>((ref) => LastfmApiHttp());

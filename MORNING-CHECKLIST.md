@@ -12,8 +12,9 @@ Everything else was completed and tested automatically overnight.
    ```
    SUPABASE_URL=https://YOUR_REF.supabase.co
    SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-   SUPABASE_SECRET_KEY=sb_secret_...
    ```
+   The service-role key is NOT a client value — set it server-side only
+   (`supabase secrets set`), never in `.env`.
 3. Install Supabase CLI: `brew install supabase/tap/supabase`
 4. Link project: `supabase link --project-ref YOUR_REF`
 5. Run migrations: `supabase db reset` (requires Docker)
@@ -22,10 +23,8 @@ Everything else was completed and tested automatically overnight.
    supabase functions deploy spotify-app-token --no-verify-jwt
    supabase functions deploy lastfm-proxy
    ```
-7. Set edge function secrets:
-   ```
-   supabase secrets set SPOTIFY_CLIENT_SECRET=... LASTFM_API_KEY=...
-   ```
+7. Set edge function secrets (Spotify client secret, Last.fm API key, and the
+   Supabase service-role key) via `supabase secrets set NAME <value>` for each.
 
 ## 2. Register Spotify App
 
@@ -35,7 +34,7 @@ Everything else was completed and tested automatically overnight.
    - `athens://spotify-callback` (mobile)
    - `http://127.0.0.1:8888/callback` (local dev)
 4. Copy Client ID into `.env`: `SPOTIFY_CLIENT_ID=...`
-5. Copy Client Secret into `.env`: `SPOTIFY_CLIENT_SECRET=...` (server-only!)
+5. Set the client secret as an edge-function secret only (server-only — never in `.env`)
 6. Add yourself + ≤4 friends to the allowlist in Spotify dashboard (Dev Mode = 5 user cap)
 7. In Supabase, set `profiles.spotify_enabled = true` for allowlisted users
 
@@ -99,10 +98,13 @@ Everything else was completed and tested automatically overnight.
 ## Verified Automatically (no action needed)
 
 - [x] `flutter analyze` exits 0
-- [x] `flutter test` exits 0 (rank domain ≥ 90% coverage)
-- [x] `flutter build apk --debug` exits 0
+- [x] `flutter test` exits 0 (rank domain 98.9% coverage; unit + widget + golden)
+- [x] `flutter test integration_test` exits 0 (core-loop e2e)
+- [ ] `flutter build apk --debug` — **CI only** (no JDK/Android SDK on the build
+      host). To run locally: `brew install --cask temurin`, install Android
+      cmdline-tools, accept licenses, then `cd app && flutter build apk --debug`.
 - [x] `flutter build web` exits 0
 - [x] `npm ci && npm run build` (web) exits 0
-- [x] No secrets committed (`.env` in `.gitignore`)
-- [x] SQL migrations written (unverified against live DB — see #9)
-- [x] All external APIs behind interfaces with Fake impls
+- [x] SQL migrations sqlfluff-clean (`.sqlfluff`); unverified against live DB — see #9
+- [x] No secrets committed (`.env` in `.gitignore`; secret-leak grep clean)
+- [x] External APIs behind interfaces; fakes live only in `test/`

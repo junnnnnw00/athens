@@ -1,6 +1,5 @@
 import 'package:athens/data/local/app_database.dart';
 import 'package:athens/data/repository/library_providers.dart';
-import 'package:athens/data/remote/supabase_gateway.dart';
 import 'package:athens/features/catalog/catalog_service.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

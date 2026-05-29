@@ -168,7 +168,8 @@ cd app && flutter build web
 cd web && npm ci && npm run build
 
 # 4. secret-leak gate (must return NOTHING)
-! git grep -nE "sb_secret_|SPOTIFY_CLIENT_SECRET=|LASTFM_API_KEY=[A-Za-z0-9]"
+#    (regex written with [_]/[=] classes so this spec file isn't a self-match)
+! git grep -nE "sb[_]secret[_]|SPOTIFY_CLIENT[_]SECRET[=]|LASTFM_API_KEY[=][A-Za-z0-9]"
 ```
 
 If a gate can't pass because of a genuine credential/device limit, stub the NETWORK BOUNDARY only

@@ -1,3 +1,6 @@
+@Tags(['golden'])
+library;
+
 import 'package:athens/data/repository/library_providers.dart';
 import 'package:athens/dev_seed.dart';
 import 'package:athens/features/home/home_screen.dart';

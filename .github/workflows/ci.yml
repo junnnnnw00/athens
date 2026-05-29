@@ -28,7 +28,13 @@ jobs:
         working-directory: app
 
       - name: Test (with coverage)
-        run: flutter test --coverage
+        # Golden screens are macOS-rendered references for review; exclude them
+        # in CI to avoid cross-platform font anti-aliasing false negatives.
+        run: flutter test --coverage --exclude-tags golden
+        working-directory: app
+
+      - name: Integration test (core loop)
+        run: flutter test integration_test
         working-directory: app
 
       - name: Build APK (debug)

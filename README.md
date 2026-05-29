@@ -29,9 +29,18 @@ Rate tracks, albums, and artists. Get deep genre + mood tags (powered by Last.fm
 | Share image | `screenshot` + `share_plus` |
 | Charts | `fl_chart` |
 
+## Design
+
+Refined-minimalist, content-first: true-black dark (and warm-grey light) canvas,
+**one mint accent**, heavy Hanken Grotesk display type with Pretendard for Korean,
+and a signature circular **score ring**. See **[DESIGN.md](DESIGN.md)**. Reference
+screens (dark + light) are committed under `app/test/golden/`.
+
 ## Quick Start
 
-See **[docs/SETUP.md](docs/SETUP.md)** for full setup instructions.
+See **[docs/SETUP.md](docs/SETUP.md)** for full setup, and **[RUN.md](RUN.md)** to
+launch and verify each screen in 5 minutes (incl. `--dart-define=DEV_SEED=true`
+for instant sample data).
 
 ```bash
 # Clone

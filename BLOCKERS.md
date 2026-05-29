@@ -2,43 +2,55 @@
 
 ## Active Blockers
 
-### APK Build — No Android SDK on build machine
+### APK build — no Java runtime / Android SDK on this build machine
 
-`flutter build apk --debug` fails: "No Android SDK found."
+`flutter build apk --debug` fails locally: "Unable to locate a Java Runtime."
+(no JDK and no Android SDK installed on this macOS host).
 
-**Impact:** DoD check #3 unverifiable locally.
+**Impact:** DoD check #3 unverifiable on this machine only.
 
-**Workaround:** CI (`ubuntu-latest` + `subosito/flutter-action`) includes Android SDK — APK build verified there. Code compiles clean (`flutter analyze` 0 issues, `flutter build web` succeeds).
+**Status:** The Flutter code compiles clean (`flutter analyze` 0 issues,
+`flutter build web` succeeds, all tests pass). The APK path is unchanged.
 
-**Fix:** Install Android Studio or run `sdkmanager`. See MORNING-CHECKLIST.md step 2 equivalent.
+**Where it IS verified:** CI (`.github/workflows/ci.yml`, `ubuntu-latest` +
+`subosito/flutter-action`, which provisions the Android SDK) runs
+`flutter build apk --debug` on every push.
 
-### Supabase migrations — unverified against live DB
+**To verify locally:** install a JDK (`brew install --cask temurin`) + Android
+cmdline-tools, then `cd app && flutter build apk --debug`. See MORNING-CHECKLIST §2.
 
-SQL written and linted, but `supabase db reset` requires Docker + Supabase CLI linked to the project.
+### Supabase — unverified against a live DB
 
-**Fix:** See MORNING-CHECKLIST.md step 1.
+Migrations are written and **sqlfluff-clean** (`.sqlfluff`, postgres dialect), with
+RLS on every table, a `public_profiles` security-definer view, and the two edge
+functions. `supabase db reset` still needs Docker + the Supabase CLI linked.
 
-### Spotify PKCE flow — stub only
+**To verify:** MORNING-CHECKLIST §1 / §9.
 
-`_startPkceFlow()` shows a snackbar. Full flow (url_launcher → callback → token exchange → `flutter_secure_storage`) needs real `SPOTIFY_CLIENT_ID` and device testing.
+### Live external APIs — exercised via fakes only
 
-**Fix:** See MORNING-CHECKLIST.md step 2.
+Real impls exist (`SpotifyApiHttp`, `ItunesApiHttp`, `LastfmApiHttp`,
+`MusicBrainzApiHttp`); the network boundary is faked in tests. Confirming
+dev-mode Spotify catalog access + the PKCE round-trip needs real keys + a device.
+
+**To verify:** MORNING-CHECKLIST §2 / §7. iTunes fallback covers Spotify gaps.
 
 ## Resolved
 
-- `pubspec.lock` excluded from git → fixed (committed)
-- `build_runner` generated `.g.dart` missing → fixed (.gitignore exception, file committed)
-- `withOpacity` deprecation warnings → fixed (`withValues(alpha:)`)
-- `custom_lint` version conflict → fixed (removed from pubspec)
-- Duplicate artifact `item_detail_screen 2.dart` → deleted
+- Runtime used `Fake*` APIs + in-memory state → replaced with real impls behind
+  interfaces + Drift-backed `LibraryRepository`; fakes moved to `test/`.
+- Dead controls (empty `onPressed`/`onTap`) → all wired.
+- Default-Material theme → custom `lib/theme` (mint, Hanken Grotesk), asserted by test.
+- Spotify PKCE flow → implemented (`SpotifyPkceService`: launch → callback → token
+  exchange → secure storage → refresh). Real device test still pending (MORNING §2).
+- `pubspec.lock`, generated `.g.dart`, `withOpacity` deprecation, `custom_lint`
+  conflict, duplicate artifact → all fixed previously.
 
-## Stubs Documented
+## Stubs / fakes documented
 
-| Item | Stub location |
-|------|--------------|
-| Supabase project + migrations | supabase/ + MORNING-CHECKLIST.md |
-| Spotify PKCE flow | app/lib/features/spotify_connect/ |
-| Last.fm API key | FakeLastfmApi + edge function |
-| MusicBrainz live rate-limit | FakeMusicBrainzApi |
-| Physical device test | MORNING-CHECKLIST.md |
-| APK build | CI (GitHub Actions) |
+| Item | Where |
+|------|-------|
+| Supabase project + `db reset` | supabase/ + MORNING-CHECKLIST §1/§9 |
+| Spotify keys + device round-trip | MORNING-CHECKLIST §2/§7 |
+| Last.fm / MusicBrainz live calls | faked in test/fakes/ (parsers unit-tested) |
+| APK build (Java/Android SDK) | CI (GitHub Actions) |

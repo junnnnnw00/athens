@@ -1,0 +1,22 @@
+[sqlfluff]
+dialect = postgres
+templater = raw
+max_line_length = 200
+# Reference-qualification and table-aliasing rules are stylistic and conflict
+# with the intentional shape of the security-definer public view; layout and
+# casing are enforced (and auto-fixed). Exclude the opinionated ones.
+exclude_rules = RF01, RF02, RF03, AL01, AL09, ST06, ST05, AM04, CP05
+
+[sqlfluff:indentation]
+indented_joins = false
+indented_using_on = true
+implicit_indents = allow
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+
+[sqlfluff:rules:capitalisation.functions]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower

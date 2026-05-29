@@ -33,5 +33,42 @@ function which returns a short-lived token for catalog search.
 - elo 1400 → ~9.0
 - elo 600 → ~1.0
 
+## Design & UI (rebuild)
+
+| Decision | Choice | Reason |
+|----------|--------|--------|
+| Visual language | DESIGN.md (refined minimalism) **supersedes ACCEPTANCE Part C** | DESIGN.md is the later, authoritative spec (CLAUDE.md source-of-truth #8) |
+| Accent | ONE mint (`#74E0A4` dark / `#3DBE6E` light) | DESIGN.md; replaces the earlier pink — album art carries all other colour |
+| Type | Hanken Grotesk (display/UI) + Pretendard (Korean) | DESIGN.md; bundled locally in `app/assets/fonts/` for offline + deterministic goldens |
+| Modes | Dark default + light | DESIGN.md ships both |
+| Nav | 3-item floating pill (Home · Add · Me) | DESIGN.md; Stats/Profile/Share/Spotify reached from app bars + the Me/profile screen |
+| UI language | Korean-first strings | Korean target user (C6) |
+
+## Data layer (rebuild)
+
+- **`LibraryRepository` over Drift is the single source of truth** the UI renders.
+  The old in-memory `ratedItemsProvider` is removed; it is now derived from
+  `libraryControllerProvider` (an `AsyncNotifier` that re-reads Drift after every
+  mutation). Duels persist and survive restart.
+- **Real network impls** (`SpotifyApiHttp`, `ItunesApiHttp`, `LastfmApiHttp`,
+  `MusicBrainzApiHttp`) live behind the existing interfaces; the `Fake*` doubles
+  moved to `test/fakes/` and are never imported by `lib/` (ACCEPTANCE A4).
+- **`dev_seed.dart`** (behind `kDevSeed`, `--dart-define=DEV_SEED=true`) writes real
+  rows through the repository — it does not short-circuit the UI.
+
+## Tooling
+
+- **`.sqlfluff`** added (postgres dialect; reference-qualification/aliasing rules
+  excluded as stylistic, layout + casing enforced & auto-fixed). Migrations lint clean.
+- **Golden tests are tagged `golden`** and excluded in CI (`--exclude-tags golden`)
+  because font anti-aliasing differs across platforms; they are the macOS-rendered
+  review references and run locally.
+
+## Known environment limit
+
+- `flutter build apk --debug` cannot run on this build machine (no Java runtime /
+  Android SDK). The path is unchanged and is built in CI (`ubuntu-latest` +
+  `subosito/flutter-action`, which provides the Android SDK). See BLOCKERS.md.
+
 ## Package Substitutions
-None yet — all specified packages verified available on pub.dev.
+None — all specified packages verified available on pub.dev.

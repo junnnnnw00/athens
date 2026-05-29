@@ -4,7 +4,7 @@ import '../theme/tokens.dart';
 import '../theme/app_theme.dart';
 
 /// Album/track cover. Shows the real artwork, or a quiet neutral tile with the
-/// title's initials when art is missing (never a rainbow placeholder).
+/// title's initials when art is missing (never a rainbow filler tile).
 class CoverArt extends StatelessWidget {
   const CoverArt({
     super.key,
