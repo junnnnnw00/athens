@@ -12,14 +12,14 @@ The runtime now renders only real data through Riverpod → repository → Drift
 | 1. `flutter analyze` | ✅ 0 issues | "No issues found! (ran in 2.4s)" |
 | 2. `flutter test` | ✅ 83 pass | unit + widget + golden; full run green |
 | 2. rank-domain coverage ≥90% | ✅ 98.9% | 91/92 lines (elo/score/pair_selector/stats_engine) |
-| 3. `flutter build apk --debug` | ⏳ see below | Android SDK 35 present; JDK being installed locally; CI builds it |
+| 3. `flutter build apk --debug` | ✅ exit 0 | "✓ Built build/app/outputs/flutter-apk/app-debug.apk" (openjdk@17 + Android SDK 35, 290s) |
 | 4. `flutter build web` | ✅ exit 0 | background build completed |
 | 5. `npm ci && npm run build` (web) | ✅ exit 0 | background build completed |
 | 6. SQL sqlfluff clean + RLS + view + edge fns | ✅ | sqlfluff exit 0; 5 tables RLS; `public_profiles`; 2 edge fns |
 | 7. No secrets + complete `.env.example` | ✅ | secret-leak grep returns nothing |
 | 8. Docs complete | ✅ | README, LICENSE, CONTRIBUTING, SETUP, SPOTIFY, TAGS, ARCHITECTURE, RUN |
 | 9. PROGRESS/DECISIONS/BLOCKERS/MORNING/IDEAS | ✅ | all present + updated |
-| 10. Commit history + milestone tags | ⏳ | tags m0–m7 applied at end of run |
+| 10. Commit history + milestone tags | ✅ | conventional commits; tags m0–m7 |
 
 ### ACCEPTANCE gates
 
