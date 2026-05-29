@@ -135,6 +135,15 @@ abstract final class AppTheme {
 
   static TextTheme _textTheme(AppPalette p) {
     // Heavy headings (w800, tight tracking); medium body; muted meta.
+    // Apply the font family explicitly so styles captured into sub-themes
+    // (e.g. AppBarTheme.titleTextStyle) always carry it.
+    return _base(p).apply(
+      fontFamily: AppFonts.display,
+      fontFamilyFallback: AppFonts.fallback,
+    );
+  }
+
+  static TextTheme _base(AppPalette p) {
     return TextTheme(
       displayLarge: TextStyle(
           fontSize: 34, fontWeight: FontWeight.w800, letterSpacing: -0.7, color: p.text),
