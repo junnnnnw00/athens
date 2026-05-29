@@ -48,7 +48,7 @@ class StatsScreen extends ConsumerWidget {
           _SectionTitle('Top Genres'),
           ...stats.topGenres
               .take(5)
-              .map((t) => _TagRow(tag: t, max: stats.topGenres.first.count)),
+              .map((t) => _TagRow(tag: t, max: stats.topGenres.isNotEmpty ? stats.topGenres.first.count : 1)),
           const SizedBox(height: 24),
           _SectionTitle('Top Moods'),
           ...stats.topMoods

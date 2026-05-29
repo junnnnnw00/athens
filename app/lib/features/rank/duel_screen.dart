@@ -47,9 +47,8 @@ class DuelNotifier extends StateNotifier<DuelState> {
     final pair = state.pair;
     if (pair == null) return;
     final (a, b) = pair;
-    final winnerId_ = winnerId;
-    final winner = winnerId_ == a.id ? a : b;
-    final loser = winnerId_ == a.id ? b : a;
+    final winner = winnerId == a.id ? a : b;
+    final loser = winnerId == a.id ? b : a;
     final (wElo, lElo) = Elo.update(winner.elo, loser.elo);
     final updated = state.items.map((item) {
       if (item.id == winner.id) {
