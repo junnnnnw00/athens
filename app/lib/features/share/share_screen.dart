@@ -127,7 +127,7 @@ class _Top5Card extends StatelessWidget {
                 fontSize: 28,
                 fontWeight: FontWeight.bold),
           ),
-          const Text('on Crate',
+          const Text('on Athens',
               style: TextStyle(color: Colors.white70, fontSize: 16)),
           const SizedBox(height: 24),
           ...items.asMap().entries.map(
@@ -210,7 +210,7 @@ class _TasteSnapshotCard extends StatelessWidget {
                 fontSize: 28,
                 fontWeight: FontWeight.bold),
           ),
-          const Text('on Crate',
+          const Text('on Athens',
               style: TextStyle(color: Colors.white70, fontSize: 16)),
           const SizedBox(height: 24),
           Wrap(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../api/spotify_pkce_service.dart';
+
 final spotifyEnabledProvider = FutureProvider<bool>((ref) async {
   final user = Supabase.instance.client.auth.currentUser;
   if (user == null) return false;
@@ -11,6 +13,10 @@ final spotifyEnabledProvider = FutureProvider<bool>((ref) async {
       .eq('id', user.id)
       .maybeSingle();
   return data?['spotify_enabled'] == true;
+});
+
+final spotifyConnectedProvider = FutureProvider<bool>((ref) async {
+  return SpotifyPkceService.isConnected();
 });
 
 class SpotifyConnectScreen extends ConsumerWidget {
@@ -64,54 +70,112 @@ class _SpotifyNotEnabled extends StatelessWidget {
   }
 }
 
-class _SpotifyConnectFlow extends StatelessWidget {
+class _SpotifyConnectFlow extends ConsumerStatefulWidget {
   const _SpotifyConnectFlow();
 
   @override
+  ConsumerState<_SpotifyConnectFlow> createState() => _SpotifyConnectFlowState();
+}
+
+class _SpotifyConnectFlowState extends ConsumerState<_SpotifyConnectFlow> {
+  bool _loading = false;
+
+  @override
   Widget build(BuildContext context) {
+    final connectedAsync = ref.watch(spotifyConnectedProvider);
+
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.headphones, size: 64),
-          const SizedBox(height: 16),
-          Text(
-            'Connect Spotify',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Connect your Spotify account to automatically see recently '
-            'played tracks and get prompts to rate music you\'ve listened to.',
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            icon: const Icon(Icons.link),
-            label: const Text('Connect Spotify (PKCE OAuth)'),
-            onPressed: () => _startPkceFlow(context),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'You\'ll be redirected to Spotify to authorize.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ],
+      child: connectedAsync.when(
+        data: (connected) => connected ? _connected() : _disconnected(),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
       ),
     );
   }
 
-  void _startPkceFlow(BuildContext context) {
-    // TODO: Launch PKCE OAuth flow via url_launcher.
-    // See docs/SPOTIFY.md for redirect URI setup.
-    // Requires SPOTIFY_CLIENT_ID from environment.
-    // On callback, exchange code for tokens → flutter_secure_storage.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('PKCE flow: configure SPOTIFY_CLIENT_ID and run on device. '
-            'See MORNING-CHECKLIST.md step 2.'),
-      ),
+  Widget _connected() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.check_circle, size: 64, color: Colors.green),
+        const SizedBox(height: 16),
+        Text('Spotify Connected',
+            style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        const Text(
+          'Recently played tracks will appear in your home feed.',
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.link_off),
+          label: const Text('Disconnect'),
+          onPressed: _loading ? null : _disconnect,
+        ),
+      ],
     );
+  }
+
+  Widget _disconnected() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.headphones, size: 64),
+        const SizedBox(height: 16),
+        Text('Connect Spotify',
+            style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 12),
+        const Text(
+          'Connect your Spotify account to automatically see recently '
+          'played tracks and get prompts to rate music you\'ve listened to.',
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        FilledButton.icon(
+          icon: _loading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.link),
+          label: const Text('Connect Spotify'),
+          onPressed: _loading ? null : _connect,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _connect() async {
+    setState(() => _loading = true);
+    try {
+      await SpotifyPkceService.launchAuth();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to launch Spotify: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _disconnect() async {
+    setState(() => _loading = true);
+    try {
+      await SpotifyPkceService.disconnect();
+      ref.invalidate(spotifyConnectedProvider);
+      ref.invalidate(spotifyEnabledProvider);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to disconnect: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 }

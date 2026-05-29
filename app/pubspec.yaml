@@ -37,6 +37,10 @@ dependencies:
   screenshot: ^3.0.0
   share_plus: ^10.1.4
 
+  # Deep links + crypto (PKCE)
+  app_links: ^7.0.0
+  crypto: ^3.0.7
+
   # Utilities
   freezed_annotation: ^2.4.4
   json_annotation: ^4.9.0
