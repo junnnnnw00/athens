@@ -1,0 +1,60 @@
+import 'package:athens/data/repository/library_providers.dart';
+import 'package:athens/features/catalog/catalog_service.dart';
+import 'package:athens/features/home/home_screen.dart';
+import 'package:athens/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import '../helpers/test_harness.dart';
+
+CatalogItem _track(String id, String title) => CatalogItem(
+      id: id,
+      kind: 'track',
+      title: title,
+      primaryArtist: 'Artist',
+      source: 'spotify',
+      sourceId: id,
+    );
+
+void main() {
+  testWidgets('home surfaces only unrated recently-played tracks',
+      (tester) async {
+    final harness = TestHarness(recentlyPlayed: [
+      _track('spotify:rated', 'Already Rated'),
+      _track('spotify:fresh', 'Fresh Track'),
+    ]);
+    addTearDown(harness.dispose);
+
+    final container = harness.container();
+    // Pre-rate one of the recently-played tracks.
+    await container.read(libraryControllerProvider.future);
+    await container
+        .read(libraryControllerProvider.notifier)
+        .addItem(_track('spotify:rated', 'Already Rated'));
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(theme: AppTheme.dark(), home: const HomeScreen()),
+    ));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Fresh Track'), findsOneWidget);
+    expect(find.text('Already Rated'), findsNothing);
+  });
+
+  testWidgets('non-Spotify user sees a graceful empty state', (tester) async {
+    final harness = TestHarness(); // no recently-played
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: harness.overrides,
+      child: MaterialApp(theme: AppTheme.dark(), home: const HomeScreen()),
+    ));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Spotify 연결'), findsOneWidget);
+  });
+}

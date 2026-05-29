@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:athens/data/remote/supabase_gateway.dart';
 import 'package:athens/data/sync/sync_service.dart';
+
+import '../fakes/fakes.dart';
 
 void main() {
   group('SyncService', () {

@@ -63,3 +63,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    - family: Hanken Grotesk
+      fonts:
+        - asset: assets/fonts/HankenGrotesk.ttf
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard.ttf

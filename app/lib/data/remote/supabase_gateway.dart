@@ -1,3 +1,7 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Thin abstraction over the Supabase tables used for cross-device sync.
+/// Tests use a fake implementation (test/fakes/); runtime uses [SupabaseGatewayImpl].
 abstract class SupabaseGateway {
   Future<List<Map<String, dynamic>>> getRatings(String userId);
   Future<void> upsertRating(Map<String, dynamic> rating);
@@ -8,43 +12,48 @@ abstract class SupabaseGateway {
   Future<void> upsertProfile(Map<String, dynamic> profile);
 }
 
-class FakeSupabaseGateway implements SupabaseGateway {
-  final Map<String, Map<String, dynamic>> _ratings = {};
-  final List<Map<String, dynamic>> _comparisons = [];
-  final Map<String, Map<String, dynamic>> _reviews = {};
-  final Map<String, Map<String, dynamic>> _profiles = {};
+class SupabaseGatewayImpl implements SupabaseGateway {
+  SupabaseGatewayImpl({SupabaseClient? client})
+      : _client = client ?? Supabase.instance.client;
+
+  final SupabaseClient _client;
 
   @override
-  Future<List<Map<String, dynamic>>> getRatings(String userId) async =>
-      _ratings.values.where((r) => r['user_id'] == userId).toList();
+  Future<List<Map<String, dynamic>>> getRatings(String userId) async {
+    final rows = await _client.from('ratings').select().eq('user_id', userId);
+    return List<Map<String, dynamic>>.from(rows);
+  }
 
   @override
   Future<void> upsertRating(Map<String, dynamic> rating) async {
-    final key = '${rating['user_id']}_${rating['item_id']}';
-    _ratings[key] = rating;
+    await _client.from('ratings').upsert(rating, onConflict: 'user_id,item_id');
   }
 
   @override
   Future<void> insertComparison(Map<String, dynamic> comparison) async {
-    _comparisons.add(comparison);
+    await _client.from('comparisons').insert(comparison);
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getReviews(String userId) async =>
-      _reviews.values.where((r) => r['user_id'] == userId).toList();
+  Future<List<Map<String, dynamic>>> getReviews(String userId) async {
+    final rows = await _client.from('reviews').select().eq('user_id', userId);
+    return List<Map<String, dynamic>>.from(rows);
+  }
 
   @override
   Future<void> upsertReview(Map<String, dynamic> review) async {
-    final key = '${review['user_id']}_${review['item_id']}';
-    _reviews[key] = review;
+    await _client.from('reviews').upsert(review, onConflict: 'user_id,item_id');
   }
 
   @override
-  Future<Map<String, dynamic>?> getProfile(String userId) async =>
-      _profiles[userId];
+  Future<Map<String, dynamic>?> getProfile(String userId) async {
+    final row =
+        await _client.from('profiles').select().eq('id', userId).maybeSingle();
+    return row;
+  }
 
   @override
   Future<void> upsertProfile(Map<String, dynamic> profile) async {
-    _profiles[profile['id'] as String] = profile;
+    await _client.from('profiles').upsert(profile);
   }
 }

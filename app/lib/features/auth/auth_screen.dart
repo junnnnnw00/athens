@@ -53,7 +53,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Check your email to confirm sign-up.')),
+          const SnackBar(content: Text('확인 이메일을 보냈어요. 메일함을 확인하세요.')),
         );
       }
     } on AuthException catch (e) {
@@ -73,22 +73,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Sign In', style: Theme.of(context).textTheme.headlineMedium),
+            Text('로그인', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 24),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(labelText: '이메일'),
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: '비밀번호'),
               obscureText: true,
             ),
             if (_error != null) ...[
               const SizedBox(height: 8),
-              Text(_error!, style: const TextStyle(color: Colors.red)),
+              Text(_error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
             const SizedBox(height: 24),
             FilledButton(
@@ -99,12 +100,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       width: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Sign In'),
+                  : const Text('로그인'),
             ),
             const SizedBox(height: 8),
             OutlinedButton(
               onPressed: _isLoading ? null : _signUp,
-              child: const Text('Create Account'),
+              child: const Text('계정 만들기'),
             ),
           ],
         ),

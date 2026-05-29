@@ -1,61 +1,251 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../data/repository/library_providers.dart';
 import '../../domain/score.dart';
+import '../../theme/tokens.dart';
+import '../../theme/app_theme.dart';
+import '../../widgets/cover_art.dart';
+import '../../widgets/filter_chips.dart';
+import '../../widgets/score_ring.dart';
 import '../catalog/catalog_service.dart';
+
+final _libraryFilterProvider = StateProvider<String>((ref) => 'All');
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
 
+  static const _kinds = {'Albums': 'album', 'Tracks': 'track', 'Artists': 'artist'};
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(ratedItemsProvider);
-
-    if (items.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Library')),
-        body: const Center(
-          child: Text('No ratings yet. Start a duel to rate music!'),
-        ),
-      );
-    }
-
-    final sorted = List<RatedCatalogItem>.from(items)
-      ..sort((a, b) => b.elo.compareTo(a.elo));
+    final p = context.palette;
+    final async = ref.watch(libraryControllerProvider);
+    final filter = ref.watch(_libraryFilterProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Library')),
-      body: ListView.builder(
-        itemCount: sorted.length,
-        itemBuilder: (context, i) {
-          final item = sorted[i];
-          final score = scoreFromElo(item.elo);
-          return ListTile(
-            leading: Text(
-              '#${i + 1}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            title: Text(item.title),
-            subtitle: Text(item.primaryArtist ?? item.kind),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  score.toStringAsFixed(1),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
+      appBar: AppBar(
+        title: const Text('Library'),
+        actions: [
+          IconButton(
+            tooltip: 'Stats',
+            icon: const Icon(Icons.bar_chart_rounded),
+            onPressed: () => context.go('/stats'),
+          ),
+          IconButton(
+            tooltip: 'Profile',
+            icon: const Icon(Icons.person_outline_rounded),
+            onPressed: () => context.go('/profile'),
+          ),
+        ],
+      ),
+      body: async.when(
+        loading: () => const _LibrarySkeleton(),
+        error: (e, _) => _LibraryError(message: '$e'),
+        data: (items) {
+          if (items.isEmpty) return const _LibraryEmpty();
+          final filtered = filter == 'All'
+              ? items
+              : items.where((i) => i.kind == _kinds[filter]).toList();
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl, AppSpacing.xs, AppSpacing.xl, AppSpacing.md),
+                child: FilterChips(
+                  options: const ['All', 'Albums', 'Tracks', 'Artists'],
+                  selected: filter,
+                  onSelect: (v) =>
+                      ref.read(_libraryFilterProvider.notifier).state = v,
+                ),
+              ),
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Text('이 필터에 항목 없음',
+                            style: TextStyle(color: p.muted)))
+                    : ListView.separated(
+                        padding: const EdgeInsets.only(bottom: 110),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) =>
+                            Divider(height: 1, color: p.line, indent: AppSpacing.xl),
+                        itemBuilder: (context, i) =>
+                            _LibraryRow(rank: i + 1, item: filtered[i]),
                       ),
-                ),
-                Text(
-                  '${item.comparisons} duels',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),
     );
   }
+}
+
+class _LibraryRow extends StatelessWidget {
+  const _LibraryRow({required this.rank, required this.item});
+  final int rank;
+  final RatedCatalogItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final score = scoreFromElo(item.elo);
+    return InkWell(
+      onTap: () => context.go('/item/${item.id}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl, vertical: AppSpacing.md),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              child: Text('$rank',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 56),
+            const SizedBox(width: AppSpacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          '${_kindLabel(item.kind)} · ${item.primaryArtist ?? '—'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      if (rank == 1) ...[
+                        const SizedBox(width: 6),
+                        Icon(Icons.workspace_premium_rounded,
+                            size: 13, color: p.accentText),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            ScoreRing(score: score),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _kindLabel(String kind) => switch (kind) {
+        'album' => 'Album',
+        'artist' => 'Artist',
+        _ => 'Track',
+      };
+}
+
+class _LibraryEmpty extends StatelessWidget {
+  const _LibraryEmpty();
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xxxl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.library_music_outlined, size: 56, color: p.faint),
+            const SizedBox(height: AppSpacing.lg),
+            Text('아직 평가한 음악이 없어요',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.sm),
+            Text('검색해서 음악을 추가하고 듀얼을 시작하세요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: p.muted)),
+            const SizedBox(height: AppSpacing.xl),
+            FilledButton(
+              onPressed: () => context.go('/search'),
+              child: const Text('음악 검색'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LibraryError extends StatelessWidget {
+  const _LibraryError({required this.message});
+  final String message;
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xxxl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline_rounded, size: 48, color: p.muted),
+            const SizedBox(height: AppSpacing.md),
+            Text('라이브러리를 불러오지 못했어요',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.xs),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LibrarySkeleton extends StatelessWidget {
+  const _LibrarySkeleton();
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      itemCount: 6,
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl, vertical: AppSpacing.md),
+        child: Row(
+          children: [
+            _box(p.surface2, 56, 56, AppRadii.cover),
+            const SizedBox(width: AppSpacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _box(p.surface2, 160, 14, 6),
+                  const SizedBox(height: 8),
+                  _box(p.surface, 100, 12, 6),
+                ],
+              ),
+            ),
+            _box(p.surface2, 48, 48, 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _box(Color c, double w, double h, double r) => Container(
+        width: w,
+        height: h,
+        decoration:
+            BoxDecoration(color: c, borderRadius: BorderRadius.circular(r)),
+      );
 }

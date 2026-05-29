@@ -31,6 +31,17 @@ class CatalogItem {
   final String? sourceId;
   final String? source;
   final List<CatalogTag> tags;
+
+  CatalogItem copyWithTags(List<CatalogTag> tags) => CatalogItem(
+        id: id,
+        kind: kind,
+        title: title,
+        primaryArtist: primaryArtist,
+        imageUrl: imageUrl,
+        sourceId: sourceId,
+        source: source,
+        tags: tags,
+      );
 }
 
 class RatedCatalogItem {
@@ -123,11 +134,13 @@ class CatalogService {
   }
 }
 
-// Providers — wire real implementations or fakes depending on environment.
-final spotifyApiProvider = Provider<SpotifyApi>((ref) => FakeSpotifyApi());
-final itunesApiProvider = Provider<ItunesApi>((ref) => FakeItunesApi());
-final lastfmApiProvider = Provider<LastfmApi>((ref) => FakeLastfmApi());
-final musicBrainzApiProvider = Provider<MusicBrainzApi>((ref) => FakeMusicBrainzApi());
+// Providers — wire the real network implementations. Tests override these with
+// fakes (see test/fakes/); runtime code never imports a Fake.
+final spotifyApiProvider = Provider<SpotifyApi>((ref) => SpotifyApiHttp());
+final itunesApiProvider = Provider<ItunesApi>((ref) => ItunesApiHttp());
+final lastfmApiProvider = Provider<LastfmApi>((ref) => LastfmApiHttp());
+final musicBrainzApiProvider =
+    Provider<MusicBrainzApi>((ref) => MusicBrainzApiHttp());
 
 final catalogServiceProvider = Provider<CatalogService>((ref) {
   return CatalogService(
@@ -146,9 +159,6 @@ final searchResultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
   final svc = ref.watch(catalogServiceProvider);
   return svc.search(query);
 });
-
-// In-memory rated items state (in production this syncs with Supabase + Drift).
-final ratedItemsProvider = StateProvider<List<RatedCatalogItem>>((ref) => []);
 
 // Recently played (Spotify-enabled users only).
 final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {

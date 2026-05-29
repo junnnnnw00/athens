@@ -4,19 +4,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api/spotify_pkce_service.dart';
+import 'dev_seed.dart';
 import 'router.dart';
+import 'theme/app_theme.dart';
+
+const _supabaseUrl =
+    String.fromEnvironment('SUPABASE_URL', defaultValue: '');
+const _supabaseAnonKey =
+    String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY', defaultValue: '');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
-    url: const String.fromEnvironment('SUPABASE_URL',
-        defaultValue: 'https://placeholder.supabase.co'),
-    anonKey: const String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY',
-        defaultValue: 'placeholder'),
-  );
+  if (_supabaseUrl.isNotEmpty && _supabaseAnonKey.isNotEmpty) {
+    await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
+  }
 
-  runApp(const ProviderScope(child: AthensApp()));
+  final container = ProviderContainer();
+  if (kDevSeed) {
+    await seedDevData(container);
+  }
+
+  runApp(UncontrolledProviderScope(
+    container: container,
+    child: const AthensApp(),
+  ));
 }
 
 class AthensApp extends ConsumerStatefulWidget {
@@ -42,7 +54,7 @@ class _AthensAppState extends ConsumerState<AthensApp> {
     final ok = await SpotifyPkceService.handleCallback(uri);
     if (ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Spotify connected!')),
+        const SnackBar(content: Text('Spotify 연결됨')),
       );
     }
   }
@@ -52,13 +64,10 @@ class _AthensAppState extends ConsumerState<AthensApp> {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: 'Athens',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6B4EFF),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: ThemeMode.dark,
       routerConfig: router,
     );
   }

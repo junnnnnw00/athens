@@ -1,0 +1,70 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'data/repository/library_providers.dart';
+import 'features/catalog/catalog_service.dart';
+
+/// Dev-only seed flag. `false` in release builds. When enabled, real sample data
+/// is written into the actual Drift layer and flows through the same providers
+/// as production data — it never short-circuits the UI.
+const bool kDevSeed = bool.fromEnvironment('DEV_SEED', defaultValue: false);
+
+CatalogItem _item(
+  String id,
+  String kind,
+  String title,
+  String artist,
+  List<String> genres,
+  List<String> moods,
+) {
+  return CatalogItem(
+    id: 'seed:$id',
+    kind: kind,
+    title: title,
+    primaryArtist: artist,
+    source: 'seed',
+    sourceId: id,
+    tags: [
+      ...genres.map((g) => CatalogTag(name: g, source: 'genre')),
+      ...moods.map((m) => CatalogTag(name: m, source: 'mood')),
+    ],
+  );
+}
+
+/// Sample library mirroring the design prototype (Korean/JP titles included).
+List<CatalogItem> devSeedItems() => [
+      _item('loveless', 'album', 'Loveless', 'My Bloody Valentine',
+          ['shoegaze', 'noise pop'], ['dreamy', 'melancholic']),
+      _item('머리에꽃을', 'album', '머리에 꽃을', '실리카겔',
+          ['indie rock', 'psychedelic'], ['energetic', 'dreamy']),
+      _item('souvlaki', 'album', 'Souvlaki', 'Slowdive',
+          ['shoegaze', 'dream pop'], ['dreamy', 'melancholic']),
+      _item('heaven', 'album', 'Heaven or Las Vegas', 'Cocteau Twins',
+          ['dream pop', 'ethereal wave'], ['atmospheric', 'dreamy']),
+      _item('새로운과실', 'album', '新しい果実', '長谷川白紙',
+          ['experimental', 'electronic'], ['intense', 'energetic']),
+      _item('비행운', 'track', '비행운', '새소년',
+          ['indie rock', 'alternative'], ['nostalgic', 'calm']),
+      _item('vivid', 'album', 'VIVID', 'ADOY',
+          ['synth-pop', 'indie pop'], ['dreamy', 'uplifting']),
+      _item('inrainbows', 'album', 'In Rainbows', 'Radiohead',
+          ['art rock', 'alternative'], ['melancholic', 'atmospheric']),
+    ];
+
+/// Seeds the database and runs a handful of duels so ranking/stats have data.
+Future<void> seedDevData(ProviderContainer container) async {
+  await container.read(libraryControllerProvider.future);
+  final controller = container.read(libraryControllerProvider.notifier);
+  final items = devSeedItems();
+  for (final item in items) {
+    await controller.addItem(item);
+  }
+  // Deterministic duels: earlier items beat later ones, building a clear order.
+  for (var i = 0; i < items.length - 1; i++) {
+    for (var j = i + 1; j < items.length; j++) {
+      await controller.recordComparison(
+        winnerId: items[i].id,
+        loserId: items[j].id,
+      );
+    }
+  }
+}

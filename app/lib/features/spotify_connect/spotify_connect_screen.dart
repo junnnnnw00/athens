@@ -49,7 +49,7 @@ class _SpotifyNotEnabled extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.music_off, size: 64, color: Colors.grey),
+          Icon(Icons.music_off, size: 64, color: Theme.of(context).colorScheme.outline),
           const SizedBox(height: 16),
           Text(
             'Spotify connect is invite-only',
@@ -98,7 +98,7 @@ class _SpotifyConnectFlowState extends ConsumerState<_SpotifyConnectFlow> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.check_circle, size: 64, color: Colors.green),
+        Icon(Icons.check_circle, size: 64, color: Theme.of(context).colorScheme.primary),
         const SizedBox(height: 16),
         Text('Spotify Connected',
             style: Theme.of(context).textTheme.titleLarge),
