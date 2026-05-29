@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Crate — Rate your music",
+  title: "Athens — Rate your music",
   description: "Pairwise music rating. Discover your taste.",
 };
 

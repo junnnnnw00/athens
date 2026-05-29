@@ -13,7 +13,7 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Crate'),
+        title: const Text('Athens'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),

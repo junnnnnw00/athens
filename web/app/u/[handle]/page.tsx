@@ -53,10 +53,10 @@ export async function generateMetadata({
 }) {
   const { handle } = await params;
   const profile = await getProfile(handle);
-  if (!profile) return { title: 'Profile not found — Crate' };
+  if (!profile) return { title: 'Profile not found — Athens' };
   return {
-    title: `${profile.display_name ?? profile.handle} — Crate`,
-    description: profile.bio ?? `Music ratings by ${profile.handle} on Crate.`,
+    title: `${profile.display_name ?? profile.handle} — Athens`,
+    description: profile.bio ?? `Music ratings by ${profile.handle} on Athens.`,
   };
 }
 
@@ -166,7 +166,7 @@ export default async function ProfilePage({
 
       <footer style={{ marginTop: 48, textAlign: 'center', color: '#aaa', fontSize: 12 }}>
         <a href="/" style={{ color: '#6B4EFF', textDecoration: 'none' }}>
-          Rate your music on Crate →
+          Rate your music on Athens →
         </a>
       </footer>
     </main>

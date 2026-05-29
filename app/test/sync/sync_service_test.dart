@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:crate/data/remote/supabase_gateway.dart';
-import 'package:crate/data/sync/sync_service.dart';
+import 'package:athens/data/remote/supabase_gateway.dart';
+import 'package:athens/data/sync/sync_service.dart';
 
 void main() {
   group('SyncService', () {

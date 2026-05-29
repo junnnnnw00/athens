@@ -1,6 +1,6 @@
-# Crate
+# Athens
 
-**Crate** is an open-source music rating app built around a pairwise "which do you prefer?" mini-game that converts head-to-head choices into per-user 0–10 scores and ranked lists.
+**Athens** is an open-source music rating app built around a pairwise "which do you prefer?" mini-game that converts head-to-head choices into per-user 0–10 scores and ranked lists.
 
 Rate tracks, albums, and artists. Get deep genre + mood tags (powered by Last.fm + MusicBrainz). Optionally connect Spotify to rate music you've actually been listening to. Share your taste with a public profile page and Instagram-story image.
 
@@ -35,8 +35,8 @@ See **[docs/SETUP.md](docs/SETUP.md)** for full setup instructions.
 
 ```bash
 # Clone
-git clone https://github.com/YOUR_HANDLE/crate.git
-cd crate
+git clone https://github.com/YOUR_HANDLE/athens.git
+cd athens
 
 # Configure environment
 cp .env.example .env

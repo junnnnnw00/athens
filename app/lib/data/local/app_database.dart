@@ -97,6 +97,6 @@ class AppDatabase extends _$AppDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    return driftDatabase(name: 'crate_db');
+    return driftDatabase(name: 'athens_db');
   });
 }

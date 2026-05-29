@@ -14,17 +14,17 @@ Future<void> main() async {
         defaultValue: 'placeholder'),
   );
 
-  runApp(const ProviderScope(child: CrateApp()));
+  runApp(const ProviderScope(child: AthensApp()));
 }
 
-class CrateApp extends ConsumerWidget {
-  const CrateApp({super.key});
+class AthensApp extends ConsumerWidget {
+  const AthensApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
-      title: 'Crate',
+      title: 'Athens',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6B4EFF),

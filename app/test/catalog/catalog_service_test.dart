@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:crate/api/spotify_api.dart';
-import 'package:crate/api/itunes_api.dart';
-import 'package:crate/api/lastfm_api.dart';
-import 'package:crate/api/musicbrainz_api.dart';
-import 'package:crate/features/catalog/catalog_service.dart';
+import 'package:athens/api/spotify_api.dart';
+import 'package:athens/api/itunes_api.dart';
+import 'package:athens/api/lastfm_api.dart';
+import 'package:athens/api/musicbrainz_api.dart';
+import 'package:athens/features/catalog/catalog_service.dart';
 
 void main() {
   group('CatalogService.search', () {

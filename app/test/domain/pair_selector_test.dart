@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:crate/domain/pair_selector.dart';
+import 'package:athens/domain/pair_selector.dart';
 
 void main() {
   group('PairSelector.selectPair', () {

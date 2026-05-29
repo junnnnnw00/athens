@@ -88,11 +88,11 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
         targetSize: const Size(1080, 1920),
       );
       final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/crate_share.png');
+      final file = File('${dir.path}/athens_share.png');
       await file.writeAsBytes(image);
       await Share.shareXFiles(
         [XFile(file.path)],
-        text: 'My music taste on Crate',
+        text: 'My music taste on Athens',
       );
     } finally {
       if (mounted) setState(() => _isSharing = false);

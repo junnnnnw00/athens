@@ -66,7 +66,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Crate')),
+      appBar: AppBar(title: const Text('Athens')),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(

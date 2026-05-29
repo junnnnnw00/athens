@@ -25,6 +25,8 @@ web/out/
 # OMC / IDE
 .omc/state/
 .omc/sessions/
+app/.omc/
+CLAUDE.md
 .idea/
 .vscode/settings.json
 

@@ -42,7 +42,7 @@ serve(async (req) => {
   lfmUrl.searchParams.set("autocorrect", "1");
 
   const response = await fetch(lfmUrl.toString(), {
-    headers: { "User-Agent": "Crate/0.1" },
+    headers: { "User-Agent": "Athens/0.1" },
   });
 
   if (!response.ok) {

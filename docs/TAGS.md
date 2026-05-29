@@ -1,8 +1,8 @@
-# Crate — Tag Pipeline (Genre + Mood)
+# Athens — Tag Pipeline (Genre + Mood)
 
 ## Overview
 
-Crate enriches catalog items with deep genre and mood tags sourced from:
+Athens enriches catalog items with deep genre and mood tags sourced from:
 1. **Last.fm** — crowd-sourced tags (primary source, very descriptive)
 2. **MusicBrainz** — structured genre taxonomy (secondary, rate-limited)
 

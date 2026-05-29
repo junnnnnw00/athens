@@ -1,4 +1,4 @@
-# Crate — Morning Checklist (Manual Steps)
+# Athens — Morning Checklist (Manual Steps)
 
 These steps require real credentials, a physical device, or external service access.
 Everything else was completed and tested automatically overnight.
@@ -7,7 +7,7 @@ Everything else was completed and tested automatically overnight.
 
 ## 1. Create a Supabase Project
 
-1. Go to [supabase.com](https://supabase.com) and create a new project named `crate`.
+1. Go to [supabase.com](https://supabase.com) and create a new project named `athens`.
 2. Copy your project URL + anon key + service role key into `.env`:
    ```
    SUPABASE_URL=https://YOUR_REF.supabase.co
@@ -30,9 +30,9 @@ Everything else was completed and tested automatically overnight.
 ## 2. Register Spotify App
 
 1. Go to [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
-2. Create app named `Crate`
+2. Create app named `Athens`
 3. Add redirect URIs:
-   - `crate://spotify-callback` (mobile)
+   - `athens://spotify-callback` (mobile)
    - `http://127.0.0.1:8888/callback` (local dev)
 4. Copy Client ID into `.env`: `SPOTIFY_CLIENT_ID=...`
 5. Copy Client Secret into `.env`: `SPOTIFY_CLIENT_SECRET=...` (server-only!)
@@ -42,13 +42,13 @@ Everything else was completed and tested automatically overnight.
 ## 3. Register Last.fm API Key
 
 1. Go to [last.fm/api/account/create](https://www.last.fm/api/account/create)
-2. Create app named `Crate`
+2. Create app named `Athens`
 3. Copy API key into `.env`: `LASTFM_API_KEY=...`
 4. Optional: copy Shared Secret for authenticated calls: `LASTFM_SHARED_SECRET=...`
 
 ## 4. Configure MusicBrainz User-Agent
 
-1. Update `.env`: `MUSICBRAINZ_USER_AGENT=Crate/0.1 ( your@email.com )`
+1. Update `.env`: `MUSICBRAINZ_USER_AGENT=Athens/0.1 ( your@email.com )`
 2. Use your real email — MusicBrainz may contact you if usage is unexpected.
 
 ## 5. Deploy Web Profile (Vercel)

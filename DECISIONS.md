@@ -1,4 +1,4 @@
-# Crate — Architecture Decisions
+# Athens — Architecture Decisions
 
 ## Tech Stack
 

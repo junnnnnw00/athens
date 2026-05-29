@@ -1,8 +1,8 @@
-# Crate — Spotify Integration
+# Athens — Spotify Integration
 
 ## Overview
 
-Spotify serves two roles in Crate:
+Spotify serves two roles in Athens:
 
 1. **Catalog search** (all users) — app-level Client Credentials token, fetched server-side
 2. **Recently-played import** (allow-listed users only) — user OAuth via PKCE
@@ -57,7 +57,7 @@ If the Spotify catalog search fails (rate limit, dev-mode restriction, etc.), `C
 User taps "Connect Spotify" (only shown if spotify_enabled = true)
   → PKCE code verifier + challenge generated in Flutter
   → Open Spotify OAuth URL in browser
-  → Redirect to crate://spotify-callback
+  → Redirect to athens://spotify-callback
   → Exchange code → access token + refresh token
   → Store tokens in flutter_secure_storage (never sent to server)
   → GET /me/player/recently-played
@@ -91,7 +91,7 @@ Register these EXACTLY in the Spotify Dashboard (including the scheme):
 
 | Environment | URI |
 |-------------|-----|
-| Mobile (production) | `crate://spotify-callback` |
+| Mobile (production) | `athens://spotify-callback` |
 | Local dev | `http://127.0.0.1:8888/callback` |
 
 ## Token Refresh

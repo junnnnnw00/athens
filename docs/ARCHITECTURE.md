@@ -1,8 +1,8 @@
-# Crate — Architecture
+# Athens — Architecture
 
 ## Overview
 
-Crate is a single centralized hosted service. One Supabase project serves all users, isolated by Row Level Security. The mobile app (Flutter) talks directly to Supabase and to edge functions for external API calls. The web profile (Next.js) reads from Supabase via the anon key.
+Athens is a single centralized hosted service. One Supabase project serves all users, isolated by Row Level Security. The mobile app (Flutter) talks directly to Supabase and to edge functions for external API calls. The web profile (Next.js) reads from Supabase via the anon key.
 
 ## Monorepo Layout
 

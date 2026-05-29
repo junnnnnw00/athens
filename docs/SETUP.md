@@ -1,4 +1,4 @@
-# Crate — Setup Guide
+# Athens — Setup Guide
 
 ## Prerequisites
 
@@ -11,8 +11,8 @@
 ## 1. Clone and Configure
 
 ```bash
-git clone https://github.com/YOUR_HANDLE/crate.git
-cd crate
+git clone https://github.com/YOUR_HANDLE/athens.git
+cd athens
 cp .env.example .env
 ```
 
@@ -65,7 +65,7 @@ See [SPOTIFY.md](SPOTIFY.md) for full details.
 
 Short version:
 1. Create app at https://developer.spotify.com/dashboard
-2. Add redirect URIs: `crate://spotify-callback` and `http://127.0.0.1:8888/callback`
+2. Add redirect URIs: `athens://spotify-callback` and `http://127.0.0.1:8888/callback`
 3. Copy Client ID + Secret to `.env`
 4. Add yourself (+ ≤4 friends) to the Spotify app allowlist
 

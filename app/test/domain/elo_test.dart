@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:crate/domain/elo.dart';
+import 'package:athens/domain/elo.dart';
 
 void main() {
   group('Elo.expected', () {

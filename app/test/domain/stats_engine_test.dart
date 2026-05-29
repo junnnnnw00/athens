@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:crate/domain/stats_engine.dart';
+import 'package:athens/domain/stats_engine.dart';
 
 void main() {
   const engine = StatsEngine();

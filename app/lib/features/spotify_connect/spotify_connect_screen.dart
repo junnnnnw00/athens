@@ -54,7 +54,7 @@ class _SpotifyNotEnabled extends StatelessWidget {
           const Text(
             'Due to Spotify\'s developer mode restrictions, only a small '
             'number of users can connect their Spotify account. '
-            'You can still use all other features of Crate — search, '
+            'You can still use all other features of Athens — search, '
             'rate, stats, and sharing — without Spotify.',
             textAlign: TextAlign.center,
           ),

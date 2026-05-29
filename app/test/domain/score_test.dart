@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:crate/domain/score.dart';
+import 'package:athens/domain/score.dart';
 
 void main() {
   group('scoreFromElo', () {

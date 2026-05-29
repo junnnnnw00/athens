@@ -1,11 +1,11 @@
-# Contributing to Crate
+# Contributing to Athens
 
-Thank you for your interest in contributing! Crate is an open-source MIT-licensed project.
+Thank you for your interest in contributing! Athens is an open-source MIT-licensed project.
 
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/YOUR_HANDLE/crate.git`
+2. Clone your fork: `git clone https://github.com/YOUR_HANDLE/athens.git`
 3. Follow [docs/SETUP.md](docs/SETUP.md) to configure your environment
 4. Create a feature branch: `git checkout -b feat/your-feature`
 

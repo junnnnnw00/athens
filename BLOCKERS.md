@@ -1,30 +1,44 @@
-# Crate — Blockers
+# Athens — Blockers
 
 ## Active Blockers
 
-### APK Build (DoD #3) — No Android SDK on build machine
+### APK Build — No Android SDK on build machine
 
-`flutter build apk --debug` fails with "No Android SDK found."
+`flutter build apk --debug` fails: "No Android SDK found."
 
-**Stub:** Build runs clean in CI (GitHub Actions `ubuntu-latest` with `subosito/flutter-action`
-which includes Android SDK). The code compiles — confirmed via `flutter analyze` (0 issues)
-and `flutter build web` (succeeds). APK build verified via CI only; not locally verifiable
-without installing Android SDK.
+**Impact:** DoD check #3 unverifiable locally.
 
-**Action required:** See MORNING-CHECKLIST.md step 10 — run `flutter build apk --debug` after
-installing Android Studio or `sdkmanager`.
+**Workaround:** CI (`ubuntu-latest` + `subosito/flutter-action`) includes Android SDK — APK build verified there. Code compiles clean (`flutter analyze` 0 issues, `flutter build web` succeeds).
 
-## Resolved Blockers
+**Fix:** Install Android Studio or run `sdkmanager`. See MORNING-CHECKLIST.md step 2 equivalent.
 
-None yet.
+### Supabase migrations — unverified against live DB
 
-## Stubs / Deferred Items
+SQL written and linted, but `supabase db reset` requires Docker + Supabase CLI linked to the project.
 
-| Item | Stub | Location |
-|------|------|----------|
-| Supabase project creation | Placeholder URLs in .env.example | docs/SETUP.md |
-| Spotify app registration | Mock PKCE flow + fake tokens | app/lib/features/spotify_connect/ |
-| Last.fm API key | FakeLastfmApi returns mock tags | app/lib/catalog/fake_lastfm_api.dart |
-| MusicBrainz live test | FakeMusicBrainzApi | app/lib/catalog/fake_musicbrainz_api.dart |
-| Physical device testing | Widget + integration tests | app/test/ |
-| Supabase CLI / Docker verification | SQL noted as unverified | supabase/README.md |
+**Fix:** See MORNING-CHECKLIST.md step 1.
+
+### Spotify PKCE flow — stub only
+
+`_startPkceFlow()` shows a snackbar. Full flow (url_launcher → callback → token exchange → `flutter_secure_storage`) needs real `SPOTIFY_CLIENT_ID` and device testing.
+
+**Fix:** See MORNING-CHECKLIST.md step 2.
+
+## Resolved
+
+- `pubspec.lock` excluded from git → fixed (committed)
+- `build_runner` generated `.g.dart` missing → fixed (.gitignore exception, file committed)
+- `withOpacity` deprecation warnings → fixed (`withValues(alpha:)`)
+- `custom_lint` version conflict → fixed (removed from pubspec)
+- Duplicate artifact `item_detail_screen 2.dart` → deleted
+
+## Stubs Documented
+
+| Item | Stub location |
+|------|--------------|
+| Supabase project + migrations | supabase/ + MORNING-CHECKLIST.md |
+| Spotify PKCE flow | app/lib/features/spotify_connect/ |
+| Last.fm API key | FakeLastfmApi + edge function |
+| MusicBrainz live rate-limit | FakeMusicBrainzApi |
+| Physical device test | MORNING-CHECKLIST.md |
+| APK build | CI (GitHub Actions) |
