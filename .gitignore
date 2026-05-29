@@ -1,0 +1,33 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Flutter/Dart
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.packages
+app/**/*.g.dart
+!app/lib/data/local/app_database.g.dart
+app/**/*.freezed.dart
+
+# Next.js
+web/.next/
+web/node_modules/
+web/out/
+
+# OMC / IDE
+.omc/state/
+.omc/sessions/
+.idea/
+.vscode/settings.json
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/

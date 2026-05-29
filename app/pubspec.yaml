@@ -1,0 +1,61 @@
+name: crate
+description: "Crate — pairwise music rating app. Open-source, single hosted instance."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.29.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Routing
+  go_router: ^14.6.3
+
+  # Backend
+  supabase_flutter: ^2.8.4
+
+  # Local cache (offline-first)
+  drift: ^2.22.1
+  drift_flutter: ^0.2.4
+  sqlite3_flutter_libs: ^0.5.30
+  path_provider: ^2.1.5
+
+  # Secure storage (Spotify tokens)
+  flutter_secure_storage: ^9.2.4
+
+  # Charts
+  fl_chart: ^0.70.2
+
+  # Share / export
+  screenshot: ^3.0.0
+  share_plus: ^10.1.4
+
+  # Utilities
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  equatable: ^2.0.7
+  intl: ^0.20.2
+  http: ^1.2.2
+  url_launcher: ^6.3.1
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.15
+  drift_dev: ^2.22.1
+  freezed: ^2.5.7
+  json_serializable: ^6.9.5
+  riverpod_generator: ^2.6.1
+
+flutter:
+  uses-material-design: true
