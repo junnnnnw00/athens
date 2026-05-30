@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -148,6 +149,17 @@ class _SpotifyConnectFlowState extends ConsumerState<_SpotifyConnectFlow> {
   }
 
   Future<void> _connect() async {
+    // Desktop builds lack the keychain entitlement (ad-hoc signed), so the PKCE
+    // token store fails there. Spotify connect is a mobile feature.
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Spotify 연결은 모바일 앱에서만 지원돼요.')),
+      );
+      return;
+    }
     setState(() => _loading = true);
     try {
       await SpotifyPkceService.launchAuth();
