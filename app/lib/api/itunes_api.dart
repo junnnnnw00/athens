@@ -9,7 +9,7 @@ import '../features/catalog/catalog_service.dart';
 abstract class ItunesApi {
   /// [entity] is the iTunes entity filter (song,album,musicArtist by default).
   Future<List<CatalogItem>> search(String query,
-      {String entity = 'song,album,musicArtist'});
+      {String entity = 'song,album,musicArtist', int offset = 0});
 }
 
 class ItunesApiHttp implements ItunesApi {
@@ -20,13 +20,14 @@ class ItunesApiHttp implements ItunesApi {
 
   @override
   Future<List<CatalogItem>> search(String query,
-      {String entity = 'song,album,musicArtist'}) async {
+      {String entity = 'song,album,musicArtist', int offset = 0}) async {
     if (query.trim().isEmpty) return [];
     final res = await _http.get(Uri.https('itunes.apple.com', '/search', {
       'term': query,
       'media': 'music',
       'entity': entity,
       'limit': '50',
+      'offset': '$offset',
     }));
     if (res.statusCode != 200) {
       throw StateError('iTunes search failed: ${res.statusCode}');

@@ -14,8 +14,9 @@ import 'spotify_pkce_service.dart';
 abstract class SpotifyApi {
   /// [types] is the Spotify `type` filter, e.g. 'track', 'album', 'artist', or
   /// the combined default. A single type lets the whole limit go to it.
+  /// [offset] pages through results (Spotify caps offset+limit at 1000).
   Future<List<CatalogItem>> search(String query,
-      {String types = 'track,album,artist'});
+      {String types = 'track,album,artist', int offset = 0});
   Future<List<CatalogItem>> getRecentlyPlayed();
 }
 
@@ -37,7 +38,7 @@ class SpotifyApiHttp implements SpotifyApi {
 
   @override
   Future<List<CatalogItem>> search(String query,
-      {String types = 'track,album,artist'}) async {
+      {String types = 'track,album,artist', int offset = 0}) async {
     if (query.trim().isEmpty) return [];
     final token = await _appToken();
     final res = await _http.get(
@@ -45,6 +46,7 @@ class SpotifyApiHttp implements SpotifyApi {
         'q': query,
         'type': types,
         'limit': '50',
+        'offset': '$offset',
       }),
       headers: {'Authorization': 'Bearer $token'},
     );

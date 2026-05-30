@@ -65,38 +65,51 @@ class _SearchBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
-    final resultsAsync = ref.watch(searchResultsProvider);
+    final s = ref.watch(searchControllerProvider);
     final addedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
 
-    return resultsAsync.when(
-      loading: () => const _SearchSkeleton(),
-      error: (e, _) => _Hint(
-          icon: Icons.cloud_off_rounded, text: '검색에 실패했어요. 네트워크를 확인하세요.'),
-      data: (items) {
-        if (items.isEmpty) {
-          return _Hint(
-              icon: Icons.sentiment_dissatisfied_rounded, text: '결과가 없어요');
-        }
-        // Group by kind, ordered 곡 → 앨범 → 아티스트, with section headers.
-        const order = ['track', 'album', 'artist'];
-        final rows = <Widget>[];
-        for (final k in order) {
-          final group = items.where((i) => i.kind == k).toList();
-          if (group.isEmpty) continue;
-          rows.add(_SectionHeader(
-              label: _kindHeaders[k]!, count: group.length));
-          for (final item in group) {
-            rows.add(_ResultRow(
-                item: item, added: addedIds.contains(item.id)));
-            rows.add(Divider(
-                height: 1, color: p.line, indent: AppSpacing.xl));
-          }
-        }
-        return ListView(
-          padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
-          children: rows,
-        );
-      },
+    if (s.loading) return const _SearchSkeleton();
+    if (s.error) {
+      return _Hint(
+          icon: Icons.cloud_off_rounded, text: '검색에 실패했어요. 네트워크를 확인하세요.');
+    }
+    if (s.items.isEmpty) {
+      return _Hint(
+          icon: Icons.sentiment_dissatisfied_rounded, text: '결과가 없어요');
+    }
+
+    // Group by kind, ordered 곡 → 앨범 → 아티스트, with section headers.
+    const order = ['track', 'album', 'artist'];
+    final rows = <Widget>[];
+    for (final k in order) {
+      final group = s.items.where((i) => i.kind == k).toList();
+      if (group.isEmpty) continue;
+      rows.add(_SectionHeader(label: _kindHeaders[k]!, count: group.length));
+      for (final item in group) {
+        rows.add(_ResultRow(item: item, added: addedIds.contains(item.id)));
+        rows.add(Divider(height: 1, color: p.line, indent: AppSpacing.xl));
+      }
+    }
+    if (s.hasMore) {
+      rows.add(Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Center(
+          child: s.loadingMore
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2))
+              : OutlinedButton(
+                  onPressed: () =>
+                      ref.read(searchControllerProvider.notifier).loadMore(),
+                  child: const Text('더 보기'),
+                ),
+        ),
+      ));
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
+      children: rows,
     );
   }
 }

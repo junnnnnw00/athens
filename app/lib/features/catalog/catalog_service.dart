@@ -104,15 +104,17 @@ class CatalogService {
   /// [kind] is one of 'all', 'track', 'album', 'artist'. A specific kind sends
   /// the whole result limit to that type, so e.g. an artist's tracks aren't
   /// crowded out by albums/artists.
-  Future<List<CatalogItem>> search(String query, {String kind = 'all'}) async {
+  Future<List<CatalogItem>> search(String query,
+      {String kind = 'all', int offset = 0}) async {
     final (spotifyTypes, itunesEntity) = _kindToFilters(kind);
     try {
-      final results = await _spotifyApi.search(query, types: spotifyTypes);
+      final results = await _spotifyApi.search(query,
+          types: spotifyTypes, offset: offset);
       if (results.isNotEmpty) return results;
     } catch (_) {
       // Fall through to iTunes
     }
-    return _itunesApi.search(query, entity: itunesEntity);
+    return _itunesApi.search(query, entity: itunesEntity, offset: offset);
   }
 
   static (String, String) _kindToFilters(String kind) => switch (kind) {
@@ -167,13 +169,97 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 /// Active search-kind filter: 'all' | 'track' | 'album' | 'artist'.
 final searchKindProvider = StateProvider<String>((ref) => 'all');
 
-final searchResultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
-  final query = ref.watch(searchQueryProvider);
-  if (query.isEmpty) return [];
-  final kind = ref.watch(searchKindProvider);
-  final svc = ref.watch(catalogServiceProvider);
-  return svc.search(query, kind: kind);
-});
+/// Page size per request (mirrors the API limit).
+const int kSearchPageSize = 50;
+
+/// Accumulated, paginated search results for the current query + kind.
+class SearchState {
+  const SearchState({
+    this.items = const [],
+    this.loading = false,
+    this.loadingMore = false,
+    this.error = false,
+    this.hasMore = false,
+  });
+
+  final List<CatalogItem> items;
+  final bool loading; // first page
+  final bool loadingMore; // subsequent pages
+  final bool error;
+  final bool hasMore;
+
+  SearchState copyWith({
+    List<CatalogItem>? items,
+    bool? loading,
+    bool? loadingMore,
+    bool? error,
+    bool? hasMore,
+  }) =>
+      SearchState(
+        items: items ?? this.items,
+        loading: loading ?? this.loading,
+        loadingMore: loadingMore ?? this.loadingMore,
+        error: error ?? this.error,
+        hasMore: hasMore ?? this.hasMore,
+      );
+}
+
+class SearchController extends Notifier<SearchState> {
+  int _offset = 0;
+  int _generation = 0; // bumped each build; guards stale async writes
+  final _seen = <String>{};
+
+  @override
+  SearchState build() {
+    // Re-run the first page whenever the query or kind changes.
+    final query = ref.watch(searchQueryProvider).trim();
+    final kind = ref.watch(searchKindProvider);
+    _offset = 0;
+    _seen.clear();
+    final gen = ++_generation;
+    if (query.isEmpty) {
+      return const SearchState();
+    }
+    _load(query, kind, first: true, gen: gen);
+    return const SearchState(loading: true);
+  }
+
+  Future<void> _load(String query, String kind,
+      {required bool first, required int gen}) async {
+    final svc = ref.read(catalogServiceProvider);
+    try {
+      final page = await svc.search(query, kind: kind, offset: _offset);
+      if (gen != _generation) return; // a newer query/kind superseded this
+      final fresh = page.where((i) => _seen.add(i.id)).toList();
+      _offset += kSearchPageSize;
+      state = state.copyWith(
+        items: first ? fresh : [...state.items, ...fresh],
+        loading: false,
+        loadingMore: false,
+        error: false,
+        // If the API returned a full page, assume there may be more.
+        hasMore: page.length >= kSearchPageSize,
+      );
+    } catch (_) {
+      if (gen != _generation) return;
+      state = state.copyWith(
+          loading: false, loadingMore: false, error: first ? true : false);
+    }
+  }
+
+  /// Loads the next page (appends).
+  void loadMore() {
+    if (state.loadingMore || !state.hasMore) return;
+    final query = ref.read(searchQueryProvider).trim();
+    final kind = ref.read(searchKindProvider);
+    if (query.isEmpty) return;
+    state = state.copyWith(loadingMore: true);
+    _load(query, kind, first: false, gen: _generation);
+  }
+}
+
+final searchControllerProvider =
+    NotifierProvider<SearchController, SearchState>(SearchController.new);
 
 // Recently played (Spotify-enabled users only).
 final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {

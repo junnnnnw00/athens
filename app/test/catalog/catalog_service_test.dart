@@ -115,7 +115,7 @@ void main() {
 class _ThrowingSpotifyApi implements SpotifyApi {
   @override
   Future<List<CatalogItem>> search(String query,
-          {String types = 'track,album,artist'}) =>
+          {String types = 'track,album,artist', int offset = 0}) =>
       Future.error(Exception('Spotify unavailable'));
 
   @override
