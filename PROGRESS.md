@@ -152,3 +152,10 @@ Two issues reported after the unified deploy:
 tests: fresh-device hydrate + last-write-wins) ✅ · rebuilt + redeployed; live
 `athens.vercel.app` `/`, `/app`, `/app/main.dart.js`, `/u/nerdyahh_` all 200 ✅.
 Web login + pull round-trip to be eyeball-confirmed by signing in on the site.
+
+## Genre stats & Profile Top Genres (2026-05-31)
+
+Added genre preference analysis and a top genres list to the profile page:
+1. **Genre/Mood Preferences**: Calculates average scores (preference levels) of rated items per genre and mood in `StatsEngine`, showing users their highest-rated tags alongside volume/frequency.
+2. **Profile Top Genres**: Displays the user's top 4 most frequent genres on their profile page as neat chips.
+3. **Verification**: Added unit tests to `stats_engine_test.dart` to assert preference calculation accuracy and updated/regenerated stats golden test images. All tests pass and are clean. Deployed unified app to Vercel production.
