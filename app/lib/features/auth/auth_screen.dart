@@ -47,11 +47,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _error = null;
     });
     try {
-      await Supabase.instance.client.auth.signUp(
+      final res = await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      if (mounted) {
+      if (!mounted) return;
+      if (res.session != null) {
+        // Auto-confirmed: signed in immediately.
+        context.go('/home');
+      } else {
+        // Email-confirmation mode is on for this project.
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('확인 이메일을 보냈어요. 메일함을 확인하세요.')),
         );
