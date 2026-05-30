@@ -68,9 +68,8 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
   }
 
   /// Best-effort: re-enrich items missing tags and persist them, then refresh
-  /// the list so the chips appear without a manual reload.
   Future<void> _backfillTags(List<RatedCatalogItem> lib) async {
-    final missing = lib.where((i) => i.tags.isEmpty).toList();
+    final missing = lib.where((i) => i.tags.length < 15).toList();
     if (missing.isEmpty) return;
     final svc = ref.read(catalogServiceProvider);
     var changed = false;

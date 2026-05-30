@@ -21,12 +21,12 @@ class ItunesApiHttp implements ItunesApi {
   @override
   Future<List<CatalogItem>> search(String query,
       {String entity = 'song,album,musicArtist', int offset = 0}) async {
-    if (query.trim().isEmpty) return [];
+    final limit = entity.contains(',') ? '10' : '30';
     final res = await _http.get(Uri.https('itunes.apple.com', '/search', {
       'term': query,
       'media': 'music',
       'entity': entity,
-      'limit': '50',
+      'limit': limit,
       'offset': '$offset',
     }));
     if (res.statusCode != 200) {

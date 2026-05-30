@@ -80,7 +80,7 @@ class LibraryStats {
 class StatsEngine {
   const StatsEngine();
 
-  LibraryStats compute(List<LibraryItem> items) {
+  LibraryStats compute(List<LibraryItem> items, [List<DateTime> comparisonDates = const []]) {
     if (items.isEmpty) {
       return LibraryStats(
         totalByKind: {},
@@ -102,7 +102,7 @@ class StatsEngine {
       topItems: _topN(items, 10),
       topGenres: _topTags(items, 'genre', 10),
       topMoods: _topTags(items, 'mood', 10),
-      activityOverTime: _activity(items),
+      activityOverTime: _activity(items, comparisonDates),
       genrePreferences: _tagPreferences(items, 'genre', 10),
       moodPreferences: _tagPreferences(items, 'mood', 10),
     );
@@ -147,24 +147,27 @@ class StatsEngine {
         if (tag.source == category ||
             (category == 'genre' && !_isMoodTag(tag.name)) ||
             (category == 'mood' && _isMoodTag(tag.name))) {
-          counts[tag.name] = (counts[tag.name] ?? 0) + 1;
+          final normalized = tag.name.toLowerCase().trim();
+          if (normalized.isNotEmpty) {
+            counts[normalized] = (counts[normalized] ?? 0) + 1;
+          }
         }
       }
     }
     final sorted = counts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    return sorted.take(n).map((e) => TagCount(name: e.key, count: e.value)).toList();
+    return sorted.take(n).map((e) => TagCount(name: _capitalize(e.key), count: e.value)).toList();
   }
 
-  List<ActivityPoint> _activity(List<LibraryItem> items) {
+  List<ActivityPoint> _activity(List<LibraryItem> items, List<DateTime> comparisonDates) {
     final byDate = <DateTime, int>{};
-    for (final item in items) {
+    for (final date in comparisonDates) {
       final day = DateTime(
-        item.updatedAt.year,
-        item.updatedAt.month,
-        item.updatedAt.day,
+        date.year,
+        date.month,
+        date.day,
       );
-      byDate[day] = (byDate[day] ?? 0) + item.comparisons;
+      byDate[day] = (byDate[day] ?? 0) + 1;
     }
     final sorted = byDate.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
     return sorted
@@ -180,7 +183,7 @@ class StatsEngine {
   }
 
   static const _moodKeywords = {
-    'melancholic', 'dreamy', 'energetic', 'calm', 'dark', 'uplifting',
+    'melancholic', 'melancholy', 'dreamy', 'energetic', 'calm', 'dark', 'uplifting',
     'romantic', 'aggressive', 'peaceful', 'sad', 'happy', 'intense',
     'relaxing', 'atmospheric', 'emotional', 'powerful', 'mellow', 'epic',
     'haunting', 'nostalgic', 'mysterious', 'cathartic',
@@ -192,12 +195,16 @@ class StatsEngine {
     final scores = <String, double>{};
     final counts = <String, int>{};
     for (final item in items) {
+      if (item.comparisons < 1) continue;
       for (final tag in item.tags) {
-        if ((category == 'genre' && !_isMoodTag(tag.name)) ||
+        if (tag.source == category ||
+            (category == 'genre' && !_isMoodTag(tag.name)) ||
             (category == 'mood' && _isMoodTag(tag.name))) {
-          final name = tag.name;
-          scores[name] = (scores[name] ?? 0.0) + item.score;
-          counts[name] = (counts[name] ?? 0) + 1;
+          final normalized = tag.name.toLowerCase().trim();
+          if (normalized.isNotEmpty) {
+            scores[normalized] = (scores[normalized] ?? 0.0) + item.score;
+            counts[normalized] = (counts[normalized] ?? 0) + 1;
+          }
         }
       }
     }
@@ -205,16 +212,27 @@ class StatsEngine {
     counts.forEach((name, count) {
       final sum = scores[name] ?? 0.0;
       list.add(TagPreference(
-        name: name,
+        name: _capitalize(name),
         averageScore: count == 0 ? 0.0 : sum / count,
         count: count,
       ));
     });
-    list.sort((a, b) {
+
+    final hasMultiple = list.any((p) => p.count >= 2);
+    final filtered = hasMultiple
+        ? list.where((p) => p.count >= 2).toList()
+        : list;
+
+    filtered.sort((a, b) {
       final comp = b.averageScore.compareTo(a.averageScore);
       if (comp != 0) return comp;
       return b.count.compareTo(a.count);
     });
-    return list.take(n).toList();
+    return filtered.take(n).toList();
+  }
+
+  static String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toUpperCase() + s.substring(1);
   }
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'supabase.dart';
 import '../features/catalog/catalog_service.dart';
 import 'spotify_pkce_service.dart';
 
@@ -22,13 +23,16 @@ abstract class SpotifyApi {
 
 class SpotifyApiHttp implements SpotifyApi {
   SpotifyApiHttp({SupabaseClient? client, http.Client? httpClient})
-      : _client = client ?? Supabase.instance.client,
+      : _providedClient = client,
         _http = httpClient ?? http.Client();
 
-  final SupabaseClient _client;
+  final SupabaseClient? _providedClient;
   final http.Client _http;
 
+  SupabaseClient get _client => _providedClient ?? Supabase.instance.client;
+
   Future<String> _appToken() async {
+    if (!isSupabaseInitialized) throw StateError('Supabase is not initialized');
     final res = await _client.functions.invoke('spotify-app-token');
     final data = res.data as Map<String, dynamic>;
     final token = data['access_token'] as String?;
@@ -41,11 +45,12 @@ class SpotifyApiHttp implements SpotifyApi {
       {String types = 'track,album,artist', int offset = 0}) async {
     if (query.trim().isEmpty) return [];
     final token = await _appToken();
+    final limit = types.contains(',') ? '10' : '30';
     final res = await _http.get(
       Uri.https('api.spotify.com', '/v1/search', {
         'q': query,
         'type': types,
-        'limit': '50',
+        'limit': limit,
         'offset': '$offset',
       }),
       headers: {'Authorization': 'Bearer $token'},

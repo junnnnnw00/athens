@@ -14,11 +14,34 @@ export interface TopItem {
   updated_at: string;
 }
 
+export interface TagPreference {
+  name: string;
+  avg_score: number;
+  count: number;
+}
+
 export interface ProfileStats {
   total_rated: number;
   avg_score: number;
   total_comparisons: number;
   distribution?: Record<string, number>;
+  tag_preferences?: TagPreference[];
+}
+
+const MOOD_KEYWORDS = new Set([
+  'melancholic', 'melancholy', 'dreamy', 'energetic', 'calm', 'dark', 'uplifting',
+  'romantic', 'aggressive', 'peaceful', 'sad', 'happy', 'intense',
+  'relaxing', 'atmospheric', 'emotional', 'powerful', 'mellow', 'epic',
+  'haunting', 'nostalgic', 'mysterious', 'cathartic'
+]);
+
+function isMoodTag(name: string): boolean {
+  return MOOD_KEYWORDS.has(name.toLowerCase());
+}
+
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export interface PublicProfile {
@@ -115,6 +138,31 @@ function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
 export default function ProfileView({ profile, initials }: ProfileViewProps) {
   const [viewMode, setViewMode] = useState<'list' | 'cover'>('list');
   const [sortBy, setSortBy] = useState<'score' | 'latest'>('score');
+  const [activeTab, setActiveTab] = useState<'distribution' | 'genres' | 'moods'>('distribution');
+
+  const tagPreferences = profile.stats?.tag_preferences ?? [];
+
+  // Filter out tags with count < 2 if there are tags with count >= 2 to avoid single-item tags crowding out preferences.
+  // Fall back to count >= 1 if no multiple-item tags exist.
+  const hasMultipleGenre = tagPreferences.some(p => !isMoodTag(p.name) && p.count >= 2);
+  const genrePreferences = tagPreferences
+    .filter(p => !isMoodTag(p.name) && (hasMultipleGenre ? p.count >= 2 : p.count >= 1))
+    .map(p => ({
+      name: capitalize(p.name),
+      avg_score: p.avg_score,
+      count: p.count,
+    }))
+    .slice(0, 5);
+
+  const hasMultipleMood = tagPreferences.some(p => isMoodTag(p.name) && p.count >= 2);
+  const moodPreferences = tagPreferences
+    .filter(p => isMoodTag(p.name) && (hasMultipleMood ? p.count >= 2 : p.count >= 1))
+    .map(p => ({
+      name: capitalize(p.name),
+      avg_score: p.avg_score,
+      count: p.count,
+    }))
+    .slice(0, 5);
 
   // Sort top items in memory
   const sortedItems = [...profile.top_items].sort((a, b) => {
@@ -270,27 +318,53 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
           </div>
       </header>
 
-      {/* Score Distribution Section */}
-      {profile.stats?.distribution && (
-        <section style={{
-          background: 'var(--surface)',
-          border: '1px solid var(--line)',
-          borderRadius: 20,
-          padding: '20px 24px',
-          marginBottom: 32,
-          boxShadow: '0 4px 20px var(--shadow)',
+      {/* Statistics Section with Toggle Tabs */}
+      <section style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
+        borderRadius: 20,
+        padding: '20px 24px',
+        marginBottom: 32,
+        boxShadow: '0 4px 20px var(--shadow)',
+      }}>
+        {/* Toggle Tabs Header */}
+        <div style={{
+          display: 'flex',
+          borderBottom: '1px solid var(--line)',
+          marginBottom: 20,
+          gap: 16,
         }}>
-          <h3 style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: 'var(--muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: 16,
-          }}>
-            점수 분포 (Score Distribution)
-          </h3>
+          {[
+            { id: 'distribution', label: '점수 분포' },
+            { id: 'genres', label: '장르 선호도' },
+            { id: 'moods', label: '분위기 선호도' }
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                  color: isActive ? 'var(--text)' : 'var(--muted)',
+                  padding: '8px 4px 12px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  marginBottom: -1,
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
+        {/* Tab Content */}
+        {activeTab === 'distribution' && profile.stats?.distribution && (
           <div style={{
             display: 'flex',
             alignItems: 'flex-end',
@@ -350,8 +424,140 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
               );
             })}
           </div>
-        </section>
-      )}
+        )}
+
+        {activeTab === 'genres' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {genrePreferences.length > 0 ? (
+              genrePreferences.map((pref) => {
+                const scoreString = pref.avg_score.toFixed(1);
+                const progressWidth = `${(pref.avg_score / 10) * 100}%`;
+                const barColor = getScoreColor(pref.avg_score);
+
+                return (
+                  <div key={pref.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 100,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: 'var(--text)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {pref.name}
+                    </div>
+                    <div style={{
+                      flex: 1,
+                      height: 8,
+                      background: 'var(--line)',
+                      borderRadius: 4,
+                      overflow: 'hidden',
+                      position: 'relative',
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        height: '100%',
+                        width: progressWidth,
+                        background: barColor,
+                        borderRadius: 4,
+                      }} />
+                    </div>
+                    <div style={{
+                      width: 110,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: 'var(--muted)',
+                      textAlign: 'right',
+                    }}>
+                      {scoreString}점 ({pref.count}개)
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{
+                height: 100,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--muted)',
+                fontSize: 14,
+              }}>
+                충분한 비교 데이터가 없습니다.
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'moods' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {moodPreferences.length > 0 ? (
+              moodPreferences.map((pref) => {
+                const scoreString = pref.avg_score.toFixed(1);
+                const progressWidth = `${(pref.avg_score / 10) * 100}%`;
+                const barColor = getScoreColor(pref.avg_score);
+
+                return (
+                  <div key={pref.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 100,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: 'var(--text)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {pref.name}
+                    </div>
+                    <div style={{
+                      flex: 1,
+                      height: 8,
+                      background: 'var(--line)',
+                      borderRadius: 4,
+                      overflow: 'hidden',
+                      position: 'relative',
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        height: '100%',
+                        width: progressWidth,
+                        background: barColor,
+                        borderRadius: 4,
+                      }} />
+                    </div>
+                    <div style={{
+                      width: 110,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      color: 'var(--muted)',
+                      textAlign: 'right',
+                    }}>
+                      {scoreString}점 ({pref.count}개)
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{
+                height: 100,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--muted)',
+                fontSize: 14,
+              }}>
+                충분한 비교 데이터가 없습니다.
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Control Panel (Sort & View Mode Toggles) */}
       <div style={{

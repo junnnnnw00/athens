@@ -234,7 +234,7 @@ class CatalogService {
     final seen = <String>{};
     return tags
         .where((t) => t.name.isNotEmpty && seen.add(t.name.toLowerCase()))
-        .take(8)
+        .take(20)
         .toList();
   }
 }
@@ -331,14 +331,16 @@ class SearchController extends Notifier<SearchState> {
       final page = await svc.search(query, kind: kind, offset: _offset);
       if (gen != _generation) return; // a newer query/kind superseded this
       final fresh = page.where((i) => _seen.add(i.id)).toList();
-      _offset += kSearchPageSize;
+      final pageSize = kind == 'all' ? 10 : 30;
+      _offset += pageSize;
       state = state.copyWith(
         items: first ? fresh : [...state.items, ...fresh],
         loading: false,
         loadingMore: false,
         error: false,
         // If the API returned a full page, assume there may be more.
-        hasMore: page.length >= kSearchPageSize,
+        // Disable pagination entirely for iTunes results since it does not support it.
+        hasMore: page.isNotEmpty && page.length >= pageSize && page.first.source != 'itunes',
       );
     } catch (_) {
       if (gen != _generation) return;
