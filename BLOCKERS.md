@@ -8,14 +8,15 @@ The image share screen still exists in code and tests, but the Profile UI no
 longer links to it because export/share behavior is not reliable enough for
 public launch. Public profile link sharing remains available.
 
-### Web — Spotify connect gated to mobile (no registered redirect URI)
+### Web — Spotify connect needs the redirect URI registered (manual)
 
-The web build has no Spotify OAuth redirect URI registered (and the `/app` base path
-+ hash routing make a web callback awkward). Spotify is a mobile-only, allow-listed
-feature (dev-mode 5-user cap), so web now shows "Spotify 연결은 모바일 앱에서만
-지원돼요." like desktop. To enable web Spotify later: register
-`https://athens.vercel.app/app/` (or a dedicated callback path with a Next rewrite)
-in the Spotify dashboard and un-gate `kIsWeb` in `spotify_connect_screen.dart`.
+Web Spotify connect is implemented (PKCE, same-tab redirect to the app entry
+`/app/`, callback handled on boot in `main.dart`). It will fail with
+"redirect_uri Not matching configuration" until you add the EXACT redirect URI
+**`https://athens.vercel.app/app/`** (with trailing slash) in the Spotify dashboard
+→ app settings → Redirect URIs. See MORNING-CHECKLIST §2. (Spotify token + `/v1/me`
+endpoints are CORS-enabled for public PKCE clients, so the browser flow works once
+the URI is registered.) Desktop stays gated (no keychain entitlement).
 
 ### macOS desktop — Spotify connect disabled (no signing cert)
 

@@ -165,14 +165,12 @@ class _SpotifyConnectFlowState extends ConsumerState<_SpotifyConnectFlow> {
   }
 
   Future<void> _connect() async {
-    // Spotify connect is a mobile-only, allow-listed feature. Desktop builds lack
-    // the keychain entitlement (ad-hoc signed) so the PKCE token store fails, and
-    // the web build has no registered OAuth redirect URI (Spotify dev-mode caps at
-    // 5 users — not worth a web redirect). Both show the mobile-only notice.
-    if (kIsWeb ||
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux) {
+    // Desktop builds lack the keychain entitlement (ad-hoc signed), so the PKCE
+    // token store fails there. Web + mobile use PKCE in-page / via deep link.
+    if (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.macOS ||
+            defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Spotify 연결은 모바일 앱에서만 지원돼요.')),
       );

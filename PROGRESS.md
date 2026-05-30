@@ -112,12 +112,15 @@ Flutter-only deploy) can be deleted in the dashboard; nothing points to it anymo
 
 Two issues reported after the unified deploy:
 
-1. **Spotify connect on web → "redirect_uri Not matching configuration".** The web
-   build has no registered OAuth redirect URI (and with the `/app` base path the
-   callback couldn't reach the SPA anyway). Spotify is a mobile-only, allow-listed
-   feature (dev-mode 5-user cap), so web is now gated exactly like desktop:
-   `_connect()` shows "Spotify 연결은 모바일 앱에서만 지원돼요." instead of launching a
-   doomed OAuth. `spotify_connect_screen.dart`.
+1. **Spotify connect on web → "redirect_uri Not matching configuration".**
+   Implemented the web PKCE flow (per request to support it on web): web redirect
+   URI is the app entry `${origin}/app/`, launched same-tab (`webOnlyWindowName:
+   '_self'`); Spotify returns to `/app/?code=…` and `main.dart`'s boot-time
+   `handleCallback(Uri.base)` exchanges it (detection now by `?code` presence on
+   web, guarded by the stored verifier). Desktop stays gated. `spotify_pkce_service.dart`
+   + `spotify_connect_screen.dart`. **Manual step:** register
+   `https://athens.vercel.app/app/` in the Spotify dashboard (MORNING-CHECKLIST §2)
+   — without it the mismatch persists.
 
 2. **Rated library empty in the app, but present on `/u/<handle>`.** Root cause:
    `LibraryRepository.loadLibrary()` read **only** the local Drift cache; sync was

@@ -2,13 +2,17 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'supabase.dart';
 
-const _clientId = String.fromEnvironment('SPOTIFY_CLIENT_ID', defaultValue: '');
-const _redirectUri = 'athens://spotify-callback';
+const _clientId = String.fromEnvironment(
+  'SPOTIFY_CLIENT_ID',
+  defaultValue: 'fa42c012e91349908fa86e26b7fdb0d8',
+);
 const _scopes = 'user-read-recently-played';
 
 const _storage = FlutterSecureStorage();
@@ -18,6 +22,12 @@ const _kRefreshToken = 'spotify_refresh_token';
 const _kExpiry = 'spotify_token_expiry';
 
 class SpotifyPkceService {
+  /// On web the OAuth redirect lands back on the app entry point (`/app/`), where
+  /// `main.dart` re-runs [handleCallback] with the `?code=…` query. This exact
+  /// string must be registered as a Redirect URI in the Spotify dashboard.
+  static String get _redirectUri =>
+      kIsWeb ? '${Uri.base.origin}/app/' : 'athens://spotify-callback';
+
   static String _verifier() {
     final rng = Random.secure();
     final bytes = List<int>.generate(64, (_) => rng.nextInt(256));
@@ -40,14 +50,25 @@ class SpotifyPkceService {
       'code_challenge': _challenge(v),
       'scope': _scopes,
     });
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (kIsWeb) {
+      // Redirect the SAME tab so Spotify returns to /app/?code in this window
+      // (a new tab would handle the callback in isolation).
+      await launchUrl(uri, webOnlyWindowName: '_self');
+    } else {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   // Returns true if callback was handled successfully.
   static Future<bool> handleCallback(Uri uri) async {
-    if (uri.scheme != 'athens' || uri.host != 'spotify-callback') return false;
     final code = uri.queryParameters['code'];
     if (code == null) return false;
+    final isNativeCallback =
+        uri.scheme == 'athens' && uri.host == 'spotify-callback';
+    // On web the redirect lands on the app entry, so detect by the code param
+    // (only meaningful when we actually started a flow — guarded by the verifier).
+    final isWebCallback = kIsWeb;
+    if (!isNativeCallback && !isWebCallback) return false;
 
     final verifier = await _storage.read(key: _kVerifier);
     if (verifier == null) return false;
@@ -89,6 +110,7 @@ class SpotifyPkceService {
       headers: {'Authorization': 'Bearer $accessToken'},
     );
     if (res.statusCode != 200) return;
+    if (!isSupabaseInitialized) return;
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     final spotifyId = data['id'] as String?;
     final user = Supabase.instance.client.auth.currentUser;
@@ -105,7 +127,8 @@ class SpotifyPkceService {
     final expiryStr = await _storage.read(key: _kExpiry);
     if (expiryStr != null) {
       final expiry = DateTime.parse(expiryStr);
-      if (DateTime.now().isBefore(expiry.subtract(const Duration(minutes: 1)))) {
+      if (DateTime.now()
+          .isBefore(expiry.subtract(const Duration(minutes: 1)))) {
         return token;
       }
     }
@@ -143,12 +166,14 @@ class SpotifyPkceService {
       (await _storage.read(key: _kAccessToken)) != null;
 
   static Future<void> disconnect() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      await Supabase.instance.client.from('profiles').update({
-        'spotify_enabled': false,
-        'spotify_user_id': null,
-      }).eq('id', user.id);
+    if (isSupabaseInitialized) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        await Supabase.instance.client.from('profiles').update({
+          'spotify_enabled': false,
+          'spotify_user_id': null,
+        }).eq('id', user.id);
+      }
     }
     await Future.wait([
       _storage.delete(key: _kAccessToken),

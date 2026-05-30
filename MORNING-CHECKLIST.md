@@ -64,7 +64,11 @@ Still manual (you):
 2. Create app named `Athens`
 3. Add redirect URIs:
    - `athens://spotify-callback` (mobile)
+   - `https://athens.vercel.app/app/` (web — EXACT, with trailing slash; the web
+     OAuth flow returns to the app entry and reads `?code`)
    - `http://127.0.0.1:8888/callback` (local dev)
+   - (optional, for `make run` web dev) `http://localhost:PORT/app/` matching your
+     local Flutter web port
 4. Copy Client ID into `.env`: `SPOTIFY_CLIENT_ID=...`
 5. Set the client secret as an edge-function secret only (server-only — never in `.env`)
 6. Add yourself + ≤4 friends to the allowlist in Spotify dashboard (Dev Mode = 5 user cap)
