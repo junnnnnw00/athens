@@ -270,7 +270,7 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 final searchKindProvider = StateProvider<String>((ref) => 'all');
 
 /// Page size per request (mirrors the API limit).
-const int kSearchPageSize = 50;
+const int kSearchPageSize = 10;
 
 /// Accumulated, paginated search results for the current query + kind.
 class SearchState {
