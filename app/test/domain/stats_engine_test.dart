@@ -158,6 +158,50 @@ void main() {
     });
   });
 
+  group('StatsEngine.compute — genrePreferences and moodPreferences', () {
+    test('calculates average score (preference) for genres and moods', () {
+      final items = [
+        makeItem(
+          id: '1',
+          kind: ItemKind.track,
+          elo: 1200,
+          tags: const [
+            TagEntry(name: 'shoegaze', source: 'lastfm'),
+          ],
+        ),
+        makeItem(
+          id: '2',
+          kind: ItemKind.track,
+          elo: 800,
+          tags: const [
+            TagEntry(name: 'indie rock', source: 'lastfm'),
+          ],
+        ),
+        makeItem(
+          id: '3',
+          kind: ItemKind.track,
+          elo: 1000,
+          tags: const [
+            TagEntry(name: 'shoegaze', source: 'lastfm'),
+            TagEntry(name: 'melancholic', source: 'lastfm'),
+          ],
+        ),
+      ];
+      final stats = engine.compute(items);
+      
+      expect(stats.genrePreferences, isNotEmpty);
+      expect(stats.genrePreferences.first.name, 'shoegaze');
+      expect(stats.genrePreferences.first.averageScore, greaterThan(stats.genrePreferences[1].averageScore));
+      expect(stats.genrePreferences.first.count, 2);
+      expect(stats.genrePreferences[1].name, 'indie rock');
+      expect(stats.genrePreferences[1].count, 1);
+
+      expect(stats.moodPreferences, isNotEmpty);
+      expect(stats.moodPreferences.first.name, 'melancholic');
+      expect(stats.moodPreferences.first.averageScore, closeTo(5.0, 0.05));
+    });
+  });
+
   group('StatsEngine.compute — activityOverTime', () {
     test('groups comparisons by day', () {
       final items = [

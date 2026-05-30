@@ -40,6 +40,13 @@ class TagCount {
   final int count;
 }
 
+class TagPreference {
+  const TagPreference({required this.name, required this.averageScore, required this.count});
+  final String name;
+  final double averageScore;
+  final int count;
+}
+
 class ActivityPoint {
   const ActivityPoint({required this.date, required this.comparisons});
   final DateTime date;
@@ -55,6 +62,8 @@ class LibraryStats {
     required this.topGenres,
     required this.topMoods,
     required this.activityOverTime,
+    required this.genrePreferences,
+    required this.moodPreferences,
   });
 
   final Map<ItemKind, int> totalByKind;
@@ -64,6 +73,8 @@ class LibraryStats {
   final List<TagCount> topGenres;
   final List<TagCount> topMoods;
   final List<ActivityPoint> activityOverTime;
+  final List<TagPreference> genrePreferences;
+  final List<TagPreference> moodPreferences;
 }
 
 class StatsEngine {
@@ -79,6 +90,8 @@ class StatsEngine {
         topGenres: [],
         topMoods: [],
         activityOverTime: [],
+        genrePreferences: [],
+        moodPreferences: [],
       );
     }
 
@@ -90,6 +103,8 @@ class StatsEngine {
       topGenres: _topTags(items, 'genre', 10),
       topMoods: _topTags(items, 'mood', 10),
       activityOverTime: _activity(items),
+      genrePreferences: _tagPreferences(items, 'genre', 10),
+      moodPreferences: _tagPreferences(items, 'mood', 10),
     );
   }
 
@@ -172,4 +187,34 @@ class StatsEngine {
   };
 
   bool _isMoodTag(String tag) => _moodKeywords.contains(tag.toLowerCase());
+
+  List<TagPreference> _tagPreferences(List<LibraryItem> items, String category, int n) {
+    final scores = <String, double>{};
+    final counts = <String, int>{};
+    for (final item in items) {
+      for (final tag in item.tags) {
+        if ((category == 'genre' && !_isMoodTag(tag.name)) ||
+            (category == 'mood' && _isMoodTag(tag.name))) {
+          final name = tag.name;
+          scores[name] = (scores[name] ?? 0.0) + item.score;
+          counts[name] = (counts[name] ?? 0) + 1;
+        }
+      }
+    }
+    final list = <TagPreference>[];
+    counts.forEach((name, count) {
+      final sum = scores[name] ?? 0.0;
+      list.add(TagPreference(
+        name: name,
+        averageScore: count == 0 ? 0.0 : sum / count,
+        count: count,
+      ));
+    });
+    list.sort((a, b) {
+      final comp = b.averageScore.compareTo(a.averageScore);
+      if (comp != 0) return comp;
+      return b.count.compareTo(a.count);
+    });
+    return list.take(n).toList();
+  }
 }

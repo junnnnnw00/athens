@@ -8,10 +8,12 @@ import '../../data/repository/library_providers.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import 'profile_service.dart';
+import '../../i18n.dart';
+import '../stats/stats_screen.dart';
 
 /// Base URL of the public web profile site (override at build time).
 const _webBase = String.fromEnvironment('WEB_PROFILE_BASE',
-    defaultValue: 'https://web-jvtw5n44a-junwoo-hong-s-projects.vercel.app');
+    defaultValue: 'https://athens.vercel.app');
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -24,33 +26,46 @@ class ProfileScreen extends ConsumerWidget {
     }
   }
 
+  bool _isLoggedIn() {
+    try {
+      return Supabase.instance.client.auth.currentUser != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final email = _email();
+    final isLoggedIn = _isLoggedIn();
     final count = ref.watch(ratedItemsProvider).length;
     final profileAsync = ref.watch(myProfileProvider);
     final profile = profileAsync.valueOrNull;
+    final currentLang = ref.watch(localeProvider);
+    final stats = ref.watch(statsProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Me'),
+        title: Text(context.t('profile_me', ref: ref)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: '프로필 편집',
-            onPressed: () => context.go('/profile/edit'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: '로그아웃',
-            onPressed: () async {
-              try {
-                await Supabase.instance.client.auth.signOut();
-              } catch (_) {}
-              if (context.mounted) context.go('/auth');
-            },
-          ),
+          if (isLoggedIn)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: context.t('profile_edit', ref: ref),
+              onPressed: () => context.go('/profile/edit'),
+            ),
+          if (isLoggedIn)
+            IconButton(
+              icon: const Icon(Icons.logout_rounded),
+              tooltip: context.t('profile_logout', ref: ref),
+              onPressed: () async {
+                try {
+                  await Supabase.instance.client.auth.signOut();
+                } catch (_) {}
+                if (context.mounted) context.go('/auth');
+              },
+            ),
         ],
       ),
       body: ListView(
@@ -65,22 +80,37 @@ class ProfileScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: p.surface2,
                   shape: BoxShape.circle,
-                  border: Border.all(color: p.line),
+                  border: Border.all(color: p.line, width: 1.5),
                 ),
-                child: Icon(Icons.person_rounded, color: p.muted, size: 30),
+                child: profile?.avatarUrl != null && profile!.avatarUrl!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(32),
+                        child: Image.network(
+                          profile.avatarUrl!,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.person_rounded,
+                            color: p.muted,
+                            size: 30,
+                          ),
+                        ),
+                      )
+                    : Icon(Icons.person_rounded, color: p.muted, size: 30),
               ),
               const SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(profile?.displayName ?? email ?? '로컬 사용자',
+                    Text(profile?.displayName ?? email ?? context.t('profile_local_user', ref: ref),
                         style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 2),
                     Text(
                         profile != null
-                            ? '@${profile.handle} · $count개 평가'
-                            : '$count개 평가',
+                            ? '@${profile.handle} · $count${context.t('profile_ratings_count', ref: ref)}'
+                            : '$count${context.t('profile_ratings_count', ref: ref)}',
                         style: TextStyle(color: p.muted, fontSize: 13)),
                   ],
                 ),
@@ -91,42 +121,107 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             _PublicProfileCard(handle: profile.handle, isPublic: profile.isPublic),
           ],
+          if (stats.topGenres.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xxl),
+            Text(context.t('profile_top_genres', ref: ref), style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: stats.topGenres.take(4).map((g) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: p.chip,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  border: Border.all(color: p.line),
+                ),
+                child: Text(
+                  g.name,
+                  style: TextStyle(
+                    color: p.text,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              )).toList(),
+            ),
+          ],
           const SizedBox(height: AppSpacing.xxl),
-          _Tile(
-              icon: Icons.edit_outlined,
-              title: '프로필 편집',
-              subtitle: '핸들 · 표시 이름 · 공개 여부',
-              onTap: () => context.go('/profile/edit')),
+          if (isLoggedIn)
+            _Tile(
+                icon: Icons.edit_outlined,
+                title: context.t('profile_edit', ref: ref),
+                subtitle: context.t('edit_public_desc', ref: ref),
+                onTap: () => context.go('/profile/edit')),
           _Tile(
               icon: Icons.library_music_rounded,
-              title: '라이브러리',
+              title: context.t('profile_library', ref: ref),
               onTap: () => context.go('/library')),
           _Tile(
               icon: Icons.insights_rounded,
-              title: '통계',
+              title: context.t('profile_stats', ref: ref),
               onTap: () => context.go('/stats')),
           _Tile(
-              icon: Icons.ios_share_rounded,
-              title: '취향 공유',
-              onTap: () => context.go('/share')),
-          _Tile(
               icon: Icons.link_rounded,
-              title: 'Spotify 연결',
-              subtitle: '최근 들은 곡 가져오기',
+              title: context.t('home_spotify_connect', ref: ref),
+              subtitle: context.t('profile_spotify_sub', ref: ref),
               onTap: () => context.go('/spotify-connect')),
+          _Tile(
+              icon: Icons.language_rounded,
+              title: context.t('profile_language', ref: ref),
+              subtitle: currentLang.label,
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => const _LanguageDialog(),
+                );
+              }),
         ],
       ),
     );
   }
 }
 
-class _PublicProfileCard extends StatelessWidget {
+class _LanguageDialog extends ConsumerWidget {
+  const _LanguageDialog();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(localeProvider);
+    final p = context.palette;
+    return AlertDialog(
+      backgroundColor: p.surface2,
+      title: Text(context.t('profile_language', ref: ref), style: TextStyle(color: p.text)),
+      content: RadioGroup<AppLanguage>(
+        groupValue: current,
+        onChanged: (val) {
+          if (val != null) {
+            ref.read(localeProvider.notifier).setLanguage(val);
+          }
+          Navigator.pop(context);
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: AppLanguage.values.map((lang) {
+            return RadioListTile<AppLanguage>(
+              activeColor: p.accent,
+              title: Text(lang.label, style: TextStyle(color: p.text)),
+              value: lang,
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class _PublicProfileCard extends ConsumerWidget {
   const _PublicProfileCard({required this.handle, required this.isPublic});
   final String handle;
   final bool isPublic;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final url = '$_webBase/u/$handle';
     return Container(
@@ -145,11 +240,11 @@ class _PublicProfileCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(isPublic ? '공개 프로필' : '비공개 프로필',
+                Text(isPublic ? context.t('profile_public', ref: ref) : context.t('profile_private', ref: ref),
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         color: isPublic ? p.accentText : p.text)),
                 const SizedBox(height: 2),
-                Text(isPublic ? url : '편집에서 공개로 바꾸면 공유할 수 있어요',
+                Text(isPublic ? url : context.t('profile_private_desc', ref: ref),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -161,12 +256,12 @@ class _PublicProfileCard extends StatelessWidget {
           if (isPublic)
             IconButton(
               icon: Icon(Icons.copy_rounded, size: 18, color: p.accentText),
-              tooltip: '링크 복사',
+              tooltip: context.t('profile_copy_link', ref: ref),
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: url));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('링크 복사됨')),
+                    SnackBar(content: Text(context.t('profile_link_copied', ref: ref))),
                   );
                 }
               },

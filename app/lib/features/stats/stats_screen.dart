@@ -7,6 +7,8 @@ import '../../domain/stats_engine.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 
+import '../../i18n.dart';
+
 final statsProvider = Provider<LibraryStats>((ref) {
   final items = ref.watch(ratedItemsProvider);
   const engine = StatsEngine();
@@ -37,22 +39,23 @@ class StatsScreen extends ConsumerWidget {
     final stats = ref.watch(statsProvider);
     final total =
         stats.totalByKind.values.fold<int>(0, (a, b) => a + b);
+    final isKo = ref.watch(localeProvider) == AppLanguage.ko;
 
     if (total == 0) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Stats')),
+        appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xxxl),
+            padding: const EdgeInsets.all(AppSpacing.xxl),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.insights_rounded, size: 56, color: p.faint),
                 const SizedBox(height: AppSpacing.lg),
-                Text('통계가 아직 없어요',
+                Text(context.t('stats_empty_title', ref: ref),
                     style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: AppSpacing.sm),
-                Text('음악을 평가하면 분포·장르·활동이 여기에 표시돼요.',
+                Text(context.t('stats_empty_desc', ref: ref),
                     textAlign: TextAlign.center,
                     style: TextStyle(color: p.muted)),
               ],
@@ -62,24 +65,27 @@ class StatsScreen extends ConsumerWidget {
       );
     }
 
+    final ratedItems = ref.watch(ratedItemsProvider);
+    final totalComparisons = ratedItems.fold<int>(0, (sum, i) => sum + i.comparisons);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Stats')),
+      appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
         children: [
           Row(
             children: [
-              _BigStat(value: '$total', label: '평가한 항목'),
+              _BigStat(value: '$total${isKo ? '개' : ''}', label: context.t('stats_rated_items', ref: ref)),
               const SizedBox(width: AppSpacing.xxl),
               _BigStat(
-                  value: stats.averageScore.toStringAsFixed(1),
-                  label: '평균 점수',
+                  value: '$totalComparisons${isKo ? '개' : ''}',
+                  label: context.t('stats_comparisons', ref: ref),
                   accent: true),
             ],
           ),
           const SizedBox(height: AppSpacing.xxl),
-          _SectionTitle('점수 분포'),
+          _SectionTitle(context.t('stats_distribution', ref: ref)),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             height: 170,
@@ -87,21 +93,35 @@ class StatsScreen extends ConsumerWidget {
           ),
           if (stats.topGenres.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
-            _SectionTitle('상위 장르'),
+            _SectionTitle(context.t('stats_genres', ref: ref)),
             const SizedBox(height: AppSpacing.sm),
             ...stats.topGenres.take(5).map((t) =>
-                _TagBar(tag: t, max: stats.topGenres.first.count)),
+                _TagBar(tag: t, max: stats.topGenres.first.count, isKo: isKo)),
+          ],
+          if (stats.genrePreferences.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xxl),
+            _SectionTitle(context.t('stats_genre_preference', ref: ref)),
+            const SizedBox(height: AppSpacing.sm),
+            ...stats.genrePreferences.take(5).map((p) =>
+                _PreferenceBar(pref: p, isKo: isKo)),
           ],
           if (stats.topMoods.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
-            _SectionTitle('상위 무드'),
+            _SectionTitle(context.t('stats_moods', ref: ref)),
             const SizedBox(height: AppSpacing.sm),
             ...stats.topMoods.take(5).map((t) =>
-                _TagBar(tag: t, max: stats.topMoods.first.count)),
+                _TagBar(tag: t, max: stats.topMoods.first.count, isKo: isKo)),
+          ],
+          if (stats.moodPreferences.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xxl),
+            _SectionTitle(context.t('stats_mood_preference', ref: ref)),
+            const SizedBox(height: AppSpacing.sm),
+            ...stats.moodPreferences.take(5).map((p) =>
+                _PreferenceBar(pref: p, isKo: isKo)),
           ],
           if (stats.activityOverTime.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
-            _SectionTitle('활동'),
+            _SectionTitle(context.t('stats_activity', ref: ref)),
             const SizedBox(height: AppSpacing.md),
             SizedBox(
                 height: 120,
@@ -190,9 +210,10 @@ class _ScoreDistributionChart extends StatelessWidget {
 }
 
 class _TagBar extends StatelessWidget {
-  const _TagBar({required this.tag, required this.max});
+  const _TagBar({required this.tag, required this.max, required this.isKo});
   final TagCount tag;
   final int max;
+  final bool isKo;
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +242,48 @@ class _TagBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          Text('${tag.count}', style: TextStyle(color: p.muted)),
+          Text('${tag.count}${isKo ? '개' : ''}', style: TextStyle(color: p.muted)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreferenceBar extends StatelessWidget {
+  const _PreferenceBar({required this.pref, required this.isKo});
+  final TagPreference pref;
+  final bool isKo;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final scoreString = pref.averageScore.toStringAsFixed(1);
+    final countSuffix = isKo ? '${pref.count}개' : '${pref.count} items';
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(pref.name,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: pref.averageScore / 10.0,
+                minHeight: 8,
+                backgroundColor: p.line,
+                color: p.accent,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(isKo ? '$scoreString점 ($countSuffix)' : '$scoreString ($countSuffix)',
+              style: TextStyle(color: p.muted, fontSize: 12)),
         ],
       ),
     );
