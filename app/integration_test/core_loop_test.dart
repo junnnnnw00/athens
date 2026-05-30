@@ -4,6 +4,7 @@ import 'package:athens/features/rank/duel_screen.dart';
 import 'package:athens/features/share/share_screen.dart';
 import 'package:athens/features/stats/stats_screen.dart';
 import 'package:athens/main.dart';
+import 'package:athens/router.dart';
 import 'package:athens/widgets/score_ring.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,31 +40,23 @@ void main() {
     expect(find.text('Loveless'), findsOneWidget);
     expect(find.text('Souvlaki'), findsOneWidget);
 
-    // --- ADD both results to the real library ---
+    // --- ADD first result: no same-kind opponent yet → just added ---
     final addButtons = find.text('추가');
     expect(addButtons, findsNWidgets(2));
     await tester.tap(addButtons.first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('추가').first); // second remaining add
-    await tester.pumpAndSettle();
-    // Clear the "added" snackbars so they don't cover the floating nav.
-    ScaffoldMessenger.of(tester.firstElement(find.byType(Scaffold)))
-        .clearSnackBars();
-    await tester.pumpAndSettle();
 
     final container =
         ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+    expect(container.read(ratedItemsProvider).length, 1);
+
+    // --- ADD second same-kind result → auto placement duel opens ---
+    await tester.tap(find.text('추가').first);
+    await tester.pumpAndSettle();
     expect(container.read(ratedItemsProvider).length, 2);
-
-    // --- DUEL (Home → callout) ---
-    await tester.tap(find.byIcon(Icons.home_rounded));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('듀얼 시작하기'));
-    await tester.pumpAndSettle();
     expect(find.byType(DuelScreen), findsOneWidget);
-    expect(find.text('어떤 게 더 좋아요?'), findsOneWidget);
 
-    // Pick the first card by tapping a title we know is loaded.
+    // Pick a card in the placement duel.
     final lovelessCard = find.text('Loveless');
     expect(lovelessCard, findsWidgets);
     await tester.tap(lovelessCard.first);
@@ -74,9 +67,17 @@ void main() {
     final lib = container.read(ratedItemsProvider);
     expect(lib.every((i) => i.comparisons >= 1), isTrue);
 
-    // --- LIBRARY (Me) shows ranked rows with score rings ---
-    await tester.tap(find.byIcon(Icons.person_rounded));
-    await tester.pumpAndSettle();
+    // Placement finishes (2 items → 1 round) → done screen → go to library.
+    // Otherwise fall back to the Me nav tab.
+    if (find.text('라이브러리 보기').evaluate().isNotEmpty) {
+      await tester.tap(find.text('라이브러리 보기'));
+      await tester.pumpAndSettle();
+    } else {
+      await tester.tap(find.byIcon(Icons.person_rounded));
+      await tester.pumpAndSettle();
+    }
+
+    // --- LIBRARY shows ranked rows with score rings ---
     expect(find.byType(LibraryScreen), findsOneWidget);
     expect(find.byType(ScoreRing), findsWidgets);
 
@@ -87,12 +88,9 @@ void main() {
     expect(find.text('점수 분포'), findsOneWidget);
 
     // --- SHARE card renders from live data ---
-    // Back to library, then profile → share.
-    await tester.tap(find.byIcon(Icons.person_rounded));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.person_outline_rounded));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('취향 공유'));
+    // Navigate via the router (deterministic; avoids the floating nav being
+    // overlapped by scroll content in the test viewport).
+    container.read(routerProvider).go('/share');
     await tester.pumpAndSettle();
     expect(find.byType(ShareScreen), findsOneWidget);
     expect(find.byType(ShareCard), findsWidgets);

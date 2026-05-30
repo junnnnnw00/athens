@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/repository/library_providers.dart';
 import '../../theme/tokens.dart';
@@ -159,6 +160,8 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
   Future<void> _add() async {
     setState(() => _busy = true);
     final service = ref.read(catalogServiceProvider);
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     var item = widget.item;
     try {
       final tags = await service.enrichTags(item);
@@ -166,11 +169,19 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
     } catch (_) {
       // Enrichment is best-effort; add without tags on failure.
     }
+    // Are there already-rated items of the same kind to place this against?
+    final hasOpponents = ref
+        .read(ratedItemsProvider)
+        .any((i) => i.kind == item.kind && i.id != item.id);
     await ref.read(libraryControllerProvider.notifier).addItem(item);
-    if (mounted) {
-      setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('"${item.title}" 추가됨')),
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (hasOpponents) {
+      // Place the new item by duelling it against existing same-kind items.
+      router.go('/duel/${Uri.encodeComponent(item.id)}');
+    } else {
+      messenger.showSnackBar(
+        SnackBar(content: Text('"${item.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
       );
     }
   }

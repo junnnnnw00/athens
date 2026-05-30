@@ -50,4 +50,34 @@ class PairSelector {
     if (best == null) return null;
     return (pivot, best);
   }
+
+  /// Placement: when a new item is added, it duels existing items of the same
+  /// kind to find its rank. Picks the nearest-Elo opponent the focus item has
+  /// not yet faced in this session (binary-insertion flavour). Returns null when
+  /// every candidate has been faced.
+  static RatedItem? nextPlacementOpponent({
+    required RatedItem focus,
+    required List<RatedItem> candidates,
+    required Set<String> faced,
+  }) {
+    RatedItem? best;
+    double bestDiff = double.infinity;
+    for (final c in candidates) {
+      if (c.id == focus.id || faced.contains(c.id)) continue;
+      final diff = (c.elo - focus.elo).abs();
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = c;
+      }
+    }
+    return best;
+  }
+
+  /// How many placement rounds to run for [candidateCount] opponents — a
+  /// binary-search bound, capped so it never drags on.
+  static int placementRounds(int candidateCount) {
+    if (candidateCount <= 0) return 0;
+    final bound = (log(candidateCount) / ln2).ceil() + 1;
+    return bound.clamp(1, candidateCount).clamp(1, 6);
+  }
 }

@@ -4,8 +4,18 @@ import 'package:athens/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import '../helpers/test_harness.dart';
+
+/// Wraps a screen in a minimal go_router so GoRouter.of(context) works.
+Widget _app(Widget home) {
+  final router = GoRouter(routes: [
+    GoRoute(path: '/', builder: (_, __) => home),
+    GoRoute(path: '/duel/:focusId', builder: (_, __) => const SizedBox()),
+  ]);
+  return MaterialApp.router(theme: AppTheme.dark(), routerConfig: router);
+}
 
 void main() {
   testWidgets('search renders service-layer results and adds to library',
@@ -15,10 +25,7 @@ void main() {
 
     await tester.pumpWidget(ProviderScope(
       overrides: harness.overrides,
-      child: MaterialApp(
-        theme: AppTheme.dark(),
-        home: const SearchScreen(),
-      ),
+      child: _app(const SearchScreen()),
     ));
     await tester.pump();
 
@@ -49,7 +56,7 @@ void main() {
 
     await tester.pumpWidget(ProviderScope(
       overrides: harness.overrides,
-      child: MaterialApp(theme: AppTheme.dark(), home: const SearchScreen()),
+      child: _app(const SearchScreen()),
     ));
     await tester.pump();
     // FakeSpotifyApi returns results for any non-empty query; assert the empty

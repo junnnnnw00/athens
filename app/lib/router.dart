@@ -41,6 +41,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/home', builder: (c, s) => const HomeScreen()),
           GoRoute(path: '/duel', builder: (c, s) => const DuelScreen()),
+          GoRoute(
+              path: '/duel/:focusId',
+              builder: (c, s) =>
+                  DuelScreen(focusId: s.pathParameters['focusId'])),
           GoRoute(path: '/library', builder: (c, s) => const LibraryScreen()),
           GoRoute(path: '/stats', builder: (c, s) => const StatsScreen()),
           GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
