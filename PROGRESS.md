@@ -108,69 +108,21 @@ deploying via **remote build** (`vercel deploy --prod`, real env injected) + a
 **Cleanup left for human (optional):** the now-orphaned `athens` Vercel project (old
 Flutter-only deploy) can be deleted in the dashboard; nothing points to it anymore.
 
-## HANDOFF — rich item info feature IN PROGRESS (2026-05-31)
+## Rich item info feature — DONE (2026-05-31)
 
-> Next agent: read this first. A feature is half-built and NOT yet committed at the
-> time of writing. Goal: item search/detail showed almost no info (only title /
-> artist / cover / tags). User wants richer info. Approved scope (all four):
-> **facts (year/album/length), Last.fm stats + summary, fix MusicBrainz on web,
-> artist bio + top tracks.**
+Implemented and deployed the rich item search/detail info feature, resolving the remaining steps from the previous agent.
 
-### Design chosen (low-risk, NO Drift schema migration)
-Rich info is fetched **on-demand on the item detail screen** via a
-`FutureProvider.family`, NOT persisted. Sources: Last.fm `track.getInfo` /
-`artist.getInfo` / `artist.getTopTracks` (through the existing `lastfm-proxy`),
-and MusicBrainz through a NEW `musicbrainz-proxy` edge function (direct MB calls
-are CORS-blocked in the browser — that is why web genres were empty).
+### Scope completed
+- **Facts**: year, album, and duration (mm:ss) rendered dynamically in a row.
+- **Last.fm stats**: listener and play count formatted beautifully (e.g. 1.2M, 99K).
+- **MusicBrainz proxy**: Deployed `musicbrainz-proxy` to hosted Supabase to avoid CORS blocks on web.
+- **Artist details**: Bio summary and a list of popular tracks (tappable to trigger a search).
 
-### What is already edited (uncommitted WIP at handoff)
-- `supabase/functions/musicbrainz-proxy/index.ts` — NEW edge fn (forwards a query
-  to musicbrainz.org with User-Agent, returns JSON + CORS). **NOT DEPLOYED yet.**
-- `app/lib/api/musicbrainz_api.dart` — rewritten to call the proxy via
-  `functions.invoke('musicbrainz-proxy', …)`; added `MbRecordingInfo`
-  (genres + year) + `getRecordingInfo()`; `getGenres()` now delegates to it.
-- `app/lib/api/lastfm_api.dart` — added `LastfmTrackInfo`, `LastfmArtistInfo`,
-  and `getTrackInfo` / `getArtistInfo` / `getArtistTopTracks` + parsers
-  (`parseTrackInfo`, `parseArtistInfo`, `parseTopTracks`, `_cleanSummary`).
-- `app/lib/features/catalog/catalog_service.dart` — added `ItemInfo` model,
-  `CatalogService.fetchItemInfo({kind, artist, title})` (assembles Last.fm + MB),
-  and `itemInfoProvider` (FutureProvider.family keyed by record `({kind, artist,
-  title})`).
-- `app/test/fakes/fakes.dart` — Fake Last.fm + MusicBrainz implement the new
-  methods (so tests compile).
-
-### Remaining steps (do these, in order)
-1. **Render the info on the detail screen.** `app/lib/features/library/
-   item_detail_screen.dart` — make a `_InfoSection extends ConsumerWidget` that
-   `ref.watch(itemInfoProvider((kind: item.kind, artist: item.primaryArtist ?? '',
-   title: item.title)))` and `.when(...)` renders: facts row (year · album ·
-   duration mm:ss), stats (listeners / playcount, formatted e.g. 1.2M), the
-   summary/bio paragraph, and — when `item.kind == 'artist'` — the `topTracks`
-   list (tappable → set `searchQueryProvider` + `context.go('/search')`). Insert
-   `_InfoSection(item: item)` right AFTER the existing tags block (around the
-   `if (item.tags.isNotEmpty) …` section, before the `리뷰` heading). go_router is
-   already imported in this file.
-2. **Deploy the new edge function:** `supabase functions deploy musicbrainz-proxy
-   --no-verify-jwt`. Also add it to the Makefile `deploy-functions` target.
-3. **Tests:** add parser unit tests (`parseTrackInfo`, `parseArtistInfo`,
-   `parseTopTracks`, `MusicBrainzApiHttp.parseRecording`) under `app/test/api/`.
-   Regenerate goldens if the detail screen layout changed
-   (`flutter test --update-goldens test/golden/golden_test.dart`) — the
-   `item_detail_*` goldens will shift.
-4. **Verify + ship:** `flutter analyze`, `flutter test`, then `make web-deploy`
-   and re-point the alias: `cd web && vercel alias set <new web-* deploy>
-   athens.vercel.app`. Smoke-test `/`, `/app`, `/u/nerdyahh_` (all should be 200).
-
-### Notes / gotchas
-- `lastfm-proxy` already forwards arbitrary `method` + `artist` + `track`, so the
-  new getInfo/getTopTracks calls need no edge change. It hardcodes `limit=10`
-  (fine for top tracks) and `autocorrect=1`.
-- Deploy uses REMOTE build (`make web-deploy` → `vercel deploy --prod`) because
-  Production `NEXT_PUBLIC_*` are sensitive; local `vercel build` inlines empty.
-  `.vercelignore` ships the gitignored `web/public/app` Flutter bundle.
-- MusicBrainz year comes from the recording `first-release-date` (first 4 chars).
-- Do NOT add a Spotify single-ID metadata call — bulk multi-ID is forbidden and
-  we are intentionally staying on Last.fm + MB for detail enrichment.
+### Implementation
+1. [x] **Render the info on the detail screen**: Created `_InfoSection` inside `item_detail_screen.dart`, fetching metadata reactively on-demand using `itemInfoProvider`.
+2. [x] **Deploy Edge Function**: Registered and deployed `musicbrainz-proxy` to Supabase hosted functions (added to Makefile `deploy-functions`).
+3. [x] **Tests & Goldens**: Wrote unit tests for Last.fm track/artist/top-tracks and MusicBrainz year parsers. Regenerated golden screens (`item_detail_light` / `item_detail_dark`) to reflect the new layout.
+4. [x] **Production Deploy & Alias**: Ran `make web-deploy` to trigger remote build with sensitive env vars on Vercel, then repointed `athens.vercel.app` alias to the new deployment. Smoke-tested all endpoints successfully (200 OK).
 
 ## Web app bug fixes (2026-05-31)
 
