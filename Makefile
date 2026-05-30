@@ -34,13 +34,22 @@ build-apk: ## Debug APK (needs JDK + Android SDK)
 build-web: ## Flutter web build
 	cd $(APP) && flutter build web
 
-# ---- Web profile site (Next.js) ----
-.PHONY: web-dev web-build web-deploy
-web-dev: ## Run the public profile site locally
+# ---- Unified web app (Next.js host: / landing, /u/[handle] profile, /app Flutter) ----
+.PHONY: web-dev web-flutter web-build web-deploy
+web-dev: ## Run the host site locally (needs `make web-flutter` first for /app)
 	cd $(WEB) && npm run dev
-web-build: ## Production build of the web site
+web-flutter: ## Build the Flutter web app into web/public/app (base-href /app/)
+	cd $(APP) && flutter build web --base-href /app/ $(DEFINE)
+	rm -rf $(WEB)/public/app
+	mkdir -p $(WEB)/public/app
+	cp -R $(APP)/build/web/. $(WEB)/public/app/
+web-build: web-flutter ## Full production build: Flutter bundle + Next.js (local verify)
 	cd $(WEB) && npm ci && npm run build
-web-deploy: ## Deploy the web site to Vercel (prod)
+# Deploy via REMOTE build: Vercel injects the real (sensitive) NEXT_PUBLIC_* env
+# vars at build time — local `vercel build` only sees empty pulled values. The Flutter
+# bundle in public/app is gitignored, so `.vercelignore` (which omits it) ensures the
+# CLI still uploads it for the remote `next build` to serve.
+web-deploy: web-flutter ## Build the Flutter bundle and deploy the unified site to Vercel (prod)
 	cd $(WEB) && vercel deploy --prod
 
 # ---- Supabase (LOCAL is only for testing migrations; app uses hosted) ----

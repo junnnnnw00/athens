@@ -2,6 +2,12 @@
 
 ## Active Blockers
 
+### Image share export — temporarily hidden before web deployment
+
+The image share screen still exists in code and tests, but the Profile UI no
+longer links to it because export/share behavior is not reliable enough for
+public launch. Public profile link sharing remains available.
+
 ### macOS desktop — Spotify connect disabled (no signing cert)
 
 `flutter_secure_storage` (PKCE token store) needs the `keychain-access-groups`
@@ -45,6 +51,11 @@ dev-mode Spotify catalog access + the PKCE round-trip needs real keys + a device
 
 ## Resolved
 
+- **Web unified into one site (2026-05-31):** the two separate Vercel projects
+  (`athens` Flutter static + `web` Next.js profiles) are now ONE site served by the
+  `web` project — `/` landing, `/u/[handle]` SSR profile, `/app/*` Flutter. Live at
+  `athens.vercel.app`. Old `app/web/vercel.json` removed; old `athens` project orphaned
+  (safe to delete). See DECISIONS.md + PROGRESS.md.
 - Runtime used `Fake*` APIs + in-memory state → replaced with real impls behind
   interfaces + Drift-backed `LibraryRepository`; fakes moved to `test/`.
 - Dead controls (empty `onPressed`/`onTap`) → all wired.

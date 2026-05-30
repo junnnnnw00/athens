@@ -57,3 +57,53 @@ M5 library+stats · M6 share+web · M7 OSS polish — tags `m0`–`m7`.
 
 Supabase `db reset` (Docker), deploy edge functions with secrets, register Spotify
 + Last.fm keys, Vercel deploy, physical-device flow test.
+
+## Deployment prep (2026-05-31)
+
+- Hid the unstable image-share entry point from the Profile UI while keeping the route/code intact for later repair.
+- Switched initial public profile URL references to `https://athens.vercel.app` and added matching Next metadata.
+- Added Vercel alias `athens.vercel.app` and deployed production `web-co5nu0x24-junwoo-hong-s-projects.vercel.app`.
+- Fresh checks: `cd web && npm run build` ✅, `cd app && flutter analyze` ✅, `cd app && flutter test` ✅, live `https://athens.vercel.app` 200 ✅, `/u/unknown` 404 ✅.
+
+## Flutter web production deploy (2026-05-31)
+
+- Built Flutter web with hosted client config: `cd app && flutter build web --dart-define-from-file=config/app_config.json`.
+- Created Vercel project `athens`, disabled SSO deployment protection, and deployed the Flutter static bundle.
+- Repointed `https://athens.vercel.app` to `athens-mrgnkmvds-junwoo-hong-s-projects.vercel.app`.
+- Fresh checks: live root 200 ✅, root serves `flutter_bootstrap.js` ✅, manifest is Athens-specific ✅, `cd app && flutter analyze` ✅.
+
+## Single unified web app — DONE (2026-05-31)
+
+**Goal met:** ONE stable website (`web` Next.js project) now serves the Flutter app
+AND the public profile view. `athens.vercel.app` aliased to it. Decision + rationale
+in DECISIONS.md → "Web deployment — single unified site".
+
+**Layout (live):** `/` = landing · `/u/[handle]` = SSR profile · `/app/*` = Flutter
+web (static in `web/public/app/`, hash routing → no deep-link rewrites).
+
+**Done:**
+1. [x] `web/next.config.ts` — rewrite `/app` → `/app/index.html`.
+2. [x] Real landing `web/app/page.tsx` (mint tokens, hero + feature grid + CTA→/app).
+3. [x] `profile_view.tsx` footer → `/app`; Flutter `og:url` → `/app`.
+4. [x] `web/.gitignore` ignores `/public/app`; `web/.vercelignore` ships it on deploy.
+5. [x] Makefile `web-flutter` / `web-build` / `web-deploy` pipeline.
+6. [x] Retired old `app/web/vercel.json` (app-at-root config).
+
+**Deploy gotcha solved:** local `vercel build` inlines empty NEXT_PUBLIC_* (Production
+env vars are sensitive → `vercel pull` returns ""), which 404'd profiles. Fixed by
+deploying via **remote build** (`vercel deploy --prod`, real env injected) + a
+`.vercelignore` that omits `public/app` so the gitignored Flutter bundle still uploads.
+
+**Fresh live checks (athens.vercel.app, 2026-05-31):**
+| Path | Code | Note |
+|------|------|------|
+| `/` | 200 | landing renders ("앱 시작하기") |
+| `/app` | 200 | `<base href="/app/">`, flutter_bootstrap.js |
+| `/app/main.dart.js` | 200 | bundle asset |
+| `/u/nerdyahh_` | 200 | SSR, real data, `<title>nerdyahh_ — Athens</title>`, `x-matched-path /u/[handle]` |
+| `/u/__nope__` | 404 | notFound works |
+
+`cd web && npm run build` ✅ · local `next start` smoke ✅ · `cd app && flutter build web` ✅.
+
+**Cleanup left for human (optional):** the now-orphaned `athens` Vercel project (old
+Flutter-only deploy) can be deleted in the dashboard; nothing points to it anymore.

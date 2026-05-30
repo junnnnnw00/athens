@@ -1,0 +1,9 @@
+# Upload list for `vercel deploy` (overrides .gitignore for uploads).
+# We DO want public/app (the Flutter bundle) shipped even though it's gitignored,
+# so it is intentionally NOT listed here. Remote build injects the real env vars.
+node_modules
+.next
+.vercel
+.git
+*.tsbuildinfo
+.env*

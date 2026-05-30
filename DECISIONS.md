@@ -82,5 +82,37 @@ function which returns a short-lived token for catalog search.
   Android SDK). The path is unchanged and is built in CI (`ubuntu-latest` +
   `subosito/flutter-action`, which provides the Android SDK). See BLOCKERS.md.
 
+## Web deployment — single unified site (2026-05-31)
+
+**Decision:** Collapse the two separate Vercel projects (`athens` = Flutter web,
+`web` = Next.js profiles) into ONE website served by the **Next.js project (`web`)**
+as the host shell. URL layout:
+
+| Path | Served by | Notes |
+|------|-----------|-------|
+| `/` | Next.js (SSR) | Real marketing landing — sign-in CTA into the app |
+| `/u/[handle]` | Next.js (SSR) | Public profile. SSR kept for share OG tags + SEO |
+| `/app`, `/app/*` | Flutter web (static, in `web/public/app/`) | The full client app |
+
+**Why this layout (chosen over app-at-root / two-projects):**
+- Profile pages MUST stay server-rendered so shared links get correct OG/Twitter
+  meta + are crawlable. A Flutter SPA cannot do that.
+- Putting Flutter under `/app/*` and Next.js at `/` + `/u/*` means **no route
+  collision** between the two frameworks → one stable Vercel project, one domain.
+- Flutter web uses the **default hash URL strategy** (`main.dart` does NOT call
+  `usePathUrlStrategy`), so in-app navigation is `/app/#/home`, `/app/#/duel`, …
+  → static hosting needs **no server-side deep-link rewrites** for the app. Only
+  `/app` → `/app/index.html` and asset serving are required. Maximally robust.
+
+**Build/deploy pipeline (local CLI, not Git-build):** Vercel's build image has no
+Flutter SDK, so the Flutter bundle is built locally and shipped as static assets:
+1. `flutter build web --base-href /app/ --dart-define-from-file=config/app_config.json`
+2. copy `app/build/web/` → `web/public/app/`
+3. `cd web && next build` then `vercel deploy --prod` (CLI, from the linked `web` project)
+
+`web/public/app/` is a build artifact → gitignored, regenerated each deploy. The old
+`app/web/vercel.json` (app-at-root rewrites) is retired. Makefile `web-deploy` wraps
+the whole pipeline.
+
 ## Package Substitutions
 None — all specified packages verified available on pub.dev.

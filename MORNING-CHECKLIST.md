@@ -17,10 +17,10 @@ Project `athens` (ref `hgehnwruprjoeewrhbgg`, Seoul):
 - [x] Live smoke: spotify-app-token → Bearer token; lastfm-proxy → real tags;
       Spotify catalog search returns results (dev-mode does NOT restrict search).
 
-- [x] §5 **Vercel deployed** (project `web`): live at
-      https://web-jvtw5n44a-junwoo-hong-s-projects.vercel.app — home 200,
-      `/u/<unknown>` → 404 (no data leak). Env vars set (prod/preview/dev);
-      disabled default Deployment Protection so public profiles are reachable.
+- [x] §5 **Vercel deployed**:
+      - Flutter web app project `athens`: https://athens.vercel.app — home 200.
+      - Public profile project `web`: https://athens-profile.vercel.app.
+      Disabled Deployment Protection for public access.
 - [x] §10 **GitHub**: repo pushed to https://github.com/junnnnnw00/athens
       (main + tags m0–m7); Actions secrets `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY`
       set; CI Flutter version bumped 3.29→3.41.9 (flutter_lints 6 needs Dart ≥3.8).
@@ -82,15 +82,20 @@ Still manual (you):
 1. Update `.env`: `MUSICBRAINZ_USER_AGENT=Athens/0.1 ( your@email.com )`
 2. Use your real email — MusicBrainz may contact you if usage is unexpected.
 
-## 5. Deploy Web Profile (Vercel)
+## 5. Deploy the unified web app (Vercel)
 
-1. Push repo to GitHub
-2. Import repo in [vercel.com](https://vercel.com)
-3. Set root directory to `web`
-4. Add environment variables:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-5. Deploy → your public profiles will be at `https://your-domain.vercel.app/u/[handle]`
+The app + public profiles now live on ONE site (Next.js project `web` is the host;
+Flutter app is served as static assets under `/app`). See DECISIONS.md → "Web
+deployment — single unified site".
+
+1. One-command deploy from the repo root: `make web-deploy`
+   - builds Flutter web `--base-href /app/` with the hosted client config,
+   - copies the bundle into `web/public/app/`,
+   - `next build`, then `vercel --prod` on the linked `web` project.
+2. Env vars on the `web` Vercel project (already set): `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+3. After deploy the single domain serves:
+   - `/` landing · `/app` the app · `/u/[handle]` public profiles.
 
 ## 6. Test on Physical Device (iOS/Android)
 

@@ -20,6 +20,9 @@
 # production
 /build
 
+# Flutter web bundle (built into public/app by `make web-deploy`)
+/public/app
+
 # misc
 .DS_Store
 *.pem
