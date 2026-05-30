@@ -1,5 +1,5 @@
 -- Enable required extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- (uuid generation uses the built-in gen_random_uuid(); no uuid-ossp needed)
 CREATE EXTENSION IF NOT EXISTS citext;
 
 -- ============================================================================
@@ -59,7 +59,7 @@ FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 -- items  (shared catalog cache)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS items (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     kind text NOT NULL CHECK (kind IN ('track', 'album', 'artist')),
     source text NOT NULL,   -- 'spotify', 'itunes', 'musicbrainz'
     source_id text NOT NULL,
@@ -93,7 +93,7 @@ USING (true);
 -- ratings
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS ratings (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
     item_id uuid NOT NULL REFERENCES items (id) ON DELETE CASCADE,
     elo numeric NOT NULL DEFAULT 1000,
@@ -127,7 +127,7 @@ USING (auth.uid() = user_id);
 -- comparisons
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS comparisons (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
     winner_item_id uuid NOT NULL REFERENCES items (id) ON DELETE CASCADE,
     loser_item_id uuid NOT NULL REFERENCES items (id) ON DELETE CASCADE,
@@ -152,7 +152,7 @@ USING (auth.uid() = user_id);
 -- reviews
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS reviews (
-    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid NOT NULL REFERENCES profiles (id) ON DELETE CASCADE,
     item_id uuid NOT NULL REFERENCES items (id) ON DELETE CASCADE,
     body text NOT NULL,
