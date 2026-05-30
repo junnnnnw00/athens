@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../api/supabase.dart';
 import '../../api/spotify_pkce_service.dart';
 
 final spotifyEnabledProvider = FutureProvider<bool>((ref) async {
+  if (!isSupabaseInitialized) return false;
   final user = Supabase.instance.client.auth.currentUser;
   if (user == null) return false;
   final data = await Supabase.instance.client
@@ -30,9 +32,8 @@ class SpotifyConnectScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Spotify Connect')),
       body: enabledAsync.when(
-        data: (enabled) => enabled
-            ? const _SpotifyConnectFlow()
-            : const _SpotifyNotEnabled(),
+        data: (enabled) =>
+            enabled ? const _SpotifyConnectFlow() : const _SpotifyNotEnabled(),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
@@ -45,27 +46,34 @@ class _SpotifyNotEnabled extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.music_off, size: 64, color: Theme.of(context).colorScheme.outline),
-          const SizedBox(height: 16),
-          Text(
-            'Spotify connect is invite-only',
-            style: Theme.of(context).textTheme.titleLarge,
-            textAlign: TextAlign.center,
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.music_off,
+                  size: 64, color: Theme.of(context).colorScheme.outline),
+              const SizedBox(height: 16),
+              Text(
+                'Spotify connect is invite-only',
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Due to Spotify\'s developer mode restrictions, only a small '
+                'number of users can connect their Spotify account. '
+                'You can still use all other features of Athens — search, '
+                'rate, stats, and sharing — without Spotify.',
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Due to Spotify\'s developer mode restrictions, only a small '
-            'number of users can connect their Spotify account. '
-            'You can still use all other features of Athens — search, '
-            'rate, stats, and sharing — without Spotify.',
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -75,7 +83,8 @@ class _SpotifyConnectFlow extends ConsumerStatefulWidget {
   const _SpotifyConnectFlow();
 
   @override
-  ConsumerState<_SpotifyConnectFlow> createState() => _SpotifyConnectFlowState();
+  ConsumerState<_SpotifyConnectFlow> createState() =>
+      _SpotifyConnectFlowState();
 }
 
 class _SpotifyConnectFlowState extends ConsumerState<_SpotifyConnectFlow> {
@@ -85,21 +94,28 @@ class _SpotifyConnectFlowState extends ConsumerState<_SpotifyConnectFlow> {
   Widget build(BuildContext context) {
     final connectedAsync = ref.watch(spotifyConnectedProvider);
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: connectedAsync.when(
-        data: (connected) => connected ? _connected() : _disconnected(),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: connectedAsync.when(
+            data: (connected) => connected ? _connected() : _disconnected(),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Center(child: Text('Error: $e')),
+          ),
+        ),
       ),
     );
   }
 
   Widget _connected() {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.check_circle, size: 64, color: Theme.of(context).colorScheme.primary),
+        Icon(Icons.check_circle,
+            size: 64, color: Theme.of(context).colorScheme.primary),
         const SizedBox(height: 16),
         Text('Spotify Connected',
             style: Theme.of(context).textTheme.titleLarge),
@@ -120,12 +136,12 @@ class _SpotifyConnectFlowState extends ConsumerState<_SpotifyConnectFlow> {
 
   Widget _disconnected() {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Icon(Icons.headphones, size: 64),
         const SizedBox(height: 16),
-        Text('Connect Spotify',
-            style: Theme.of(context).textTheme.titleLarge),
+        Text('Connect Spotify', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 12),
         const Text(
           'Connect your Spotify account to automatically see recently '
@@ -149,12 +165,14 @@ class _SpotifyConnectFlowState extends ConsumerState<_SpotifyConnectFlow> {
   }
 
   Future<void> _connect() async {
-    // Desktop builds lack the keychain entitlement (ad-hoc signed), so the PKCE
-    // token store fails there. Spotify connect is a mobile feature.
-    if (!kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.macOS ||
-            defaultTargetPlatform == TargetPlatform.windows ||
-            defaultTargetPlatform == TargetPlatform.linux)) {
+    // Spotify connect is a mobile-only, allow-listed feature. Desktop builds lack
+    // the keychain entitlement (ad-hoc signed) so the PKCE token store fails, and
+    // the web build has no registered OAuth redirect URI (Spotify dev-mode caps at
+    // 5 users — not worth a web redirect). Both show the mobile-only notice.
+    if (kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Spotify 연결은 모바일 앱에서만 지원돼요.')),
       );

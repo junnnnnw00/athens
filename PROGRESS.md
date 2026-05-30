@@ -107,3 +107,29 @@ deploying via **remote build** (`vercel deploy --prod`, real env injected) + a
 
 **Cleanup left for human (optional):** the now-orphaned `athens` Vercel project (old
 Flutter-only deploy) can be deleted in the dashboard; nothing points to it anymore.
+
+## Web app bug fixes (2026-05-31)
+
+Two issues reported after the unified deploy:
+
+1. **Spotify connect on web → "redirect_uri Not matching configuration".** The web
+   build has no registered OAuth redirect URI (and with the `/app` base path the
+   callback couldn't reach the SPA anyway). Spotify is a mobile-only, allow-listed
+   feature (dev-mode 5-user cap), so web is now gated exactly like desktop:
+   `_connect()` shows "Spotify 연결은 모바일 앱에서만 지원돼요." instead of launching a
+   doomed OAuth. `spotify_connect_screen.dart`.
+
+2. **Rated library empty in the app, but present on `/u/<handle>`.** Root cause:
+   `LibraryRepository.loadLibrary()` read **only** the local Drift cache; sync was
+   push-only. A fresh web browser has an empty Drift, so the library looked empty
+   even though the ratings were in Supabase (which is what the public profile reads).
+   Fix: added a **remote pull**. `SupabaseGateway.getRatingsWithItems()` fetches
+   ratings joined with their catalog items; `LibraryRepository.pullRemote()` hydrates
+   Drift from it (reconciling on `source:source_id`, last-write-wins so newer local
+   edits aren't clobbered); `LibraryController.build()` pulls before loading. This
+   also gives real cross-device sync on mobile, not just web.
+
+**Checks:** `flutter analyze` 0 issues ✅ · `flutter test` all pass (added 2 pull
+tests: fresh-device hydrate + last-write-wins) ✅ · rebuilt + redeployed; live
+`athens.vercel.app` `/`, `/app`, `/app/main.dart.js`, `/u/nerdyahh_` all 200 ✅.
+Web login + pull round-trip to be eyeball-confirmed by signing in on the site.

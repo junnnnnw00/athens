@@ -5,6 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 abstract class SupabaseGateway {
   Future<List<Map<String, dynamic>>> getRatings(String userId);
 
+  /// Ratings joined with their shared catalog item, for pulling a user's whole
+  /// library down to a fresh device / browser. Each row carries an `item` map.
+  Future<List<Map<String, dynamic>>> getRatingsWithItems(String userId);
+
   /// Upserts a shared catalog item (by source+source_id) and returns its uuid.
   Future<String?> upsertItemReturningId(Map<String, dynamic> item);
   Future<void> upsertRating(Map<String, dynamic> rating);
@@ -17,13 +21,23 @@ abstract class SupabaseGateway {
 
 class SupabaseGatewayImpl implements SupabaseGateway {
   SupabaseGatewayImpl({SupabaseClient? client})
-      : _client = client ?? Supabase.instance.client;
+      : _providedClient = client;
 
-  final SupabaseClient _client;
+  final SupabaseClient? _providedClient;
+  SupabaseClient get _client => _providedClient ?? Supabase.instance.client;
 
   @override
   Future<List<Map<String, dynamic>>> getRatings(String userId) async {
     final rows = await _client.from('ratings').select().eq('user_id', userId);
+    return List<Map<String, dynamic>>.from(rows);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getRatingsWithItems(String userId) async {
+    final rows = await _client
+        .from('ratings')
+        .select('elo, comparisons, updated_at, item:items(*)')
+        .eq('user_id', userId);
     return List<Map<String, dynamic>>.from(rows);
   }
 

@@ -1,6 +1,7 @@
 import 'package:athens/data/local/app_database.dart';
 import 'package:athens/data/repository/library_repository.dart';
 import 'package:athens/features/catalog/catalog_service.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -58,6 +59,53 @@ void main() {
     await localRepo.addItem(_item('spotify:a', 'A'));
     expect(remote.items, isEmpty);
     expect(await remote.getRatings('local-user'), isEmpty);
+  });
+
+  test('pullRemote hydrates a fresh device from the remote library', () async {
+    // Device A rates two items and duels them — all pushed to the shared remote.
+    await repo.addItem(_item('spotify:a', 'A'));
+    await repo.addItem(_item('spotify:b', 'B'));
+    await repo.recordComparison(winnerId: 'spotify:a', loserId: 'spotify:b');
+
+    // Device B: a brand-new local DB, same user + same remote, empty to start.
+    final dbB = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(dbB.close);
+    final repoB = LibraryRepository(db: dbB, userId: 'auth-uuid', remote: remote);
+    expect(await repoB.loadLibrary(), isEmpty);
+
+    await repoB.pullRemote();
+    final lib = await repoB.loadLibrary();
+
+    expect(lib.length, 2);
+    expect(lib.map((i) => i.id), containsAll(['spotify:a', 'spotify:b']));
+    // Winner outranks loser and the comparison count survived the round-trip.
+    expect(lib.first.id, 'spotify:a');
+    expect(lib.every((i) => i.comparisons == 1), isTrue);
+  });
+
+  test('pullRemote does not clobber a newer local rating (last-write-wins)',
+      () async {
+    await repo.addItem(_item('spotify:a', 'A')); // remote rating at ~now
+
+    final dbB = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(dbB.close);
+    final repoB = LibraryRepository(db: dbB, userId: 'auth-uuid', remote: remote);
+    await repoB.pullRemote();
+
+    // A newer local-only edit (e.g. an offline duel) that the remote hasn't seen.
+    await dbB.upsertRating(LocalRatingsCompanion(
+      id: const Value('auth-uuid_spotify:a'),
+      userId: const Value('auth-uuid'),
+      itemId: const Value('spotify:a'),
+      elo: const Value(1300),
+      comparisons: const Value(5),
+      updatedAt: Value(DateTime.now().add(const Duration(hours: 1))),
+    ));
+
+    await repoB.pullRemote(); // remote is older — must keep the local edit
+    final a = (await repoB.loadLibrary()).firstWhere((i) => i.id == 'spotify:a');
+    expect(a.elo, 1300);
+    expect(a.comparisons, 5);
   });
 
   test('remote failure never breaks the local write', () async {

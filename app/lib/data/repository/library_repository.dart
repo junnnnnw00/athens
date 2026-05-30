@@ -50,6 +50,64 @@ class LibraryRepository {
   String _encodeTags(List<CatalogTag> tags) => jsonEncode(
       tags.map((t) => {'name': t.name, 'source': t.source}).toList());
 
+  /// Pulls the user's ratings + items from Supabase into the local Drift cache,
+  /// so a fresh device / browser shows the library that other devices created.
+  /// Best-effort and last-write-wins: a newer local edit is never clobbered.
+  Future<void> pullRemote() async {
+    if (!_syncEnabled) return;
+    try {
+      final rows = await _remote!.getRatingsWithItems(userId);
+      final localByItem = {
+        for (final r in await _db.getRatingsForUser(userId)) r.itemId: r
+      };
+      for (final row in rows) {
+        final item = row['item'] as Map<String, dynamic>?;
+        if (item == null) continue;
+        final source = (item['source'] as String?) ?? 'unknown';
+        final sourceId = (item['source_id'] as String?) ?? '';
+        // Mirrors CatalogItem.id ('spotify:xxx' / 'itunes:xxx') so a later local
+        // rate of the same item reconciles to the same row (no duplicates).
+        final localId = '$source:$sourceId';
+
+        await _db.upsertItem(LocalItemsCompanion(
+          id: Value(localId),
+          kind: Value((item['kind'] as String?) ?? 'track'),
+          source: Value(source),
+          sourceId: Value(sourceId),
+          title: Value((item['title'] as String?) ?? ''),
+          primaryArtist: Value(item['primary_artist'] as String?),
+          imageUrl: Value(item['image_url'] as String?),
+          tags: Value(_encodeJsonTags(item['tags'])),
+        ));
+        if (item['id'] != null) {
+          _remoteItemIds[localId] = item['id'] as String;
+        }
+
+        final remoteUpdated =
+            DateTime.tryParse((row['updated_at'] as String?) ?? '') ??
+                DateTime.fromMillisecondsSinceEpoch(0);
+        final existing = localByItem[localId];
+        if (existing != null && existing.updatedAt.isAfter(remoteUpdated)) {
+          continue; // local edit is newer — keep it
+        }
+        await _db.upsertRating(LocalRatingsCompanion(
+          id: Value(_ratingId(localId)),
+          userId: Value(userId),
+          itemId: Value(localId),
+          elo: Value((row['elo'] as num?)?.toDouble() ?? Elo.startingElo),
+          comparisons: Value((row['comparisons'] as num?)?.toInt() ?? 0),
+          updatedAt: Value(remoteUpdated),
+        ));
+      }
+    } catch (_) {
+      // Offline / RLS / transient — local cache stays as-is.
+    }
+  }
+
+  /// Re-encodes a jsonb tag list (already `[{name, source}, …]`) to a string.
+  String _encodeJsonTags(dynamic tags) =>
+      tags is List ? jsonEncode(tags) : '[]';
+
   /// Loads the rated library joined with cached item metadata.
   Future<List<RatedCatalogItem>> loadLibrary() async {
     final ratings = await _db.getRatingsForUser(userId);

@@ -107,6 +107,19 @@ class FakeSupabaseGateway implements SupabaseGateway {
       _ratings.values.where((r) => r['user_id'] == userId).toList();
 
   @override
+  Future<List<Map<String, dynamic>>> getRatingsWithItems(String userId) async {
+    final itemsById = {for (final i in items.values) i['id'] as String: i};
+    return _ratings.values.where((r) => r['user_id'] == userId).map((r) {
+      return {
+        'elo': r['elo'],
+        'comparisons': r['comparisons'],
+        'updated_at': r['updated_at'],
+        'item': itemsById[r['item_id']],
+      };
+    }).toList();
+  }
+
+  @override
   Future<void> upsertRating(Map<String, dynamic> rating) async {
     _ratings['${rating['user_id']}_${rating['item_id']}'] = rating;
   }

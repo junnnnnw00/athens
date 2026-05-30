@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../api/supabase.dart';
 import '../../features/catalog/catalog_service.dart';
 import '../local/app_database.dart';
 import '../remote/supabase_gateway.dart';
@@ -16,17 +17,22 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
 /// The active user id. Falls back to a stable local id when not signed in,
 /// so the app is fully usable offline / before auth.
 final currentUserIdProvider = Provider<String>((ref) {
-  try {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) return user.id;
-  } catch (_) {
-    // Supabase not initialised (e.g. tests) — use the local id.
+  if (isSupabaseInitialized) {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) return user.id;
+    } catch (_) {
+      // Supabase not initialised (e.g. tests) — use the local id.
+    }
   }
   return 'local-user';
 });
 
-final supabaseGatewayProvider = Provider<SupabaseGateway>((ref) {
-  return SupabaseGatewayImpl();
+final supabaseGatewayProvider = Provider<SupabaseGateway?>((ref) {
+  if (isSupabaseInitialized) {
+    return SupabaseGatewayImpl();
+  }
+  return null;
 });
 
 final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
@@ -48,7 +54,12 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
   LibraryRepository get _repo => ref.read(libraryRepositoryProvider);
 
   @override
-  Future<List<RatedCatalogItem>> build() => _repo.loadLibrary();
+  Future<List<RatedCatalogItem>> build() async {
+    // Pull remote ratings into the local cache first, so a fresh browser/device
+    // shows the library other devices created (no-op when signed out / offline).
+    await _repo.pullRemote();
+    return _repo.loadLibrary();
+  }
 
   Future<void> addItem(CatalogItem item) async {
     await _repo.addItem(item);

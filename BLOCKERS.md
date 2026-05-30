@@ -8,6 +8,15 @@ The image share screen still exists in code and tests, but the Profile UI no
 longer links to it because export/share behavior is not reliable enough for
 public launch. Public profile link sharing remains available.
 
+### Web — Spotify connect gated to mobile (no registered redirect URI)
+
+The web build has no Spotify OAuth redirect URI registered (and the `/app` base path
++ hash routing make a web callback awkward). Spotify is a mobile-only, allow-listed
+feature (dev-mode 5-user cap), so web now shows "Spotify 연결은 모바일 앱에서만
+지원돼요." like desktop. To enable web Spotify later: register
+`https://athens.vercel.app/app/` (or a dedicated callback path with a Next rewrite)
+in the Spotify dashboard and un-gate `kIsWeb` in `spotify_connect_screen.dart`.
+
 ### macOS desktop — Spotify connect disabled (no signing cert)
 
 `flutter_secure_storage` (PKCE token store) needs the `keychain-access-groups`
