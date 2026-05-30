@@ -109,7 +109,7 @@ class _SearchBody extends ConsumerWidget {
       ));
     }
     return ListView(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
+      padding: const EdgeInsets.only(bottom: 110),
       children: rows,
     );
   }
@@ -159,9 +159,17 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
 
   Future<void> _add() async {
     setState(() => _busy = true);
+    // Capture everything that touches ref/context BEFORE any await — the row may
+    // be disposed (e.g. by navigation) while the network call is in flight.
     final service = ref.read(catalogServiceProvider);
+    final controller = ref.read(libraryControllerProvider.notifier);
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    // Are there already-rated items of the same kind to place this against?
+    final hasOpponents = ref
+        .read(ratedItemsProvider)
+        .any((i) => i.kind == widget.item.kind && i.id != widget.item.id);
+
     var item = widget.item;
     try {
       final tags = await service.enrichTags(item);
@@ -169,17 +177,13 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
     } catch (_) {
       // Enrichment is best-effort; add without tags on failure.
     }
-    // Are there already-rated items of the same kind to place this against?
-    final hasOpponents = ref
-        .read(ratedItemsProvider)
-        .any((i) => i.kind == item.kind && i.id != item.id);
-    await ref.read(libraryControllerProvider.notifier).addItem(item);
-    if (!mounted) return;
-    setState(() => _busy = false);
+    await controller.addItem(item);
+
     if (hasOpponents) {
       // Place the new item by duelling it against existing same-kind items.
       router.go('/duel/${Uri.encodeComponent(item.id)}');
     } else {
+      if (mounted) setState(() => _busy = false);
       messenger.showSnackBar(
         SnackBar(content: Text('"${item.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
       );
@@ -265,7 +269,7 @@ class _SearchSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: 110),
       itemCount: 8,
       itemBuilder: (_, __) => Padding(
         padding: const EdgeInsets.symmetric(

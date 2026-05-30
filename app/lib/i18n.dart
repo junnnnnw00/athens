@@ -117,6 +117,7 @@ class I18n {
     'stats_mood_preference': {AppLanguage.ko: '무드별 선호도', AppLanguage.en: 'Mood Preferences'},
     'stats_activity': {AppLanguage.ko: '최근 비교 추이', AppLanguage.en: 'Activity Over Time'},
     'stats_not_enough': {AppLanguage.ko: '아직 통계 데이터가 부족합니다.', AppLanguage.en: 'Not enough stats data yet.'},
+    'stats_preference_not_enough': {AppLanguage.ko: '충분한 비교 데이터가 없습니다. 듀얼을 진행해 주세요.', AppLanguage.en: 'Not enough comparison data. Go complete some duels!'},
     'stats_empty_title': {AppLanguage.ko: '통계가 아직 없어요', AppLanguage.en: 'No stats yet'},
     'stats_empty_desc': {AppLanguage.ko: '음악을 평가하면 분포·장르·활동이 여기에 표시돼요.', AppLanguage.en: 'Rate music to see your distribution, genres, and activity here.'},
     // Share Screen

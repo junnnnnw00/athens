@@ -9,8 +9,11 @@ import '../../theme/app_theme.dart';
 
 import '../../i18n.dart';
 
-final statsProvider = Provider<LibraryStats>((ref) {
+final statsProvider = FutureProvider<LibraryStats>((ref) async {
   final items = ref.watch(ratedItemsProvider);
+  final repo = ref.watch(libraryRepositoryProvider);
+  final dates = await repo.getComparisonDates();
+
   const engine = StatsEngine();
   final domainItems = items
       .map((i) => LibraryItem(
@@ -27,7 +30,7 @@ final statsProvider = Provider<LibraryStats>((ref) {
             updatedAt: i.updatedAt,
           ))
       .toList();
-  return engine.compute(domainItems);
+  return engine.compute(domainItems, dates);
 });
 
 class StatsScreen extends ConsumerWidget {
@@ -36,98 +39,129 @@ class StatsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
-    final stats = ref.watch(statsProvider);
-    final total =
-        stats.totalByKind.values.fold<int>(0, (a, b) => a + b);
+    final statsAsync = ref.watch(statsProvider);
     final isKo = ref.watch(localeProvider) == AppLanguage.ko;
 
-    if (total == 0) {
-      return Scaffold(
-        appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xxl),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.insights_rounded, size: 56, color: p.faint),
-                const SizedBox(height: AppSpacing.lg),
-                Text(context.t('stats_empty_title', ref: ref),
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: AppSpacing.sm),
-                Text(context.t('stats_empty_desc', ref: ref),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: p.muted)),
-              ],
+    return statsAsync.when(
+      data: (stats) {
+        final total =
+            stats.totalByKind.values.fold<int>(0, (a, b) => a + b);
+
+        if (total == 0) {
+          return Scaffold(
+            appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xxl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.insights_rounded, size: 56, color: p.faint),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(context.t('stats_empty_title', ref: ref),
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(context.t('stats_empty_desc', ref: ref),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: p.muted)),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-      );
-    }
+          );
+        }
 
-    final ratedItems = ref.watch(ratedItemsProvider);
-    final totalComparisons = ratedItems.fold<int>(0, (sum, i) => sum + i.comparisons);
+        final ratedItems = ref.watch(ratedItemsProvider);
+        final totalComparisons = ratedItems.fold<int>(0, (sum, i) => sum + i.comparisons);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
-        children: [
-          Row(
+        return Scaffold(
+          appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
             children: [
-              _BigStat(value: '$total${isKo ? '개' : ''}', label: context.t('stats_rated_items', ref: ref)),
-              const SizedBox(width: AppSpacing.xxl),
-              _BigStat(
-                  value: '$totalComparisons${isKo ? '개' : ''}',
-                  label: context.t('stats_comparisons', ref: ref),
-                  accent: true),
+              Row(
+                children: [
+                  _BigStat(value: '$total${isKo ? '개' : ''}', label: context.t('stats_rated_items', ref: ref)),
+                  const SizedBox(width: AppSpacing.xxl),
+                  _BigStat(
+                      value: '$totalComparisons${isKo ? '개' : ''}',
+                      label: context.t('stats_comparisons', ref: ref),
+                      accent: true),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              _SectionTitle(context.t('stats_distribution', ref: ref)),
+              const SizedBox(height: AppSpacing.md),
+              SizedBox(
+                height: 170,
+                child: _ScoreDistributionChart(buckets: stats.scoreBuckets),
+              ),
+              if (stats.topGenres.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xxl),
+                _SectionTitle(context.t('stats_genres', ref: ref)),
+                const SizedBox(height: AppSpacing.sm),
+                ...stats.topGenres.take(5).map((t) =>
+                    _TagBar(tag: t, max: stats.topGenres.first.count, isKo: isKo)),
+              ],
+              const SizedBox(height: AppSpacing.xxl),
+              _SectionTitle(context.t('stats_genre_preference', ref: ref)),
+              const SizedBox(height: AppSpacing.sm),
+              if (stats.genrePreferences.isNotEmpty)
+                ...stats.genrePreferences.take(5).map((p) =>
+                    _PreferenceBar(pref: p, isKo: isKo))
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: Text(
+                    context.t('stats_preference_not_enough', ref: ref),
+                    style: TextStyle(color: p.muted, fontSize: 14),
+                  ),
+                ),
+              if (stats.topMoods.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xxl),
+                _SectionTitle(context.t('stats_moods', ref: ref)),
+                const SizedBox(height: AppSpacing.sm),
+                ...stats.topMoods.take(5).map((t) =>
+                    _TagBar(tag: t, max: stats.topMoods.first.count, isKo: isKo)),
+              ],
+              const SizedBox(height: AppSpacing.xxl),
+              _SectionTitle(context.t('stats_mood_preference', ref: ref)),
+              const SizedBox(height: AppSpacing.sm),
+              if (stats.moodPreferences.isNotEmpty)
+                ...stats.moodPreferences.take(5).map((p) =>
+                    _PreferenceBar(pref: p, isKo: isKo))
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: Text(
+                    context.t('stats_preference_not_enough', ref: ref),
+                    style: TextStyle(color: p.muted, fontSize: 14),
+                  ),
+                ),
+              if (stats.activityOverTime.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.xxl),
+                _SectionTitle(context.t('stats_activity', ref: ref)),
+                const SizedBox(height: AppSpacing.md),
+                SizedBox(
+                    height: 120,
+                    child: _ActivityChart(activity: stats.activityOverTime)),
+              ],
             ],
           ),
-          const SizedBox(height: AppSpacing.xxl),
-          _SectionTitle(context.t('stats_distribution', ref: ref)),
-          const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 170,
-            child: _ScoreDistributionChart(buckets: stats.scoreBuckets),
-          ),
-          if (stats.topGenres.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            _SectionTitle(context.t('stats_genres', ref: ref)),
-            const SizedBox(height: AppSpacing.sm),
-            ...stats.topGenres.take(5).map((t) =>
-                _TagBar(tag: t, max: stats.topGenres.first.count, isKo: isKo)),
-          ],
-          if (stats.genrePreferences.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            _SectionTitle(context.t('stats_genre_preference', ref: ref)),
-            const SizedBox(height: AppSpacing.sm),
-            ...stats.genrePreferences.take(5).map((p) =>
-                _PreferenceBar(pref: p, isKo: isKo)),
-          ],
-          if (stats.topMoods.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            _SectionTitle(context.t('stats_moods', ref: ref)),
-            const SizedBox(height: AppSpacing.sm),
-            ...stats.topMoods.take(5).map((t) =>
-                _TagBar(tag: t, max: stats.topMoods.first.count, isKo: isKo)),
-          ],
-          if (stats.moodPreferences.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            _SectionTitle(context.t('stats_mood_preference', ref: ref)),
-            const SizedBox(height: AppSpacing.sm),
-            ...stats.moodPreferences.take(5).map((p) =>
-                _PreferenceBar(pref: p, isKo: isKo)),
-          ],
-          if (stats.activityOverTime.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.xxl),
-            _SectionTitle(context.t('stats_activity', ref: ref)),
-            const SizedBox(height: AppSpacing.md),
-            SizedBox(
-                height: 120,
-                child: _ActivityChart(activity: stats.activityOverTime)),
-          ],
-        ],
+        );
+      },
+      loading: () => Scaffold(
+        appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (err, stack) => Scaffold(
+        appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
+        body: Center(
+          child: Text('Error: $err'),
+        ),
       ),
     );
   }
@@ -305,12 +339,17 @@ class _ActivityChart extends StatelessWidget {
         maxY: maxY == 0 ? 1 : maxY,
         lineBarsData: [
           LineChartBarData(
-            spots: activity
-                .asMap()
-                .entries
-                .map((e) =>
-                    FlSpot(e.key.toDouble(), e.value.comparisons.toDouble()))
-                .toList(),
+            spots: activity.length == 1
+                ? [
+                    const FlSpot(0, 0),
+                    FlSpot(1, activity[0].comparisons.toDouble()),
+                  ]
+                : activity
+                    .asMap()
+                    .entries
+                    .map((e) =>
+                        FlSpot(e.key.toDouble(), e.value.comparisons.toDouble()))
+                    .toList(),
             isCurved: true,
             color: p.accent,
             barWidth: 2.5,
