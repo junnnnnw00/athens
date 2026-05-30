@@ -85,6 +85,39 @@ class RatedCatalogItem {
   }
 }
 
+/// Rich, on-demand detail info shown on the item detail screen. Not persisted.
+class ItemInfo {
+  const ItemInfo({
+    this.album,
+    this.durationMs,
+    this.year,
+    this.listeners,
+    this.playcount,
+    this.summary,
+    this.genres = const [],
+    this.topTracks = const [],
+  });
+
+  final String? album;
+  final int? durationMs;
+  final String? year;
+  final int? listeners;
+  final int? playcount;
+  final String? summary;
+  final List<String> genres;
+  final List<String> topTracks;
+
+  bool get isEmpty =>
+      album == null &&
+      durationMs == null &&
+      year == null &&
+      listeners == null &&
+      playcount == null &&
+      (summary == null || summary!.isEmpty) &&
+      genres.isEmpty &&
+      topTracks.isEmpty;
+}
+
 class CatalogService {
   CatalogService({
     required SpotifyApi spotifyApi,
@@ -123,6 +156,50 @@ class CatalogService {
         'artist' => ('artist', 'musicArtist'),
         _ => ('track,album,artist', 'song,album,musicArtist'),
       };
+
+  /// Rich, on-demand detail info (not persisted) for the item detail screen:
+  /// album/duration/year, Last.fm listener+play stats, a short summary/bio, extra
+  /// genres, and — for artists — their top tracks. Every source is best-effort.
+  Future<ItemInfo> fetchItemInfo({
+    required String kind,
+    required String artist,
+    required String title,
+  }) async {
+    if (kind == 'artist') {
+      LastfmArtistInfo? ai;
+      var tops = const <String>[];
+      try {
+        ai = await _lastfmApi.getArtistInfo(artist: title);
+      } catch (_) {}
+      try {
+        tops = await _lastfmApi.getArtistTopTracks(artist: title);
+      } catch (_) {}
+      return ItemInfo(
+        listeners: ai?.listeners,
+        playcount: ai?.playcount,
+        summary: ai?.summary,
+        topTracks: tops.take(8).toList(),
+      );
+    }
+
+    LastfmTrackInfo? ti;
+    var mb = const MbRecordingInfo();
+    try {
+      ti = await _lastfmApi.getTrackInfo(artist: artist, track: title);
+    } catch (_) {}
+    try {
+      mb = await _musicBrainzApi.getRecordingInfo(artist: artist, title: title);
+    } catch (_) {}
+    return ItemInfo(
+      album: ti?.album,
+      durationMs: ti?.durationMs,
+      year: mb.year,
+      listeners: ti?.listeners,
+      playcount: ti?.playcount,
+      summary: ti?.summary,
+      genres: mb.genres,
+    );
+  }
 
   Future<List<CatalogTag>> enrichTags(CatalogItem item) async {
     final tags = <CatalogTag>[];
@@ -177,6 +254,14 @@ final catalogServiceProvider = Provider<CatalogService>((ref) {
     lastfmApi: ref.watch(lastfmApiProvider),
     musicBrainzApi: ref.watch(musicBrainzApiProvider),
   );
+});
+
+/// On-demand rich info for an item, keyed by (kind, artist, title).
+final itemInfoProvider = FutureProvider.family<ItemInfo,
+    ({String kind, String artist, String title})>((ref, args) async {
+  final svc = ref.watch(catalogServiceProvider);
+  return svc.fetchItemInfo(
+      kind: args.kind, artist: args.artist, title: args.title);
 });
 
 final searchQueryProvider = StateProvider<String>((ref) => '');

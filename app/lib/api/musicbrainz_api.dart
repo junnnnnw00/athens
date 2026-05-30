@@ -1,65 +1,79 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// MusicBrainz genres/tags. Public API, no key, but requires a meaningful
-/// User-Agent and ≤ 1 req/sec (callers should debounce).
+import 'supabase.dart';
+
+/// MusicBrainz recording genres/tags + first-release year.
+class MbRecordingInfo {
+  const MbRecordingInfo({this.genres = const [], this.year});
+  final List<String> genres;
+  final String? year;
+}
+
+/// Reached through the `musicbrainz-proxy` edge function: MusicBrainz sends no
+/// CORS headers, so a direct browser call is blocked. The proxy also carries the
+/// required User-Agent server-side.
 abstract class MusicBrainzApi {
-  Future<List<String>> getGenres({
+  Future<List<String>> getGenres({required String artist, required String title});
+  Future<MbRecordingInfo> getRecordingInfo({
     required String artist,
     required String title,
   });
 }
 
 class MusicBrainzApiHttp implements MusicBrainzApi {
-  MusicBrainzApiHttp({http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+  MusicBrainzApiHttp({SupabaseClient? client}) : _providedClient = client;
 
-  final http.Client _http;
-
-  static const _userAgent = 'Athens/0.1 (https://github.com/athens-app)';
+  final SupabaseClient? _providedClient;
+  SupabaseClient get _client => _providedClient ?? Supabase.instance.client;
 
   @override
   Future<List<String>> getGenres({
     required String artist,
     required String title,
+  }) async =>
+      (await getRecordingInfo(artist: artist, title: title)).genres;
+
+  @override
+  Future<MbRecordingInfo> getRecordingInfo({
+    required String artist,
+    required String title,
   }) async {
+    if (!isSupabaseInitialized) return const MbRecordingInfo();
     final query = title.isNotEmpty
         ? 'recording:"$title" AND artist:"$artist"'
         : 'artist:"$artist"';
-    final res = await _http.get(
-      Uri.https('musicbrainz.org', '/ws/2/recording', {
-        'query': query,
-        'fmt': 'json',
-        'limit': '1',
-      }),
-      headers: {'User-Agent': _userAgent},
+    final res = await _client.functions.invoke(
+      'musicbrainz-proxy',
+      queryParameters: {'entity': 'recording', 'query': query, 'limit': '1'},
+      method: HttpMethod.get,
     );
-    if (res.statusCode != 200) {
-      throw StateError('MusicBrainz failed: ${res.statusCode}');
-    }
-    return parseGenres(res.body);
+    return parseRecording(res.data);
   }
 
-  /// Parses MusicBrainz recording search JSON into a flat list of tag names.
-  static List<String> parseGenres(String body) {
-    if (body.isEmpty) return [];
-    final json = jsonDecode(body);
-    if (json is! Map) return [];
+  /// Parses a MusicBrainz recording-search payload (decoded map or string).
+  static MbRecordingInfo parseRecording(dynamic data) {
+    final json = data is String ? jsonDecode(data) : data;
+    if (json is! Map) return const MbRecordingInfo();
     final recordings = json['recordings'];
-    if (recordings is! List || recordings.isEmpty) return [];
+    if (recordings is! List || recordings.isEmpty) return const MbRecordingInfo();
     final first = recordings.first;
-    if (first is! Map) return [];
-    final out = <String>{};
-    for (final key in ['tags', 'genres']) {
+    if (first is! Map) return const MbRecordingInfo();
+
+    final genres = <String>{};
+    for (final key in ['genres', 'tags']) {
       final list = first[key];
       if (list is List) {
         for (final t in list.whereType<Map>()) {
           final name = t['name'] as String?;
-          if (name != null && name.isNotEmpty) out.add(name);
+          if (name != null && name.isNotEmpty) genres.add(name);
         }
       }
     }
-    return out.toList();
+    final date = first['first-release-date'] as String?;
+    final year =
+        (date != null && date.length >= 4) ? date.substring(0, 4) : null;
+    return MbRecordingInfo(genres: genres.toList(), year: year);
   }
 }

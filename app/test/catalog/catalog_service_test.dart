@@ -130,10 +130,28 @@ class _ThrowingLastfmApi implements LastfmApi {
   @override
   Future<List<String>> getArtistTopTags({required String artist}) =>
       Future.error(Exception('Last.fm unavailable'));
+
+  @override
+  Future<LastfmTrackInfo?> getTrackInfo(
+          {required String artist, required String track}) =>
+      Future.error(Exception('Last.fm unavailable'));
+
+  @override
+  Future<LastfmArtistInfo?> getArtistInfo({required String artist}) =>
+      Future.error(Exception('Last.fm unavailable'));
+
+  @override
+  Future<List<String>> getArtistTopTracks({required String artist}) =>
+      Future.error(Exception('Last.fm unavailable'));
 }
 
 class _ThrowingMusicBrainzApi implements MusicBrainzApi {
   @override
   Future<List<String>> getGenres({required String artist, required String title}) =>
+      Future.error(Exception('MusicBrainz unavailable'));
+
+  @override
+  Future<MbRecordingInfo> getRecordingInfo(
+          {required String artist, required String title}) =>
       Future.error(Exception('MusicBrainz unavailable'));
 }

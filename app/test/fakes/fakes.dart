@@ -73,6 +73,27 @@ class FakeLastfmApi implements LastfmApi {
   @override
   Future<List<String>> getArtistTopTags({required String artist}) async =>
       ['shoegaze', 'dream pop', 'alternative'];
+
+  @override
+  Future<LastfmTrackInfo?> getTrackInfo({
+    required String artist,
+    required String track,
+  }) async =>
+      const LastfmTrackInfo(
+          listeners: 12000,
+          playcount: 45000,
+          durationMs: 222000,
+          album: 'Fake Album',
+          summary: 'A fake summary.');
+
+  @override
+  Future<LastfmArtistInfo?> getArtistInfo({required String artist}) async =>
+      const LastfmArtistInfo(
+          listeners: 99000, playcount: 500000, summary: 'A fake bio.');
+
+  @override
+  Future<List<String>> getArtistTopTracks({required String artist}) async =>
+      ['Track One', 'Track Two', 'Track Three'];
 }
 
 class FakeMusicBrainzApi implements MusicBrainzApi {
@@ -82,6 +103,13 @@ class FakeMusicBrainzApi implements MusicBrainzApi {
     required String title,
   }) async =>
       ['shoegaze', 'dream pop'];
+
+  @override
+  Future<MbRecordingInfo> getRecordingInfo({
+    required String artist,
+    required String title,
+  }) async =>
+      const MbRecordingInfo(genres: ['shoegaze', 'dream pop'], year: '1991');
 }
 
 class FakeSupabaseGateway implements SupabaseGateway {

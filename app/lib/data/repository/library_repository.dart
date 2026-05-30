@@ -207,7 +207,7 @@ class LibraryRepository {
       final uuid = await _remoteItemId(localId);
       if (uuid == null) return;
       await _remote!.deleteComparisonsForItem(userId, uuid);
-      await _remote!.deleteRating(userId, uuid);
+      await _remote.deleteRating(userId, uuid);
     } catch (_) {
       // Best-effort — local removal already succeeded.
     }

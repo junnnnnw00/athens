@@ -104,12 +104,13 @@ void main() {
          "tags": [{"name": "shoegaze"}],
          "genres": [{"name": "dream pop"}]}
       ]}''';
-      final genres = MusicBrainzApiHttp.parseGenres(body);
+      final genres = MusicBrainzApiHttp.parseRecording(body).genres;
       expect(genres, containsAll(['shoegaze', 'dream pop']));
     });
 
     test('returns empty when there are no recordings', () {
-      expect(MusicBrainzApiHttp.parseGenres('{"recordings": []}'), isEmpty);
+      expect(
+          MusicBrainzApiHttp.parseRecording('{"recordings": []}').genres, isEmpty);
     });
   });
 }
