@@ -34,20 +34,24 @@ What you should see:
 - **Share** — Top 5 / Taste Snapshot cards rendered from live data; share exports
   a 1080×1920 PNG.
 
-## 2. Run against the real backend
-1. Fill `.env` with the public Supabase + Spotify values.
-2. Pass them at launch:
+## 2. Run against the real (hosted) backend
+The app talks to the **hosted** Supabase project (`hgehnwruprjoeewrhbgg`) — you do
+**not** need a local Supabase running. Public client config is committed at
+`app/config/app_config.json`, so just:
+
 ```bash
-cd app
-flutter run \
-  --dart-define=SUPABASE_URL=$SUPABASE_URL \
-  --dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY \
-  --dart-define=SPOTIFY_CLIENT_ID=$SPOTIFY_CLIENT_ID
+make run          # = flutter run --dart-define-from-file=config/app_config.json
+# or:  make run-seed   (also seeds sample data into the local Drift cache)
 ```
-3. Sign up / sign in (email). Ratings & reviews sync via Supabase with RLS; a
+
+1. Sign up / sign in (email). Ratings & reviews sync via Supabase with RLS; a
    second session for the same user sees the same data.
-4. Spotify connect (allow-listed users only): Me → Spotify 연결 → PKCE flow →
+2. Spotify connect (allow-listed users only): Me → Spotify 연결 → PKCE flow →
    recently-played tracks surface on Home as unrated "rate this" cards.
+   Requires `profiles.spotify_enabled = true` for that user (set in Supabase).
+
+> **Local Supabase?** Only for testing migrations (`make db-reset-local`). Stop it
+> anytime with `make sb-stop`; the app is unaffected (it uses the hosted project).
 
 ## 3. Web profile
 ```bash
