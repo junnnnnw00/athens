@@ -33,6 +33,7 @@ final libraryRepositoryProvider = Provider<LibraryRepository>((ref) {
   return LibraryRepository(
     db: ref.watch(appDatabaseProvider),
     userId: ref.watch(currentUserIdProvider),
+    remote: ref.watch(supabaseGatewayProvider),
   );
 });
 

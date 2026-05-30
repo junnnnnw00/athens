@@ -73,6 +73,9 @@ class AppDatabase extends _$AppDatabase {
   // Items
   Future<List<LocalItem>> getAllItems() => select(localItems).get();
 
+  Future<LocalItem?> getItemById(String id) =>
+      (select(localItems)..where((i) => i.id.equals(id))).getSingleOrNull();
+
   Future<void> upsertItem(LocalItemsCompanion item) =>
       into(localItems).insertOnConflictUpdate(item);
 

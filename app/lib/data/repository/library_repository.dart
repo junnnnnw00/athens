@@ -4,16 +4,32 @@ import 'package:drift/drift.dart';
 
 import '../../domain/elo.dart';
 import '../local/app_database.dart';
+import '../remote/supabase_gateway.dart';
 import '../../features/catalog/catalog_service.dart';
 
 /// Reads/writes the user's rated library through the local Drift database.
 /// This is the single source of truth the UI renders — no in-memory shortcuts.
 /// Ratings survive an app restart because every mutation is persisted here.
+///
+/// When [remote] is provided and [userId] is a real auth user, mutations are
+/// also pushed to Supabase (best-effort, non-blocking) so the public web profile
+/// reflects them. Local writes never wait on or fail because of the network.
 class LibraryRepository {
-  LibraryRepository({required AppDatabase db, required this.userId}) : _db = db;
+  LibraryRepository({
+    required AppDatabase db,
+    required this.userId,
+    SupabaseGateway? remote,
+  })  : _db = db,
+        _remote = remote;
 
   final AppDatabase _db;
+  final SupabaseGateway? _remote;
   final String userId;
+
+  /// Maps a local item id (e.g. 'spotify:abc') to its remote uuid, cached.
+  final Map<String, String> _remoteItemIds = {};
+
+  bool get _syncEnabled => _remote != null && userId != 'local-user';
 
   String _ratingId(String itemId) => '${userId}_$itemId';
 
@@ -88,6 +104,7 @@ class LibraryRepository {
       comparisons: const Value(0),
       updatedAt: Value(DateTime.now()),
     ));
+    await _pushRating(item.id, Elo.startingElo, 0);
   }
 
   /// Records a duel result: updates both Elos and stores the comparison.
@@ -127,6 +144,51 @@ class LibraryRepository {
       loserItemId: Value(loserId),
       createdAt: Value(now),
     ));
+    await _pushRating(winnerId, wElo, winner.comparisons + 1);
+    await _pushRating(loserId, lElo, loser.comparisons + 1);
+  }
+
+  // --------------------------------------------------------------------------
+  // Remote sync (best-effort). Errors are swallowed; local data is the source.
+  // --------------------------------------------------------------------------
+
+  /// Resolves (and caches) the remote uuid for a local item, upserting the
+  /// shared catalog row if needed.
+  Future<String?> _remoteItemId(String localItemId) async {
+    if (_remoteItemIds.containsKey(localItemId)) {
+      return _remoteItemIds[localItemId];
+    }
+    final item = await _db.getItemById(localItemId);
+    if (item == null) return null;
+    final uuid = await _remote!.upsertItemReturningId({
+      'kind': item.kind,
+      'source': item.source,
+      'source_id': item.sourceId,
+      'title': item.title,
+      'primary_artist': item.primaryArtist,
+      'image_url': item.imageUrl,
+      'tags': jsonDecode(item.tags),
+    });
+    if (uuid != null) _remoteItemIds[localItemId] = uuid;
+    return uuid;
+  }
+
+  /// Pushes one rating (item + elo + comparisons) to Supabase.
+  Future<void> _pushRating(String localItemId, double elo, int comparisons) async {
+    if (!_syncEnabled) return;
+    try {
+      final uuid = await _remoteItemId(localItemId);
+      if (uuid == null) return;
+      await _remote!.upsertRating({
+        'user_id': userId,
+        'item_id': uuid,
+        'elo': elo,
+        'comparisons': comparisons,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (_) {
+      // Offline / RLS / transient — ignore; local stays authoritative.
+    }
   }
 
   Future<String?> getReview(String itemId) async {

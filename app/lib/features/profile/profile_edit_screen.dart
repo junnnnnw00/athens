@@ -49,24 +49,27 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       _saving = true;
       _error = null;
     });
+    // Capture before the await so we never touch context/ref after pop/dispose.
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    final service = ref.read(profileServiceProvider);
+    final container = ProviderScope.containerOf(context);
     try {
-      await ref.read(profileServiceProvider).updateProfile(
-            handle: _handle.text,
-            displayName: _displayName.text,
-            bio: _bio.text,
-            isPublic: _isPublic,
-          );
-      ref.invalidate(myProfileProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('프로필 저장됨')),
-        );
-        context.pop();
-      }
+      await service.updateProfile(
+        handle: _handle.text,
+        displayName: _displayName.text,
+        bio: _bio.text,
+        isPublic: _isPublic,
+      );
+      container.invalidate(myProfileProvider);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('프로필 저장됨')),
+      );
+      router.pop();
     } on HandleTakenException {
-      setState(() => _error = '이미 사용 중인 핸들이에요');
+      if (mounted) setState(() => _error = '이미 사용 중인 핸들이에요');
     } catch (e) {
-      setState(() => _error = '저장 실패: $e');
+      if (mounted) setState(() => _error = '저장 실패: $e');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

@@ -4,6 +4,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Tests use a fake implementation (test/fakes/); runtime uses [SupabaseGatewayImpl].
 abstract class SupabaseGateway {
   Future<List<Map<String, dynamic>>> getRatings(String userId);
+
+  /// Upserts a shared catalog item (by source+source_id) and returns its uuid.
+  Future<String?> upsertItemReturningId(Map<String, dynamic> item);
   Future<void> upsertRating(Map<String, dynamic> rating);
   Future<void> insertComparison(Map<String, dynamic> comparison);
   Future<List<Map<String, dynamic>>> getReviews(String userId);
@@ -22,6 +25,16 @@ class SupabaseGatewayImpl implements SupabaseGateway {
   Future<List<Map<String, dynamic>>> getRatings(String userId) async {
     final rows = await _client.from('ratings').select().eq('user_id', userId);
     return List<Map<String, dynamic>>.from(rows);
+  }
+
+  @override
+  Future<String?> upsertItemReturningId(Map<String, dynamic> item) async {
+    final row = await _client
+        .from('items')
+        .upsert(item, onConflict: 'source,source_id')
+        .select('id')
+        .maybeSingle();
+    return row?['id'] as String?;
   }
 
   @override

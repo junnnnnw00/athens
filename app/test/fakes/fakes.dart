@@ -89,6 +89,18 @@ class FakeSupabaseGateway implements SupabaseGateway {
   final List<Map<String, dynamic>> comparisons = [];
   final Map<String, Map<String, dynamic>> _reviews = {};
   final Map<String, Map<String, dynamic>> _profiles = {};
+  final Map<String, Map<String, dynamic>> items = {};
+  int _itemSeq = 0;
+
+  @override
+  Future<String?> upsertItemReturningId(Map<String, dynamic> item) async {
+    final key = '${item['source']}:${item['source_id']}';
+    final existing = items[key];
+    if (existing != null) return existing['id'] as String;
+    final id = 'uuid-${_itemSeq++}';
+    items[key] = {...item, 'id': id};
+    return id;
+  }
 
   @override
   Future<List<Map<String, dynamic>>> getRatings(String userId) async =>
