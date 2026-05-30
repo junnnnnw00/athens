@@ -9,6 +9,7 @@ import 'features/rank/duel_screen.dart';
 import 'features/library/library_screen.dart';
 import 'features/stats/stats_screen.dart';
 import 'features/profile/profile_screen.dart';
+import 'features/profile/profile_edit_screen.dart';
 import 'features/catalog/search_screen.dart';
 import 'features/spotify_connect/spotify_connect_screen.dart';
 import 'features/share/share_screen.dart';
@@ -43,6 +44,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/library', builder: (c, s) => const LibraryScreen()),
           GoRoute(path: '/stats', builder: (c, s) => const StatsScreen()),
           GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
+          GoRoute(
+              path: '/profile/edit',
+              builder: (c, s) => const ProfileEditScreen()),
           GoRoute(path: '/search', builder: (c, s) => const SearchScreen()),
           GoRoute(
               path: '/spotify-connect',

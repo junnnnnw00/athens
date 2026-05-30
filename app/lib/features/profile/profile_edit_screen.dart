@@ -1,0 +1,177 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../theme/tokens.dart';
+import '../../theme/app_theme.dart';
+import 'profile_service.dart';
+
+class ProfileEditScreen extends ConsumerStatefulWidget {
+  const ProfileEditScreen({super.key});
+
+  @override
+  ConsumerState<ProfileEditScreen> createState() => _ProfileEditScreenState();
+}
+
+class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
+  final _handle = TextEditingController();
+  final _displayName = TextEditingController();
+  final _bio = TextEditingController();
+  bool _isPublic = false;
+  bool _loaded = false;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _handle.dispose();
+    _displayName.dispose();
+    _bio.dispose();
+    super.dispose();
+  }
+
+  void _hydrate(UserProfile p) {
+    if (_loaded) return;
+    _loaded = true;
+    _handle.text = p.handle;
+    _displayName.text = p.displayName ?? '';
+    _bio.text = p.bio ?? '';
+    _isPublic = p.isPublic;
+  }
+
+  Future<void> _save() async {
+    final handleErr = ProfileService.validateHandle(_handle.text);
+    if (handleErr != null) {
+      setState(() => _error = handleErr);
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await ref.read(profileServiceProvider).updateProfile(
+            handle: _handle.text,
+            displayName: _displayName.text,
+            bio: _bio.text,
+            isPublic: _isPublic,
+          );
+      ref.invalidate(myProfileProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('프로필 저장됨')),
+        );
+        context.pop();
+      }
+    } on HandleTakenException {
+      setState(() => _error = '이미 사용 중인 핸들이에요');
+    } catch (e) {
+      setState(() => _error = '저장 실패: $e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final async = ref.watch(myProfileProvider);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('프로필 편집')),
+      body: async.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('불러오기 실패: $e')),
+        data: (profile) {
+          if (profile == null) {
+            return const Center(child: Text('로그인이 필요해요.'));
+          }
+          _hydrate(profile);
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 40),
+            children: [
+              _Label('핸들'),
+              TextField(
+                controller: _handle,
+                decoration: InputDecoration(
+                  prefixText: '@',
+                  hintText: 'lowercase_handle',
+                  helperText: '공개 프로필 주소: /u/<핸들>',
+                ),
+                autocorrect: false,
+                enableSuggestions: false,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _Label('표시 이름'),
+              TextField(
+                controller: _displayName,
+                decoration: const InputDecoration(hintText: '예: 준우'),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _Label('소개'),
+              TextField(
+                controller: _bio,
+                maxLines: 3,
+                maxLength: 160,
+                decoration: const InputDecoration(hintText: '한 줄 소개'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: p.line),
+                  borderRadius: BorderRadius.circular(AppRadii.card),
+                ),
+                child: SwitchListTile(
+                  value: _isPublic,
+                  activeThumbColor: p.accent,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg),
+                  title: const Text('공개 프로필'),
+                  subtitle: Text(
+                    _isPublic
+                        ? '누구나 웹에서 내 순위를 볼 수 있어요'
+                        : '나만 볼 수 있어요',
+                    style: TextStyle(color: p.muted, fontSize: 12.5),
+                  ),
+                  onChanged: (v) => setState(() => _isPublic = v),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text(_error!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
+              ],
+              const SizedBox(height: AppSpacing.xl),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: _saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('저장'),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Text(text, style: Theme.of(context).textTheme.titleSmall),
+    );
+  }
+}
