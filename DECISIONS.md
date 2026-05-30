@@ -44,6 +44,18 @@ function which returns a short-lived token for catalog search.
 | Nav | 3-item floating pill (Home · Add · Me) | DESIGN.md; Stats/Profile/Share/Spotify reached from app bars + the Me/profile screen |
 | UI language | Korean-first strings | Korean target user (C6) |
 
+## Runtime auth config (deploy)
+
+- **Flutter app uses the legacy `anon` JWT (`eyJ…`), NOT the new `sb_publishable_`
+  key.** `supabase_flutter` sends the apikey as `Authorization: Bearer`, and the
+  non-JWT publishable key fails that check → "Invalid API key" on signup/login. The
+  Next.js JS SDK accepts the publishable key fine, so `web/` keeps it; only the
+  Flutter `app/config/app_config.json` carries the anon JWT.
+- **Email auth: `mailer_autoconfirm = true`** on the hosted project (set via
+  Management API). Free-tier default SMTP rate-limits confirmation emails hard
+  ("email rate limit exceeded"); autoconfirm skips the email so dev signups work
+  instantly. Revisit before real launch (turn back on + real SMTP).
+
 ## Data layer (rebuild)
 
 - **`LibraryRepository` over Drift is the single source of truth** the UI renders.
