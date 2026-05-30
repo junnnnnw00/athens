@@ -12,7 +12,10 @@ import 'spotify_pkce_service.dart';
 /// `spotify-app-token` edge function, so the client never holds the secret.
 /// Recently-played uses the per-user PKCE token (allow-listed users only).
 abstract class SpotifyApi {
-  Future<List<CatalogItem>> search(String query);
+  /// [types] is the Spotify `type` filter, e.g. 'track', 'album', 'artist', or
+  /// the combined default. A single type lets the whole limit go to it.
+  Future<List<CatalogItem>> search(String query,
+      {String types = 'track,album,artist'});
   Future<List<CatalogItem>> getRecentlyPlayed();
 }
 
@@ -33,14 +36,15 @@ class SpotifyApiHttp implements SpotifyApi {
   }
 
   @override
-  Future<List<CatalogItem>> search(String query) async {
+  Future<List<CatalogItem>> search(String query,
+      {String types = 'track,album,artist'}) async {
     if (query.trim().isEmpty) return [];
     final token = await _appToken();
     final res = await _http.get(
       Uri.https('api.spotify.com', '/v1/search', {
         'q': query,
-        'type': 'track,album,artist',
-        'limit': '20',
+        'type': types,
+        'limit': '50',
       }),
       headers: {'Authorization': 'Bearer $token'},
     );

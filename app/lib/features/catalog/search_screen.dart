@@ -5,17 +5,26 @@ import '../../data/repository/library_providers.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
+import '../../widgets/filter_chips.dart';
 import 'catalog_service.dart';
+
+const _kindLabels = {
+  '전체': 'all',
+  '곡': 'track',
+  '앨범': 'album',
+  '아티스트': 'artist',
+};
+const _kindHeaders = {'track': '곡', 'album': '앨범', 'artist': '아티스트'};
 
 class SearchScreen extends ConsumerWidget {
   const SearchScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final p = context.palette;
     final query = ref.watch(searchQueryProvider);
-    final resultsAsync = ref.watch(searchResultsProvider);
-    final addedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
+    final kind = ref.watch(searchKindProvider);
+    final selectedLabel =
+        _kindLabels.entries.firstWhere((e) => e.value == kind).key;
 
     return Scaffold(
       appBar: AppBar(
@@ -28,30 +37,96 @@ class SearchScreen extends ConsumerWidget {
           ),
           onChanged: (v) => ref.read(searchQueryProvider.notifier).state = v,
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(50),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.sm),
+            child: FilterChips(
+              options: _kindLabels.keys.toList(),
+              selected: selectedLabel,
+              onSelect: (label) => ref
+                  .read(searchKindProvider.notifier)
+                  .state = _kindLabels[label]!,
+            ),
+          ),
+        ),
       ),
       body: query.trim().isEmpty
           ? _Hint(icon: Icons.search_rounded, text: '검색어를 입력하세요')
-          : resultsAsync.when(
-              loading: () => const _SearchSkeleton(),
-              error: (e, _) => _Hint(
-                  icon: Icons.cloud_off_rounded,
-                  text: '검색에 실패했어요. 네트워크를 확인하세요.'),
-              data: (items) => items.isEmpty
-                  ? _Hint(
-                      icon: Icons.sentiment_dissatisfied_rounded,
-                      text: '결과가 없어요')
-                  : ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.sm),
-                      itemCount: items.length,
-                      separatorBuilder: (_, __) =>
-                          Divider(height: 1, color: p.line, indent: AppSpacing.xl),
-                      itemBuilder: (context, i) => _ResultRow(
-                        item: items[i],
-                        added: addedIds.contains(items[i].id),
-                      ),
-                    ),
-            ),
+          : const _SearchBody(),
+    );
+  }
+}
+
+class _SearchBody extends ConsumerWidget {
+  const _SearchBody();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final resultsAsync = ref.watch(searchResultsProvider);
+    final addedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
+
+    return resultsAsync.when(
+      loading: () => const _SearchSkeleton(),
+      error: (e, _) => _Hint(
+          icon: Icons.cloud_off_rounded, text: '검색에 실패했어요. 네트워크를 확인하세요.'),
+      data: (items) {
+        if (items.isEmpty) {
+          return _Hint(
+              icon: Icons.sentiment_dissatisfied_rounded, text: '결과가 없어요');
+        }
+        // Group by kind, ordered 곡 → 앨범 → 아티스트, with section headers.
+        const order = ['track', 'album', 'artist'];
+        final rows = <Widget>[];
+        for (final k in order) {
+          final group = items.where((i) => i.kind == k).toList();
+          if (group.isEmpty) continue;
+          rows.add(_SectionHeader(
+              label: _kindHeaders[k]!, count: group.length));
+          for (final item in group) {
+            rows.add(_ResultRow(
+                item: item, added: addedIds.contains(item.id)));
+            rows.add(Divider(
+                height: 1, color: p.line, indent: AppSpacing.xl));
+          }
+        }
+        return ListView(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xxl),
+          children: rows,
+        );
+      },
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label, required this.count});
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.sm),
+      child: Row(
+        children: [
+          Text(label,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: p.muted, letterSpacing: 0.5)),
+          const SizedBox(width: 6),
+          Text('$count',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: p.faint)),
+        ],
+      ),
     );
   }
 }
@@ -98,7 +173,9 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
           CoverArt(
               title: widget.item.title,
               imageUrl: widget.item.imageUrl,
-              size: 48),
+              size: 48,
+              // Artists get a circular avatar, releases a rounded square.
+              radius: widget.item.kind == 'artist' ? 24 : AppRadii.cover),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -108,7 +185,10 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall),
-                Text(widget.item.primaryArtist ?? widget.item.kind,
+                Text(
+                    widget.item.kind == 'artist'
+                        ? '아티스트'
+                        : '${_kindHeaders[widget.item.kind] ?? ''} · ${widget.item.primaryArtist ?? ''}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall),

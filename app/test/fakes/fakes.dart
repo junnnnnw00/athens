@@ -14,7 +14,8 @@ class FakeSpotifyApi implements SpotifyApi {
   final List<CatalogItem> recentlyPlayed;
 
   @override
-  Future<List<CatalogItem>> search(String query) async {
+  Future<List<CatalogItem>> search(String query,
+      {String types = 'track,album,artist'}) async {
     if (query.trim().isEmpty) return [];
     return [
       CatalogItem(
@@ -44,7 +45,8 @@ class FakeSpotifyApi implements SpotifyApi {
 
 class FakeItunesApi implements ItunesApi {
   @override
-  Future<List<CatalogItem>> search(String query) async {
+  Future<List<CatalogItem>> search(String query,
+      {String entity = 'song,album,musicArtist'}) async {
     if (query.trim().isEmpty) return [];
     return [
       CatalogItem(

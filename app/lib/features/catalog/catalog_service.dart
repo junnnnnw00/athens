@@ -101,15 +101,26 @@ class CatalogService {
   final LastfmApi _lastfmApi;
   final MusicBrainzApi _musicBrainzApi;
 
-  Future<List<CatalogItem>> search(String query) async {
+  /// [kind] is one of 'all', 'track', 'album', 'artist'. A specific kind sends
+  /// the whole result limit to that type, so e.g. an artist's tracks aren't
+  /// crowded out by albums/artists.
+  Future<List<CatalogItem>> search(String query, {String kind = 'all'}) async {
+    final (spotifyTypes, itunesEntity) = _kindToFilters(kind);
     try {
-      final results = await _spotifyApi.search(query);
+      final results = await _spotifyApi.search(query, types: spotifyTypes);
       if (results.isNotEmpty) return results;
     } catch (_) {
       // Fall through to iTunes
     }
-    return _itunesApi.search(query);
+    return _itunesApi.search(query, entity: itunesEntity);
   }
+
+  static (String, String) _kindToFilters(String kind) => switch (kind) {
+        'track' => ('track', 'song'),
+        'album' => ('album', 'album'),
+        'artist' => ('artist', 'musicArtist'),
+        _ => ('track,album,artist', 'song,album,musicArtist'),
+      };
 
   Future<List<CatalogTag>> enrichTags(CatalogItem item) async {
     final tags = <CatalogTag>[];
@@ -153,11 +164,15 @@ final catalogServiceProvider = Provider<CatalogService>((ref) {
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
+/// Active search-kind filter: 'all' | 'track' | 'album' | 'artist'.
+final searchKindProvider = StateProvider<String>((ref) => 'all');
+
 final searchResultsProvider = FutureProvider<List<CatalogItem>>((ref) async {
   final query = ref.watch(searchQueryProvider);
   if (query.isEmpty) return [];
+  final kind = ref.watch(searchKindProvider);
   final svc = ref.watch(catalogServiceProvider);
-  return svc.search(query);
+  return svc.search(query, kind: kind);
 });
 
 // Recently played (Spotify-enabled users only).

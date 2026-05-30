@@ -8,7 +8,13 @@ import '../../data/repository/library_providers.dart';
 import '../../domain/pair_selector.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/filter_chips.dart';
 import '../catalog/catalog_service.dart';
+
+const _kindLabels = {'track': '곡', 'album': '앨범', 'artist': '아티스트'};
+String _kindLabel(String k) => _kindLabels[k] ?? k;
+String _kindFromLabel(String label) =>
+    _kindLabels.entries.firstWhere((e) => e.value == label).key;
 
 class DuelScreen extends ConsumerStatefulWidget {
   const DuelScreen({super.key});
@@ -22,24 +28,47 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   (RatedCatalogItem, RatedCatalogItem)? _pair;
   String? _picked;
 
+  /// Active duel kind — only items of this kind are paired against each other
+  /// (artists vs artists, albums vs albums, tracks vs tracks).
+  String? _kind;
+
+  static const _kindOrder = ['track', 'album', 'artist'];
+
+  /// Kinds that have at least 2 rated items (a duel needs two).
+  List<String> _availableKinds(List<RatedCatalogItem> items) {
+    return _kindOrder
+        .where((k) => items.where((i) => i.kind == k).length >= 2)
+        .toList();
+  }
+
   void _ensurePair(List<RatedCatalogItem> items) {
+    final kinds = _availableKinds(items);
+    // Keep _kind valid; default to the first available.
+    if (_kind == null || !kinds.contains(_kind)) {
+      _kind = kinds.isEmpty ? null : kinds.first;
+      _pair = _select(items);
+      return;
+    }
     if (_pair != null) {
-      // Drop stale pair if items removed.
-      final ids = items.map((e) => e.id).toSet();
+      final ids = items
+          .where((i) => i.kind == _kind)
+          .map((e) => e.id)
+          .toSet();
       if (ids.contains(_pair!.$1.id) && ids.contains(_pair!.$2.id)) return;
     }
     _pair = _select(items);
   }
 
   (RatedCatalogItem, RatedCatalogItem)? _select(List<RatedCatalogItem> items) {
-    final rated = items
+    final pool = items.where((i) => i.kind == _kind).toList();
+    final rated = pool
         .map((i) =>
             RatedItem(id: i.id, elo: i.elo, comparisons: i.comparisons))
         .toList();
     final pair = _selector.selectPair(rated);
     if (pair == null) return null;
-    final a = items.firstWhere((i) => i.id == pair.$1.id);
-    final b = items.firstWhere((i) => i.id == pair.$2.id);
+    final a = pool.firstWhere((i) => i.id == pair.$1.id);
+    final b = pool.firstWhere((i) => i.id == pair.$2.id);
     return (a, b);
   }
 
@@ -70,6 +99,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     final items = ref.watch(ratedItemsProvider);
     _ensurePair(items);
     final pair = _pair;
+    final kinds = _availableKinds(items);
 
     if (pair == null) {
       return Scaffold(
@@ -82,7 +112,10 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
               children: [
                 Icon(Icons.compare_arrows_rounded, size: 56, color: p.faint),
                 const SizedBox(height: AppSpacing.lg),
-                Text('듀얼을 시작하려면 최소 2곡이 필요해요',
+                Text(
+                    items.isEmpty
+                        ? '듀얼을 시작하려면 음악을 추가하세요'
+                        : '같은 종류끼리 겨뤄요 — 한 종류에 2개 이상 추가하면 시작돼요',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: AppSpacing.xl),
@@ -107,7 +140,19 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('어떤 게 더 좋아요?',
+              if (kinds.length > 1) ...[
+                FilterChips(
+                  options: [for (final k in kinds) _kindLabel(k)],
+                  selected: _kindLabel(_kind!),
+                  onSelect: (label) => setState(() {
+                    _kind = _kindFromLabel(label);
+                    _picked = null;
+                    _pair = _select(items);
+                  }),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+              Text('어떤 ${_kindLabel(_kind!)}이 더 좋아요?',
                   style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: AppSpacing.lg),
               Expanded(

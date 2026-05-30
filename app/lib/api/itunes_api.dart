@@ -7,7 +7,9 @@ import '../features/catalog/catalog_service.dart';
 /// iTunes Search API — no auth, has artwork. Used as the catalog fallback when
 /// Spotify is unavailable or returns nothing.
 abstract class ItunesApi {
-  Future<List<CatalogItem>> search(String query);
+  /// [entity] is the iTunes entity filter (song,album,musicArtist by default).
+  Future<List<CatalogItem>> search(String query,
+      {String entity = 'song,album,musicArtist'});
 }
 
 class ItunesApiHttp implements ItunesApi {
@@ -17,13 +19,14 @@ class ItunesApiHttp implements ItunesApi {
   final http.Client _http;
 
   @override
-  Future<List<CatalogItem>> search(String query) async {
+  Future<List<CatalogItem>> search(String query,
+      {String entity = 'song,album,musicArtist'}) async {
     if (query.trim().isEmpty) return [];
     final res = await _http.get(Uri.https('itunes.apple.com', '/search', {
       'term': query,
       'media': 'music',
-      'entity': 'song,album,musicArtist',
-      'limit': '20',
+      'entity': entity,
+      'limit': '50',
     }));
     if (res.statusCode != 200) {
       throw StateError('iTunes search failed: ${res.statusCode}');
