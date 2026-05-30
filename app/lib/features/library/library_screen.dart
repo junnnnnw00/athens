@@ -10,6 +10,7 @@ import '../../widgets/cover_art.dart';
 import '../../widgets/filter_chips.dart';
 import '../../widgets/score_ring.dart';
 import '../catalog/catalog_service.dart';
+import '../../i18n.dart';
 
 final _libraryFilterProvider = StateProvider<String>((ref) => 'All');
 
@@ -23,18 +24,32 @@ class LibraryScreen extends ConsumerWidget {
     final p = context.palette;
     final async = ref.watch(libraryControllerProvider);
     final filter = ref.watch(_libraryFilterProvider);
+    final lang = ref.watch(localeProvider);
+
+    final options = ['All', 'Albums', 'Tracks', 'Artists'];
+    String getOptionLabel(String opt) {
+      if (lang == AppLanguage.ko) {
+        switch (opt) {
+          case 'All': return '전체';
+          case 'Albums': return '앨범';
+          case 'Tracks': return '곡';
+          case 'Artists': return '아티스트';
+        }
+      }
+      return opt;
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Library'),
+        title: Text(context.t('profile_library', ref: ref)),
         actions: [
           IconButton(
-            tooltip: 'Stats',
+            tooltip: context.t('profile_stats', ref: ref),
             icon: const Icon(Icons.bar_chart_rounded),
             onPressed: () => context.go('/stats'),
           ),
           IconButton(
-            tooltip: 'Profile',
+            tooltip: context.t('profile_me', ref: ref),
             icon: const Icon(Icons.person_outline_rounded),
             onPressed: () => context.go('/profile'),
           ),
@@ -55,16 +70,18 @@ class LibraryScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(
                     AppSpacing.xl, AppSpacing.xs, AppSpacing.xl, AppSpacing.md),
                 child: FilterChips(
-                  options: const ['All', 'Albums', 'Tracks', 'Artists'],
-                  selected: filter,
-                  onSelect: (v) =>
-                      ref.read(_libraryFilterProvider.notifier).state = v,
+                  options: options.map(getOptionLabel).toList(),
+                  selected: getOptionLabel(filter),
+                  onSelect: (v) {
+                    final originalKey = options.firstWhere((opt) => getOptionLabel(opt) == v);
+                    ref.read(_libraryFilterProvider.notifier).state = originalKey;
+                  },
                 ),
               ),
               Expanded(
                 child: filtered.isEmpty
                     ? Center(
-                        child: Text('이 필터에 항목 없음',
+                        child: Text(context.t('lib_empty_filter', ref: ref),
                             style: TextStyle(color: p.muted)))
                     : ListView.separated(
                         padding: const EdgeInsets.only(bottom: 110),
@@ -134,6 +151,17 @@ class _LibraryRow extends StatelessWidget {
                       ],
                     ],
                   ),
+                  if (item.tags.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 5,
+                      runSpacing: 4,
+                      children: item.tags
+                          .take(3)
+                          .map((t) => _MiniTag(t.name))
+                          .toList(),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -150,6 +178,29 @@ class _LibraryRow extends StatelessWidget {
         'artist' => 'Artist',
         _ => 'Track',
       };
+}
+
+class _MiniTag extends StatelessWidget {
+  const _MiniTag(this.name);
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: p.chip,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: p.line),
+      ),
+      child: Text(
+        name,
+        style:
+            TextStyle(color: p.muted, fontSize: 10.5, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
 }
 
 class _LibraryEmpty extends StatelessWidget {
