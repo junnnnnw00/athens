@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/repository/library_providers.dart';
 import '../../domain/score.dart';
+import '../catalog/catalog_service.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
@@ -182,6 +183,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               children: item.tags.map((t) => _TagChip(t.name)).toList(),
             ),
           ],
+          _InfoSection(item: item),
           const SizedBox(height: AppSpacing.xxl),
           Text('리뷰', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.sm),
@@ -292,5 +294,168 @@ class _TagChip extends StatelessWidget {
       child: Text(name,
           style: TextStyle(color: p.muted, fontSize: 13, fontWeight: FontWeight.w500)),
     );
+  }
+}
+
+class _InfoSection extends ConsumerWidget {
+  const _InfoSection({required this.item});
+  final RatedCatalogItem item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final infoAsync = ref.watch(itemInfoProvider((
+      kind: item.kind,
+      artist: item.primaryArtist ?? '',
+      title: item.title,
+    )));
+
+    return infoAsync.when(
+      data: (info) {
+        if (info.isEmpty) return const SizedBox.shrink();
+
+        final facts = <String>[];
+        if (info.year != null && info.year!.isNotEmpty) {
+          facts.add(info.year!);
+        }
+        if (info.album != null && info.album!.isNotEmpty) {
+          facts.add(info.album!);
+        }
+        if (info.durationMs != null && info.durationMs! > 0) {
+          final minutes = info.durationMs! ~/ 60000;
+          final seconds = (info.durationMs! % 60000) ~/ 1000;
+          facts.add('$minutes:${seconds.toString().padLeft(2, '0')}');
+        }
+
+        final stats = <String>[];
+        if (info.listeners != null) {
+          stats.add('청취자 ${_formatNumber(info.listeners!)}');
+        }
+        if (info.playcount != null) {
+          stats.add('재생수 ${_formatNumber(info.playcount!)}');
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: AppSpacing.xl),
+            
+            // Facts row: year · album · duration
+            if (facts.isNotEmpty) ...[
+              Text(
+                facts.join(' · '),
+                style: TextStyle(
+                  color: p.muted,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            // Stats row: listeners, playcount
+            if (stats.isNotEmpty) ...[
+              Text(
+                stats.join(' · '),
+                style: TextStyle(
+                  color: p.faint,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            // Summary / Bio
+            if (info.summary != null && info.summary!.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                info.summary!,
+                style: TextStyle(
+                  color: p.text,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+            ],
+
+            // Artist top tracks
+            if (item.kind == 'artist' && info.topTracks.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xl),
+              Text('인기 트랙', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.sm),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: info.topTracks.length,
+                itemBuilder: (context, index) {
+                  final trackName = info.topTracks[index];
+                  return InkWell(
+                    onTap: () {
+                      ref.read(searchQueryProvider.notifier).state = trackName;
+                      ref.read(searchKindProvider.notifier).state = 'track';
+                      context.go('/search');
+                    },
+                    borderRadius: BorderRadius.circular(AppRadii.card),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              color: p.faint,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Text(
+                              trackName,
+                              style: TextStyle(
+                                color: p.text,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: p.faint,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ],
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  String _formatNumber(int number) {
+    if (number >= 1000000) {
+      return '${(number / 1000000).toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}M';
+    }
+    if (number >= 1000) {
+      return '${(number / 1000).toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}K';
+    }
+    return number.toString();
   }
 }

@@ -113,4 +113,104 @@ void main() {
           MusicBrainzApiHttp.parseRecording('{"recordings": []}').genres, isEmpty);
     });
   });
+
+  group('LastfmApiHttp.parseTrackInfo', () {
+    test('parses track details with stats and wiki summary', () {
+      const body = '''
+      {
+        "track": {
+          "name": "Only Shallow",
+          "duration": "222000",
+          "listeners": "12000",
+          "playcount": "45000",
+          "album": {
+            "title": "Loveless"
+          },
+          "wiki": {
+            "summary": "Only Shallow is the opening track... <a href=\\"https://last.fm\\">Read more on Last.fm</a>"
+          }
+        }
+      }''';
+      final info = LastfmApiHttp.parseTrackInfo(body);
+      expect(info, isNotNull);
+      expect(info!.album, 'Loveless');
+      expect(info.durationMs, 222000);
+      expect(info.listeners, 12000);
+      expect(info.playcount, 45000);
+      expect(info.summary, 'Only Shallow is the opening track...');
+    });
+
+    test('returns null for invalid structure', () {
+      expect(LastfmApiHttp.parseTrackInfo('{}'), isNull);
+    });
+  });
+
+  group('LastfmApiHttp.parseArtistInfo', () {
+    test('parses artist stats and bio', () {
+      const body = '''
+      {
+        "artist": {
+          "name": "Slowdive",
+          "stats": {
+            "listeners": "99000",
+            "playcount": "500000"
+          },
+          "bio": {
+            "summary": "Slowdive are an English shoegaze band... <a href=\\"https://last.fm\\">Read more</a>"
+          }
+        }
+      }''';
+      final info = LastfmApiHttp.parseArtistInfo(body);
+      expect(info, isNotNull);
+      expect(info!.listeners, 99000);
+      expect(info.playcount, 500000);
+      expect(info.summary, 'Slowdive are an English shoegaze band...');
+    });
+
+    test('returns null for invalid structure', () {
+      expect(LastfmApiHttp.parseArtistInfo('{}'), isNull);
+    });
+  });
+
+  group('LastfmApiHttp.parseTopTracks', () {
+    test('parses top track names', () {
+      const body = '''
+      {
+        "toptracks": {
+          "track": [
+            {"name": "Alison"},
+            {"name": "When the Sun Hits"},
+            {"name": "Machine Gun"}
+          ]
+        }
+      }''';
+      final tracks = LastfmApiHttp.parseTopTracks(body);
+      expect(tracks, ['Alison', 'When the Sun Hits', 'Machine Gun']);
+    });
+
+    test('returns empty for invalid structure', () {
+      expect(LastfmApiHttp.parseTopTracks('{}'), isEmpty);
+    });
+  });
+
+  group('MusicBrainzApiHttp.parseRecording (extended)', () {
+    test('parses first-release-date to extract year', () {
+      const body = '''
+      {"recordings": [
+        {"title": "Only Shallow",
+         "first-release-date": "1991-11-04",
+         "tags": [{"name": "shoegaze"}]}
+      ]}''';
+      final info = MusicBrainzApiHttp.parseRecording(body);
+      expect(info.year, '1991');
+      expect(info.genres, ['shoegaze']);
+    });
+
+    test('handles missing or short date', () {
+      const body1 = '{"recordings": [{"title": "Only Shallow", "first-release-date": "199"}]}';
+      const body2 = '{"recordings": [{"title": "Only Shallow"}]}';
+      expect(MusicBrainzApiHttp.parseRecording(body1).year, isNull);
+      expect(MusicBrainzApiHttp.parseRecording(body2).year, isNull);
+    });
+  });
 }

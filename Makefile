@@ -61,6 +61,7 @@ sb-stop: ## Stop the local Supabase Docker stack
 deploy-functions: ## Deploy edge functions to the linked remote project
 	supabase functions deploy spotify-app-token --no-verify-jwt
 	supabase functions deploy lastfm-proxy --no-verify-jwt
+	supabase functions deploy musicbrainz-proxy --no-verify-jwt
 
 # ---- SQL lint ----
 .PHONY: sqlfluff

@@ -1,6 +1,8 @@
 @Tags(['golden'])
 library;
 
+import 'dart:math';
+import 'package:athens/domain/pair_selector.dart';
 import 'package:athens/data/repository/library_providers.dart';
 import 'package:athens/dev_seed.dart';
 import 'package:athens/features/home/home_screen.dart';
@@ -134,7 +136,9 @@ void main() {
       // One duel so elos differ → deterministic pair ordering.
       await notifier.recordComparison(winnerId: 'd:a', loserId: 'd:b');
       await pumpScreen(tester,
-          container: c, theme: theme, child: const DuelScreen());
+          container: c,
+          theme: theme,
+          child: DuelScreen(selector: PairSelector(random: Random(42))));
       await expectLater(find.byType(DuelScreen),
           matchesGoldenFile('duel_$mode.png'));
     });
