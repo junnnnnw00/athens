@@ -108,6 +108,39 @@ void main() {
     expect(a.comparisons, 5);
   });
 
+  test('removeItem deletes the rating locally and remotely', () async {
+    await repo.addItem(_item('spotify:a', 'A'));
+    await repo.addItem(_item('spotify:b', 'B'));
+    await repo.recordComparison(winnerId: 'spotify:a', loserId: 'spotify:b');
+    expect((await repo.loadLibrary()).length, 2);
+
+    await repo.removeItem('spotify:a');
+
+    final local = await repo.loadLibrary();
+    expect(local.map((i) => i.id), ['spotify:b']);
+    final remoteRatings = await remote.getRatings('auth-uuid');
+    expect(remoteRatings.map((r) => r['item_id']).toList(),
+        isNot(contains('uuid-0')));
+    expect(remote.comparisons, isEmpty); // the a/b comparison was removed
+  });
+
+  test('resetForPlacement restores starting elo and clears comparisons', () async {
+    await repo.addItem(_item('spotify:a', 'A'));
+    await repo.addItem(_item('spotify:b', 'B'));
+    await repo.recordComparison(winnerId: 'spotify:a', loserId: 'spotify:b');
+    final winner =
+        (await repo.loadLibrary()).firstWhere((i) => i.id == 'spotify:a');
+    expect(winner.elo, greaterThan(1000));
+    expect(winner.comparisons, 1);
+
+    await repo.resetForPlacement('spotify:a');
+
+    final a = (await repo.loadLibrary()).firstWhere((i) => i.id == 'spotify:a');
+    expect(a.elo, 1000);
+    expect(a.comparisons, 0);
+    expect(remote.comparisons, isEmpty);
+  });
+
   test('remote failure never breaks the local write', () async {
     final repo2 =
         LibraryRepository(db: db, userId: 'auth-uuid', remote: _BoomGateway());

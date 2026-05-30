@@ -132,6 +132,37 @@ class LibraryRepository {
     return result;
   }
 
+  /// Replaces the cached tags for an item (used by the tag backfill) and pushes
+  /// the updated catalog row to Supabase so the public profile reflects them.
+  Future<void> updateItemTags(String localId, List<CatalogTag> tags) async {
+    final item = await _db.getItemById(localId);
+    if (item == null) return;
+    await _db.upsertItem(LocalItemsCompanion(
+      id: Value(item.id),
+      kind: Value(item.kind),
+      source: Value(item.source),
+      sourceId: Value(item.sourceId),
+      title: Value(item.title),
+      primaryArtist: Value(item.primaryArtist),
+      imageUrl: Value(item.imageUrl),
+      tags: Value(_encodeTags(tags)),
+    ));
+    if (!_syncEnabled) return;
+    try {
+      await _remote!.upsertItemReturningId({
+        'kind': item.kind,
+        'source': item.source,
+        'source_id': item.sourceId,
+        'title': item.title,
+        'primary_artist': item.primaryArtist,
+        'image_url': item.imageUrl,
+        'tags': tags.map((t) => {'name': t.name, 'source': t.source}).toList(),
+      });
+    } catch (_) {
+      // Best-effort — local cache already holds the tags.
+    }
+  }
+
   Future<RatedCatalogItem?> getItem(String itemId) async {
     final all = await loadLibrary();
     for (final i in all) {
@@ -163,6 +194,46 @@ class LibraryRepository {
       updatedAt: Value(DateTime.now()),
     ));
     await _pushRating(item.id, Elo.startingElo, 0);
+  }
+
+  /// Removes an item from the user's library: deletes their rating, comparisons
+  /// and review (the shared catalog row stays cached). Pushed to Supabase too.
+  Future<void> removeItem(String localId) async {
+    await _db.deleteComparisonsForItem(userId, localId);
+    await _db.deleteRatingForItem(userId, localId);
+    await _db.deleteReviewForItem(userId, localId);
+    if (!_syncEnabled) return;
+    try {
+      final uuid = await _remoteItemId(localId);
+      if (uuid == null) return;
+      await _remote!.deleteComparisonsForItem(userId, uuid);
+      await _remote!.deleteRating(userId, uuid);
+    } catch (_) {
+      // Best-effort — local removal already succeeded.
+    }
+  }
+
+  /// Resets an item to the starting Elo and clears its past comparisons so it can
+  /// be placed again from scratch (re-run the placement flow against same-kind).
+  Future<void> resetForPlacement(String localId) async {
+    if (await _db.getItemById(localId) == null) return;
+    await _db.deleteComparisonsForItem(userId, localId);
+    await _db.upsertRating(LocalRatingsCompanion(
+      id: Value(_ratingId(localId)),
+      userId: Value(userId),
+      itemId: Value(localId),
+      elo: const Value(Elo.startingElo),
+      comparisons: const Value(0),
+      updatedAt: Value(DateTime.now()),
+    ));
+    await _pushRating(localId, Elo.startingElo, 0);
+    if (!_syncEnabled) return;
+    try {
+      final uuid = await _remoteItemId(localId);
+      if (uuid != null) await _remote!.deleteComparisonsForItem(userId, uuid);
+    } catch (_) {
+      // Best-effort.
+    }
   }
 
   /// Records a duel result: updates both Elos and stores the comparison.

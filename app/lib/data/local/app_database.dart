@@ -61,7 +61,8 @@ class LocalReviews extends Table {
 // Database
 // ============================================================================
 
-@DriftDatabase(tables: [LocalItems, LocalRatings, LocalComparisons, LocalReviews])
+@DriftDatabase(
+    tables: [LocalItems, LocalRatings, LocalComparisons, LocalReviews])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -86,9 +87,26 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertRating(LocalRatingsCompanion rating) =>
       into(localRatings).insertOnConflictUpdate(rating);
 
+  Future<void> deleteRatingForItem(String userId, String itemId) =>
+      (delete(localRatings)
+            ..where((r) => r.userId.equals(userId) & r.itemId.equals(itemId)))
+          .go();
+
   // Comparisons
   Future<void> insertComparison(LocalComparisonsCompanion comparison) =>
       into(localComparisons).insert(comparison);
+
+  Future<void> deleteComparisonsForItem(String userId, String itemId) =>
+      (delete(localComparisons)
+            ..where((c) =>
+                c.userId.equals(userId) &
+                (c.winnerItemId.equals(itemId) | c.loserItemId.equals(itemId))))
+          .go();
+
+  Future<void> deleteReviewForItem(String userId, String itemId) =>
+      (delete(localReviews)
+            ..where((r) => r.userId.equals(userId) & r.itemId.equals(itemId)))
+          .go();
 
   // Reviews
   Future<List<LocalReview>> getReviewsForUser(String userId) =>
@@ -100,6 +118,12 @@ class AppDatabase extends _$AppDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    return driftDatabase(name: 'athens_db');
+    return driftDatabase(
+      name: 'athens_db',
+      web: DriftWebOptions(
+        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+        driftWorker: Uri.parse('drift_worker.js'),
+      ),
+    );
   });
 }

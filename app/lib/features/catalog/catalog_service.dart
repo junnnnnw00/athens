@@ -126,24 +126,39 @@ class CatalogService {
 
   Future<List<CatalogTag>> enrichTags(CatalogItem item) async {
     final tags = <CatalogTag>[];
+    // For an artist item the name lives in `title`; otherwise it's the performer.
+    final artist =
+        (item.kind == 'artist' ? item.title : item.primaryArtist) ?? '';
 
     try {
-      final lfmTags = await _lastfmApi.getTopTags(
-        artist: item.primaryArtist ?? '',
-        track: item.title,
-      );
-      tags.addAll(lfmTags.map((t) => CatalogTag(name: t, source: 'lastfm')));
+      List<String> lfm;
+      if (item.kind == 'artist') {
+        lfm = await _lastfmApi.getArtistTopTags(artist: artist);
+      } else {
+        lfm = await _lastfmApi.getTopTags(artist: artist, track: item.title);
+        // Obscure tracks have no track-level tags on Last.fm, but the artist
+        // usually does — fall back so the item still gets genre/mood tags.
+        if (lfm.isEmpty && artist.isNotEmpty) {
+          lfm = await _lastfmApi.getArtistTopTags(artist: artist);
+        }
+      }
+      tags.addAll(lfm.map((t) => CatalogTag(name: t, source: 'lastfm')));
     } catch (_) {}
 
     try {
       final mbGenres = await _musicBrainzApi.getGenres(
-        artist: item.primaryArtist ?? '',
+        artist: artist,
         title: item.title,
       );
       tags.addAll(mbGenres.map((t) => CatalogTag(name: t, source: 'musicbrainz')));
     } catch (_) {}
 
-    return tags;
+    // De-dupe by lowercased name (Last.fm + MusicBrainz overlap), cap the count.
+    final seen = <String>{};
+    return tags
+        .where((t) => t.name.isNotEmpty && seen.add(t.name.toLowerCase()))
+        .take(8)
+        .toList();
   }
 }
 
@@ -260,6 +275,34 @@ class SearchController extends Notifier<SearchState> {
 
 final searchControllerProvider =
     NotifierProvider<SearchController, SearchState>(SearchController.new);
+
+/// Seed queries that drive the home recommendations. These are search *inputs*
+/// (not displayed data) — the cards shown come from the real catalog API.
+const _recommendSeeds = [
+  'Radiohead',
+  'Frank Ocean',
+  'My Bloody Valentine',
+  'Beach House',
+  'King Krule',
+  'Tyler, The Creator',
+  '검정치마',
+  'Slowdive',
+];
+
+/// A rotating set of albums to rate, fetched live and filtered to unrated items.
+final recommendationsProvider =
+    FutureProvider<List<CatalogItem>>((ref) async {
+  final svc = ref.watch(catalogServiceProvider);
+  // Rotate the seed daily so the home feed isn't identical every open.
+  final seed = _recommendSeeds[
+      DateTime.now().day % _recommendSeeds.length];
+  try {
+    final results = await svc.search(seed, kind: 'album');
+    return results.take(12).toList();
+  } catch (_) {
+    return [];
+  }
+});
 
 // Recently played (Spotify-enabled users only).
 final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {

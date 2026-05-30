@@ -12,7 +12,9 @@ abstract class SupabaseGateway {
   /// Upserts a shared catalog item (by source+source_id) and returns its uuid.
   Future<String?> upsertItemReturningId(Map<String, dynamic> item);
   Future<void> upsertRating(Map<String, dynamic> rating);
+  Future<void> deleteRating(String userId, String remoteItemId);
   Future<void> insertComparison(Map<String, dynamic> comparison);
+  Future<void> deleteComparisonsForItem(String userId, String remoteItemId);
   Future<List<Map<String, dynamic>>> getReviews(String userId);
   Future<void> upsertReview(Map<String, dynamic> review);
   Future<Map<String, dynamic>?> getProfile(String userId);
@@ -57,8 +59,24 @@ class SupabaseGatewayImpl implements SupabaseGateway {
   }
 
   @override
+  Future<void> deleteRating(String userId, String remoteItemId) async {
+    await _client
+        .from('ratings')
+        .delete()
+        .eq('user_id', userId)
+        .eq('item_id', remoteItemId);
+  }
+
+  @override
   Future<void> insertComparison(Map<String, dynamic> comparison) async {
     await _client.from('comparisons').insert(comparison);
+  }
+
+  @override
+  Future<void> deleteComparisonsForItem(
+      String userId, String remoteItemId) async {
+    await _client.from('comparisons').delete().eq('user_id', userId).or(
+        'winner_item_id.eq.$remoteItemId,loser_item_id.eq.$remoteItemId');
   }
 
   @override

@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,25 +8,47 @@ import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/filter_chips.dart';
 import '../catalog/catalog_service.dart';
+import '../../i18n.dart';
 
-const _kindLabels = {'track': '곡', 'album': '앨범', 'artist': '아티스트'};
-String _kindLabel(String k) => _kindLabels[k] ?? k;
-String _kindFromLabel(String label) =>
-    _kindLabels.entries.firstWhere((e) => e.value == label).key;
+String _localizedKindLabel(String k, AppLanguage lang, {bool plural = false}) {
+  if (lang == AppLanguage.ko) {
+    switch (k) {
+      case 'track': return '곡';
+      case 'album': return '앨범';
+      case 'artist': return '아티스트';
+      default: return k;
+    }
+  } else {
+    switch (k) {
+      case 'track': return plural ? 'tracks' : 'track';
+      case 'album': return plural ? 'albums' : 'album';
+      case 'artist': return plural ? 'artists' : 'artist';
+      default: return k;
+    }
+  }
+}
 
 class DuelScreen extends ConsumerStatefulWidget {
-  const DuelScreen({super.key, this.focusId});
+  const DuelScreen({super.key, this.focusId, this.selector});
 
   /// When set, runs *placement*: this newly added item duels existing same-kind
   /// items to find its rank, then finishes. When null, free-play duels.
   final String? focusId;
+  final PairSelector? selector;
 
   @override
   ConsumerState<DuelScreen> createState() => _DuelScreenState();
 }
 
 class _DuelScreenState extends ConsumerState<DuelScreen> {
-  final _selector = PairSelector();
+  late final PairSelector _selector;
+
+  @override
+  void initState() {
+    super.initState();
+    _selector = widget.selector ?? PairSelector();
+  }
+
   (RatedCatalogItem, RatedCatalogItem)? _pair;
   String? _picked;
 
@@ -170,9 +190,11 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
       return _PlacementDone(focusId: widget.focusId!);
     }
 
+    final lang = ref.watch(localeProvider);
+
     if (pair == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Rate')),
+        appBar: AppBar(title: Text(context.t('home_rate', ref: ref))),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xxxl),
@@ -183,14 +205,14 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 Text(
                     items.isEmpty
-                        ? '듀얼을 시작하려면 음악을 추가하세요'
-                        : '같은 종류끼리 겨뤄요 — 한 종류에 2개 이상 추가하면 시작돼요',
+                        ? context.t('duel_empty_library', ref: ref)
+                        : context.t('duel_empty_sub', ref: ref),
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: AppSpacing.xl),
                 FilledButton(
                   onPressed: () => context.go('/search'),
-                  child: const Text('음악 검색'),
+                  child: Text(context.t('lib_search_music', ref: ref)),
                 ),
               ],
             ),
@@ -201,11 +223,15 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
     final (a, b) = pair;
     final title = _placement
-        ? '새로 추가한 ${_kindLabel(a.kind)}, 어느 쪽이 더 좋아요?'
-        : '어떤 ${_kindLabel(_kind!)}이 더 좋아요?';
+        ? (lang == AppLanguage.ko
+            ? '새로 추가한 ${_localizedKindLabel(a.kind, lang)}, 어느 쪽이 더 좋아요?'
+            : 'Which ${_localizedKindLabel(a.kind, lang)} do you prefer for the new one?')
+        : (lang == AppLanguage.ko
+            ? '어떤 ${_localizedKindLabel(_kind!, lang)}이 더 좋아요?'
+            : 'Which ${_localizedKindLabel(_kind!, lang)} do you prefer?');
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rate'),
+        title: Text(context.t('home_rate', ref: ref)),
         leading: _placement
             ? IconButton(
                 icon: const Icon(Icons.close_rounded),
@@ -225,10 +251,11 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                 const SizedBox(height: AppSpacing.lg),
               ] else if (kinds.length > 1) ...[
                 FilterChips(
-                  options: [for (final k in kinds) _kindLabel(k)],
-                  selected: _kindLabel(_kind!),
+                  options: [for (final k in kinds) _localizedKindLabel(k, lang)],
+                  selected: _localizedKindLabel(_kind!, lang),
                   onSelect: (label) => setState(() {
-                    _kind = _kindFromLabel(label);
+                    final kindKey = kinds.firstWhere((k) => _localizedKindLabel(k, lang) == label);
+                    _kind = kindKey;
                     _picked = null;
                     _pair = _selectFree(items);
                   }),
@@ -264,7 +291,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
               Center(
                 child: TextButton(
                   onPressed: _picked == null ? () => _skip(items) : null,
-                  child: Text(_placement ? '잘 모르겠어요' : '건너뛰기'),
+                  child: Text(_placement ? context.t('duel_not_sure', ref: ref) : context.t('duel_skip_btn', ref: ref)),
                 ),
               ),
             ],
@@ -319,9 +346,10 @@ class _PlacementDone extends ConsumerWidget {
     final rank = item == null
         ? 0
         : sameKind.indexWhere((i) => i.id == focusId) + 1;
+    final lang = ref.watch(localeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Rate')),
+      appBar: AppBar(title: Text(context.t('home_rate', ref: ref))),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xxxl),
@@ -330,12 +358,14 @@ class _PlacementDone extends ConsumerWidget {
             children: [
               Icon(Icons.check_circle_rounded, size: 56, color: p.accent),
               const SizedBox(height: AppSpacing.lg),
-              Text('순위가 정해졌어요',
+              Text(context.t('duel_placement_complete', ref: ref),
                   style: Theme.of(context).textTheme.titleLarge),
               if (item != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  '"${item.title}" — ${_kindLabel(item.kind)} ${sameKind.length}개 중 $rank위',
+                  lang == AppLanguage.ko
+                      ? '"${item.title}" — ${_localizedKindLabel(item.kind, lang)} ${sameKind.length}개 중 $rank위'
+                      : '"${item.title}" — Rank $rank of ${sameKind.length} ${_localizedKindLabel(item.kind, lang, plural: true)}',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: p.muted),
                 ),
@@ -343,12 +373,12 @@ class _PlacementDone extends ConsumerWidget {
               const SizedBox(height: AppSpacing.xl),
               FilledButton(
                 onPressed: () => context.go('/library'),
-                child: const Text('라이브러리 보기'),
+                child: Text(context.t('duel_view_library', ref: ref)),
               ),
               const SizedBox(height: AppSpacing.sm),
               TextButton(
                 onPressed: () => context.go('/search'),
-                child: const Text('더 추가하기'),
+                child: Text(context.t('duel_add_more', ref: ref)),
               ),
             ],
           ),
@@ -392,15 +422,21 @@ class _DuelCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _BlurredArt(imageUrl: item.imageUrl, fallback: p.surface2),
+                _DuelArt(
+                    imageUrl: item.imageUrl,
+                    title: item.title,
+                    fallback: p.surface2,
+                    faint: p.faint),
+                // Bottom scrim only — keeps the album art crisp and readable up
+                // top while the title/artist stay legible over the artwork.
                 DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      begin: Alignment.topCenter,
+                      begin: Alignment.center,
                       end: Alignment.bottomCenter,
                       colors: [
-                        p.surface.withValues(alpha: 0.2),
-                        p.surface.withValues(alpha: 0.87),
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.78),
                       ],
                     ),
                   ),
@@ -416,12 +452,20 @@ class _DuelCard extends StatelessWidget {
                         Text(item.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleMedium),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
                         const SizedBox(height: 4),
                         Text(item.primaryArtist ?? '',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: Colors.white70)),
                       ],
                     ),
                   ),
@@ -435,29 +479,40 @@ class _DuelCard extends StatelessWidget {
   }
 }
 
-class _BlurredArt extends StatelessWidget {
-  const _BlurredArt({required this.imageUrl, required this.fallback});
+class _DuelArt extends StatelessWidget {
+  const _DuelArt({
+    required this.imageUrl,
+    required this.title,
+    required this.fallback,
+    required this.faint,
+  });
   final String? imageUrl;
+  final String title;
   final Color fallback;
+  final Color faint;
 
   @override
   Widget build(BuildContext context) {
     final url = imageUrl;
     if (url == null || url.isEmpty) {
-      return ColoredBox(color: fallback);
-    }
-    return ImageFiltered(
-      imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-      child: Transform.scale(
-        scale: 1.25,
-        child: Image.network(
-          url,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => ColoredBox(color: fallback),
-          loadingBuilder: (c, child, prog) =>
-              prog == null ? child : ColoredBox(color: fallback),
+      // No artwork — a clean monogram tile instead of an empty box.
+      return ColoredBox(
+        color: fallback,
+        child: Center(
+          child: Text(
+            title.isEmpty ? '♪' : title.characters.first.toUpperCase(),
+            style: TextStyle(
+                color: faint, fontSize: 48, fontWeight: FontWeight.w700),
+          ),
         ),
-      ),
+      );
+    }
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => ColoredBox(color: fallback),
+      loadingBuilder: (c, child, prog) =>
+          prog == null ? child : ColoredBox(color: fallback),
     );
   }
 }

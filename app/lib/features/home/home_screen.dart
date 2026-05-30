@@ -7,6 +7,7 @@ import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
 import '../catalog/catalog_service.dart';
+import '../../i18n.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -31,17 +32,17 @@ class HomeScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
         children: [
-          Text('오늘은 무엇을 평가할까요?',
+          Text(context.t('home_title', ref: ref),
               style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: AppSpacing.lg),
-          _DuelCallout(onTap: () => context.go('/duel')),
+          const _DuelCallout(onTap: null), // Tap behavior is embedded inside _DuelCallout or can be passed
           const SizedBox(height: AppSpacing.xxl),
-          Text('최근 들은 음악',
+          Text(context.t('home_recent', ref: ref),
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.md),
           recentAsync.when(
             loading: () => _skeletonList(p),
-            error: (e, _) => _RecentEmpty(message: '최근 재생 목록을 불러오지 못했어요'),
+            error: (e, _) => _RecentEmpty(message: context.t('home_recent_error', ref: ref)),
             data: (items) {
               // Surface only tracks the user hasn't rated yet.
               final unrated =
@@ -77,15 +78,15 @@ class HomeScreen extends ConsumerWidget {
       );
 }
 
-class _DuelCallout extends StatelessWidget {
+class _DuelCallout extends ConsumerWidget {
   const _DuelCallout({required this.onTap});
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     return GestureDetector(
-      onTap: onTap,
+      onTap: onTap ?? () => context.go('/duel'),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.xl),
         decoration: BoxDecoration(
@@ -100,13 +101,13 @@ class _DuelCallout extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('듀얼 시작하기',
+                  Text(context.t('home_start_duel', ref: ref),
                       style: Theme.of(context)
                           .textTheme
                           .titleMedium
                           ?.copyWith(color: p.accentText)),
                   const SizedBox(height: 2),
-                  Text('둘 중 더 좋은 걸 고르면 순위가 매겨져요',
+                  Text(context.t('home_start_duel_sub', ref: ref),
                       style: TextStyle(color: p.accentText, fontSize: 13)),
                 ],
               ),
@@ -119,13 +120,54 @@ class _DuelCallout extends StatelessWidget {
   }
 }
 
-class _RecentCard extends ConsumerWidget {
+class _RecentCard extends ConsumerStatefulWidget {
   const _RecentCard({required this.item});
   final CatalogItem item;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_RecentCard> createState() => _RecentCardState();
+}
+
+class _RecentCardState extends ConsumerState<_RecentCard> {
+  bool _busy = false;
+
+  Future<void> _rate() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    // Mirror the search-screen add flow: enrich tags, then run *placement*
+    // (duel against existing same-kind items) instead of a plain free duel.
+    final item = widget.item;
+    final service = ref.read(catalogServiceProvider);
+    final controller = ref.read(libraryControllerProvider.notifier);
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final hasOpponents = ref
+        .read(ratedItemsProvider)
+        .any((i) => i.kind == item.kind && i.id != item.id);
+
+    var enriched = item;
+    try {
+      enriched = item.copyWithTags(await service.enrichTags(item));
+    } catch (_) {
+      // Enrichment is best-effort; add without tags on failure.
+    }
+    await controller.addItem(enriched);
+
+    if (!mounted) return;
+    if (hasOpponents) {
+      router.go('/duel/${Uri.encodeComponent(enriched.id)}');
+    } else {
+      setState(() => _busy = false);
+      messenger.showSnackBar(
+        SnackBar(content: Text('"${enriched.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final p = context.palette;
+    final item = widget.item;
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -155,13 +197,13 @@ class _RecentCard extends ConsumerWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           FilledButton(
-            onPressed: () async {
-              await ref
-                  .read(libraryControllerProvider.notifier)
-                  .addItem(item);
-              if (context.mounted) context.go('/duel');
-            },
-            child: const Text('평가'),
+            onPressed: _busy ? null : _rate,
+            child: _busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : Text(context.t('home_rate', ref: ref)),
           ),
         ],
       ),
@@ -169,12 +211,12 @@ class _RecentCard extends ConsumerWidget {
   }
 }
 
-class _RecentEmpty extends StatelessWidget {
+class _RecentEmpty extends ConsumerWidget {
   const _RecentEmpty({this.message});
   final String? message;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     return Container(
       width: double.infinity,
@@ -188,13 +230,13 @@ class _RecentEmpty extends StatelessWidget {
         children: [
           Icon(Icons.headphones_rounded, size: 40, color: p.faint),
           const SizedBox(height: AppSpacing.md),
-          Text(message ?? 'Spotify를 연결하면 최근 들은 곡이 여기에 나와요',
+          Text(message ?? context.t('home_spotify_connect_desc', ref: ref),
               textAlign: TextAlign.center,
               style: TextStyle(color: p.muted)),
           const SizedBox(height: AppSpacing.lg),
           OutlinedButton(
             onPressed: () => context.go('/spotify-connect'),
-            child: const Text('Spotify 연결'),
+            child: Text(context.t('home_spotify_connect', ref: ref)),
           ),
         ],
       ),

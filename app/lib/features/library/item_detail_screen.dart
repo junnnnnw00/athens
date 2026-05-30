@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../data/repository/library_providers.dart';
 import '../../domain/score.dart';
@@ -52,6 +53,35 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     }
   }
 
+  Future<void> _replace() async {
+    await ref
+        .read(libraryControllerProvider.notifier)
+        .resetForPlacement(widget.itemId);
+    if (mounted) {
+      context.go('/duel/${Uri.encodeComponent(widget.itemId)}');
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('라이브러리에서 삭제할까요?'),
+        content: const Text('이 항목의 평가와 비교 기록이 모두 사라져요.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: const Text('취소')),
+          FilledButton(
+              onPressed: () => Navigator.pop(c, true), child: const Text('삭제')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(libraryControllerProvider.notifier).deleteItem(widget.itemId);
+    if (mounted) context.go('/library');
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -72,7 +102,35 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final score = scoreFromElo(item.elo);
 
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (v) {
+              if (v == 'replace') _replace();
+              if (v == 'delete') _confirmDelete();
+            },
+            itemBuilder: (c) => [
+              const PopupMenuItem(
+                value: 'replace',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.refresh_rounded),
+                  title: Text('재배치고사'),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.delete_outline_rounded),
+                  title: Text('삭제'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.xl, 0, AppSpacing.xl, 110),

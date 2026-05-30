@@ -125,8 +125,22 @@ class FakeSupabaseGateway implements SupabaseGateway {
   }
 
   @override
+  Future<void> deleteRating(String userId, String remoteItemId) async {
+    _ratings.remove('${userId}_$remoteItemId');
+  }
+
+  @override
   Future<void> insertComparison(Map<String, dynamic> comparison) async {
     comparisons.add(comparison);
+  }
+
+  @override
+  Future<void> deleteComparisonsForItem(
+      String userId, String remoteItemId) async {
+    comparisons.removeWhere((c) =>
+        c['user_id'] == userId &&
+        (c['winner_item_id'] == remoteItemId ||
+            c['loser_item_id'] == remoteItemId));
   }
 
   @override

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -58,7 +60,43 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
     // Pull remote ratings into the local cache first, so a fresh browser/device
     // shows the library other devices created (no-op when signed out / offline).
     await _repo.pullRemote();
-    return _repo.loadLibrary();
+    final lib = await _repo.loadLibrary();
+    // Backfill tags for items that have none (e.g. added before the artist-tag
+    // fallback existed, or pulled from an older row). Runs detached.
+    unawaited(_backfillTags(lib));
+    return lib;
+  }
+
+  /// Best-effort: re-enrich items missing tags and persist them, then refresh
+  /// the list so the chips appear without a manual reload.
+  Future<void> _backfillTags(List<RatedCatalogItem> lib) async {
+    final missing = lib.where((i) => i.tags.isEmpty).toList();
+    if (missing.isEmpty) return;
+    final svc = ref.read(catalogServiceProvider);
+    var changed = false;
+    for (final item in missing) {
+      try {
+        final tags = await svc.enrichTags(CatalogItem(
+          id: item.id,
+          kind: item.kind,
+          title: item.title,
+          primaryArtist: item.primaryArtist,
+          imageUrl: item.imageUrl,
+        ));
+        if (tags.isNotEmpty) {
+          await _repo.updateItemTags(item.id, tags);
+          changed = true;
+        }
+      } catch (_) {
+        // Skip this item; try the rest.
+      }
+    }
+    if (!changed) return;
+    try {
+      state = AsyncData(await _repo.loadLibrary());
+    } catch (_) {
+      // Provider disposed mid-backfill — nothing to update.
+    }
   }
 
   Future<void> addItem(CatalogItem item) async {
@@ -71,6 +109,16 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
     required String loserId,
   }) async {
     await _repo.recordComparison(winnerId: winnerId, loserId: loserId);
+    await _reload();
+  }
+
+  Future<void> deleteItem(String itemId) async {
+    await _repo.removeItem(itemId);
+    await _reload();
+  }
+
+  Future<void> resetForPlacement(String itemId) async {
+    await _repo.resetForPlacement(itemId);
     await _reload();
   }
 
