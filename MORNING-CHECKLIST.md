@@ -5,6 +5,26 @@ Everything else was completed and tested automatically overnight.
 
 ---
 
+## ✅ Done this session (backend live)
+
+Project `athens` (ref `hgehnwruprjoeewrhbgg`, Seoul):
+- [x] Migrations pushed to the **live** DB (`supabase db push`) — all tables + RLS
+      + `public_profiles` view. Fixed `uuid_generate_v4()` → `gen_random_uuid()`
+      (hosted puts uuid-ossp off the search_path).
+- [x] Local `supabase db reset` applies migrations + seed clean.
+- [x] Edge functions deployed: `spotify-app-token`, `lastfm-proxy` (`--no-verify-jwt`).
+- [x] Secrets set: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `LASTFM_API_KEY`.
+- [x] Live smoke: spotify-app-token → Bearer token; lastfm-proxy → real tags;
+      Spotify catalog search returns results (dev-mode does NOT restrict search).
+
+Still manual (you): §2 Spotify allow-list, §5 Vercel deploy, §6 device test,
+§8 Google/Apple OAuth, §10 GitHub CI secrets.
+
+> ⚠️ Revoke the Personal Access Token pasted into chat
+> (supabase.com/dashboard/account/tokens) — it was used only in-memory, not stored.
+
+---
+
 ## 1. Create a Supabase Project
 
 1. Go to [supabase.com](https://supabase.com) and create a new project named `athens`.
