@@ -17,8 +17,20 @@ Project `athens` (ref `hgehnwruprjoeewrhbgg`, Seoul):
 - [x] Live smoke: spotify-app-token → Bearer token; lastfm-proxy → real tags;
       Spotify catalog search returns results (dev-mode does NOT restrict search).
 
-Still manual (you): §2 Spotify allow-list, §5 Vercel deploy, §6 device test,
-§8 Google/Apple OAuth, §10 GitHub CI secrets.
+- [x] §5 **Vercel deployed** (project `web`): live at
+      https://web-jvtw5n44a-junwoo-hong-s-projects.vercel.app — home 200,
+      `/u/<unknown>` → 404 (no data leak). Env vars set (prod/preview/dev);
+      disabled default Deployment Protection so public profiles are reachable.
+- [x] §10 **GitHub**: repo pushed to https://github.com/junnnnnw00/athens
+      (main + tags m0–m7); Actions secrets `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY`
+      set; CI Flutter version bumped 3.29→3.41.9 (flutter_lints 6 needs Dart ≥3.8).
+
+Still manual (you):
+- §2 set `spotify_enabled=true` — needs a signed-up user first (sign up in the app,
+  give me the email, I run the UPDATE).
+- §6 device test: `cd app && flutter run`.
+- §8 Google/Apple OAuth — optional; email auth already works. Needs Google Cloud /
+  Apple Developer credentials (your dashboards).
 
 > ⚠️ Revoke the Personal Access Token pasted into chat
 > (supabase.com/dashboard/account/tokens) — it was used only in-memory, not stored.
