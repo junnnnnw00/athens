@@ -2,6 +2,14 @@
 
 ## Active Blockers
 
+### macOS desktop — Spotify connect disabled (no signing cert)
+
+`flutter_secure_storage` (PKCE token store) needs the `keychain-access-groups`
+entitlement, which forces development signing — ad-hoc local macOS builds fail to
+build with it. Removed the entitlement so the app builds/runs; Spotify connect on
+desktop shows "모바일 앱에서만 지원돼요" instead. Spotify is a mobile/allow-listed
+feature, so this is fine. On iOS/Android the keychain works normally.
+
 ### APK build — no Java runtime / Android SDK on this build machine
 
 `flutter build apk --debug` fails locally: "Unable to locate a Java Runtime."
