@@ -51,16 +51,27 @@ functions. `supabase db reset` still needs Docker + the Supabase CLI linked.
 
 **To verify:** MORNING-CHECKLIST §1 / §9.
 
-### Live external APIs — exercised via fakes only
+### Live external APIs — Spotify catalog now verified live
 
 Real impls exist (`SpotifyApiHttp`, `ItunesApiHttp`, `LastfmApiHttp`,
-`MusicBrainzApiHttp`); the network boundary is faked in tests. Confirming
-dev-mode Spotify catalog access + the PKCE round-trip needs real keys + a device.
+`MusicBrainzApiHttp`); the network boundary is faked in tests. **Spotify
+catalog search is now confirmed working live** (limit=10 returns tracks +
+artists with images; see DECISIONS "Spotify dev-mode search caps"). The PKCE
+recently-played round-trip still needs a real allow-listed device session.
 
-**To verify:** MORNING-CHECKLIST §2 / §7. iTunes fallback covers Spotify gaps.
+**To verify:** MORNING-CHECKLIST §7 (PKCE on device). iTunes fallback covers
+any Spotify gap.
 
 ## Resolved
 
+- **Search capped / artist photos missing (2026-05-31):** Spotify dev-mode
+  `/search` rejects `limit>10` → every search 400'd → iTunes fallback (capped,
+  no artist art). Fixed by `kSearchPageSize=10` + offset paging + token caching
+  + removing bulk artist endpoint. Verified live. See DECISIONS.
+- **Web landing + profiles 404'd (2026-05-31):** Vercel `framework:null` served
+  static `public/` only; project had no env vars. Fixed via `web/vercel.json`
+  (`framework:nextjs`) + `NEXT_PUBLIC_SUPABASE_*` on the project. `/`, `/u/*`,
+  `/app` all 200.
 - **Web unified into one site (2026-05-31):** the two separate Vercel projects
   (`athens` Flutter static + `web` Next.js profiles) are now ONE site served by the
   `web` project — `/` landing, `/u/[handle]` SSR profile, `/app/*` Flutter. Live at

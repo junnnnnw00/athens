@@ -149,3 +149,33 @@ When a user first adds an item (song/album/artist), they pick one of 5 sentiment
 
 Applies to: search-add, home/recent-add, item detail re-rating.
 Existing items migrated +200 Elo (Supabase migration `0009`, local DB schema v2).
+
+## Spotify dev-mode search caps (2026-05-31)
+
+The Spotify app runs in **development mode**, which restricts the Web API in
+ways that silently broke catalog search. Verified live against the real app:
+
+| Restriction | Decision |
+|---|---|
+| `/v1/search` rejects `limit > 10` (HTTP 400 "Invalid limit") | Page size pinned to `kSearchPageSize = 10`; fetch more via `offset` paging (cap 1000), never a larger limit |
+| `/v1/artists?ids=` (bulk metadata) + audio-features/recommendations/related forbidden | Removed `fetchArtistImages`/`_enrichArtistImages`; artist images taken straight from the `/search` artist payload |
+| Token endpoint hammered → 429 | Cache the Client-Credentials token both in the edge function (module scope) and client-side (`SpotifyApiHttp`, ~1h) |
+| `market` filter | **Removed** — `market=KR` drops tracks unlicensed in-market, shrinking coverage ("song exists but doesn't show"). Search relevance is fine without it for a rating (non-playback) app |
+
+**Why it matters:** any `limit>10` made every Spotify search 400 → silent
+iTunes fallback (poorer coverage, NO artist artwork). That was the dominant
+cause of "results cap out / no artist photos", above the 429s. If Spotify grants
+**extended quota mode** later, the limit and bulk-endpoint caps lift.
+
+## Web deployment — framework + env must be pinned (2026-05-31)
+
+The `athens` Vercel project had `framework: null` and ZERO env vars, so:
+- It served only the static `public/` dir and 404'd all Next routes (`/`,
+  `/u/[handle]`); the Flutter bundle at `/app` masked the breakage.
+- `NEXT_PUBLIC_SUPABASE_*` were empty → every public profile `notFound()`.
+
+**Decision:** pin `framework: nextjs` in `web/vercel.json` (committed,
+reversible, overrides dashboard drift), and keep `NEXT_PUBLIC_SUPABASE_URL` +
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` (the **publishable** key — public, safe in the
+browser) set on the Vercel project for prod+preview+dev. These are config, not
+secrets, so they stay out of the repo but must exist on the project.

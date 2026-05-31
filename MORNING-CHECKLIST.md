@@ -25,10 +25,17 @@ Project `athens` (ref `hgehnwruprjoeewrhbgg`, Seoul):
       (main + tags m0–m7); Actions secrets `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY`
       set; CI Flutter version bumped 3.29→3.41.9 (flutter_lints 6 needs Dart ≥3.8).
 
+- [x] §1 Supabase + §2 Spotify app/redirect URIs — **done by you (2026-05-31)**.
+- [x] **Vercel project env vars** set: `NEXT_PUBLIC_SUPABASE_URL` +
+      `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable) on prod+preview+dev. Project
+      `framework` pinned to `nextjs` via `web/vercel.json`. Landing + profiles live.
+- [x] **Spotify catalog search verified live** — dev-mode caps `/search` at
+      `limit=10` (see DECISIONS); app pinned to 10 + offset paging. Artist images
+      render from the search payload.
+
 Still manual (you):
-- §2 set `spotify_enabled=true` — needs a signed-up user first (sign up in the app,
-  give me the email, I run the UPDATE).
-- §6 device test: `cd app && flutter run`.
+- §6 device test: `cd app && flutter run` (or `make android-install` on USB device).
+- §7 Spotify PKCE recently-played round-trip on an allow-listed device.
 - §8 Google/Apple OAuth — optional; email auth already works. Needs Google Cloud /
   Apple Developer credentials (your dashboards).
 
