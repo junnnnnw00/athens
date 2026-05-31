@@ -63,23 +63,20 @@ class SpotifyApiHttp implements SpotifyApi {
     return token;
   }
 
-  /// Catalog market. Without a market Spotify search returns inconsistent /
-  /// reduced results; pinning one improves coverage. Client-Credentials cannot
-  /// use `from_token`, so a fixed market is used.
-  static const _market = 'KR';
-
   @override
   Future<List<CatalogItem>> search(String query,
       {String types = 'track,album,artist', int offset = 0, int limit = 20}) async {
     if (query.trim().isEmpty) return [];
     final token = await _appToken();
+    // No `market` filter: it would drop tracks not licensed in that market,
+    // shrinking catalog coverage (the "song exists but doesn't show" symptom).
+    // dev-mode caps `limit` at 10 — callers must respect kSearchPageSize.
     final res = await _http.get(
       Uri.https('api.spotify.com', '/v1/search', {
         'q': query,
         'type': types,
         'limit': '$limit',
         'offset': '$offset',
-        'market': _market,
       }),
       headers: {'Authorization': 'Bearer $token'},
     );

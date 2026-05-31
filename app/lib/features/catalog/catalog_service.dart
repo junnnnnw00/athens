@@ -138,7 +138,7 @@ class CatalogService {
   /// the whole result limit to that type, so e.g. an artist's tracks aren't
   /// crowded out by albums/artists.
   Future<List<CatalogItem>> search(String query,
-      {String kind = 'all', int offset = 0, int limit = 20}) async {
+      {String kind = 'all', int offset = 0, int limit = kSearchPageSize}) async {
     final (spotifyTypes, itunesEntity) = _kindToFilters(kind);
     // 'all' mode asks Spotify for all three types in ONE request (not three
     // parallel calls) — Spotify's `/search` accepts a combined `type` filter,
@@ -273,14 +273,16 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 /// Active search-kind filter: 'all' | 'track' | 'album' | 'artist'.
 final searchKindProvider = StateProvider<String>((ref) => 'all');
 
-/// Page size per request for single-kind (track/album/artist) searches.
-const int kSearchPageSizeSingle = 20;
+/// Page size per search request. **Hard-capped at 10**: this Spotify app runs in
+/// dev mode, whose `/search` endpoint rejects `limit > 10` with HTTP 400
+/// ("Invalid limit"). Anything above 10 made every Spotify search fail and fall
+/// back to iTunes (poorer coverage, no artist artwork). More results are fetched
+/// by paging through `offset` (the offset cap is 1000), not a bigger limit.
+const int kSearchPageSize = 10;
 
-/// Per-type page size used when fetching 'all' results (one call per type).
-const int kSearchPageSizeAll = 10;
-
-/// Kept for backwards compatibility — equals the single-kind page size.
-const int kSearchPageSize = kSearchPageSizeSingle;
+/// Aliases kept for call sites/tests; all equal [kSearchPageSize].
+const int kSearchPageSizeSingle = kSearchPageSize;
+const int kSearchPageSizeAll = kSearchPageSize;
 
 /// Accumulated, paginated search results for the current query + kind.
 class SearchState {

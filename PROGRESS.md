@@ -153,6 +153,36 @@ tests: fresh-device hydrate + last-write-wins) ✅ · rebuilt + redeployed; live
 `athens.vercel.app` `/`, `/app`, `/app/main.dart.js`, `/u/nerdyahh_` all 200 ✅.
 Web login + pull round-trip to be eyeball-confirmed by signing in on the site.
 
+## Search rate-limit fix + artist images (2026-05-31)
+
+**Symptoms reported:** songs that exist don't appear; "10+ results but not all
+shown"; no load-more; artist profile photos missing even for famous artists.
+
+**Root cause (verified live):** Spotify dev-mode **search** API was app-level
+rate-limited — `api.spotify.com/v1/search` → `HTTP 429`, `retry-after: ~530s`
+(token endpoint stayed 200). Search silently fell back to iTunes, which has
+poorer track coverage AND returns NO artist artwork (`musicArtist` results have
+no `artworkUrl`), so artists rendered as initials.
+
+**Why the quota burned:** `spotify-app-token` minted a fresh token on *every*
+call; 'all' search fired 3 parallel Spotify calls per query; `_enrichArtistImages`
+added a `/v1/artists?ids=` call (a dev-mode-forbidden bulk-metadata endpoint).
+
+**Fixes (commit a71e8a0):**
+1. Edge fn `spotify-app-token`: module-scope token cache, refresh 60s pre-expiry
+   (per-isolate; cross-isolate sharing not guaranteed but client cache dominates).
+2. `SpotifyApiHttp`: client-side token cache (holds one token ~1h); `market=KR`
+   for consistent/broader search; 429 → typed `SpotifyRateLimitException`.
+3. `CatalogService` 'all' mode: ONE combined `type=track,album,artist` call
+   (1/3 the quota); unified pagination so 'all' loads more too.
+4. Removed `_enrichArtistImages`/`fetchArtistImages` — search payload already
+   carries artist images; the bulk endpoint was forbidden + wasteful.
+
+**Checks:** `make analyze` 0 issues ✅ · `flutter test` 119 pass (added a
+429→iTunes fallback test) ✅ · edge fn redeployed ✅ · web redeployed (alias
+re-pinned). Live search 200 to be confirmed once the prior `retry-after` window
+(~9 min from the diagnostic curls) lapses.
+
 ## Genre stats & Profile Top Genres (2026-05-31)
 
 Added genre preference analysis and a top genres list to the profile page:
