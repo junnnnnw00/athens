@@ -355,20 +355,26 @@ class _PlacementDone extends ConsumerWidget {
       appBar: AppBar(title: Text(context.t('home_rate', ref: ref))),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl, vertical: AppSpacing.xl),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.check_circle_rounded, size: 48, color: p.accent),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                context.t('duel_placement_complete', ref: ref),
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle_rounded, size: 28, color: p.accent),
+                  const SizedBox(width: 8),
+                  Text(
+                    context.t('duel_placement_complete', ref: ref),
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.lg),
               if (item != null) ...[
                 Container(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   decoration: BoxDecoration(
                     color: p.surface,
                     borderRadius: BorderRadius.circular(AppRadii.card),
@@ -379,63 +385,74 @@ class _PlacementDone extends ConsumerWidget {
                       CoverArt(
                         title: item.title,
                         imageUrl: item.imageUrl,
-                        size: 140,
-                        radius: item.kind == 'artist' ? 70 : AppRadii.card,
+                        size: 110,
+                        radius: item.kind == 'artist' ? 55 : AppRadii.card,
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      const SizedBox(height: AppSpacing.md),
                       Text(
                         item.title,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        maxLines: 2,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (item.primaryArtist != null) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           item.primaryArtist!,
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: p.muted, fontSize: 14),
+                          style: TextStyle(color: p.muted, fontSize: 13),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
-                      const SizedBox(height: AppSpacing.xl),
-                      ScoreRing(
-                        score: scoreFromElo(item.elo),
-                        size: 96,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: p.accentSoft.withAlpha(38),
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                        ),
-                        child: Text(
-                          lang == AppLanguage.ko
-                              ? '${_localizedKindLabel(item.kind, lang)} ${sameKind.length}개 중 $rank위'
-                              : 'Rank $rank of ${sameKind.length} ${_localizedKindLabel(item.kind, lang, plural: true)}',
-                          style: TextStyle(
-                            color: p.accentText,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                      const SizedBox(height: AppSpacing.lg),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ScoreRing(
+                            score: scoreFromElo(item.elo),
+                            size: 64,
                           ),
-                        ),
+                          const SizedBox(width: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: p.accentSoft.withAlpha(38),
+                              borderRadius: BorderRadius.circular(AppRadii.pill),
+                            ),
+                            child: Text(
+                              lang == AppLanguage.ko
+                                  ? '${_localizedKindLabel(item.kind, lang)} ${sameKind.length}개 중 $rank위'
+                                  : 'Rank $rank of ${sameKind.length} ${_localizedKindLabel(item.kind, lang, plural: true)}',
+                              style: TextStyle(
+                                color: p.accentText,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
               ],
-              const SizedBox(height: AppSpacing.xxl),
-              FilledButton(
-                onPressed: () => context.go('/library'),
-                child: Text(context.t('duel_view_library', ref: ref)),
+              const SizedBox(height: AppSpacing.xl),
+              SizedBox(
+                width: 240,
+                child: FilledButton(
+                  onPressed: () => context.go('/library'),
+                  child: Text(context.t('duel_view_library', ref: ref)),
+                ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              TextButton(
-                onPressed: () => context.go('/search'),
-                child: Text(context.t('duel_add_more', ref: ref)),
+              const SizedBox(height: 4),
+              SizedBox(
+                width: 240,
+                child: TextButton(
+                  onPressed: () => context.go('/search'),
+                  child: Text(context.t('duel_add_more', ref: ref)),
+                ),
               ),
             ],
           ),
