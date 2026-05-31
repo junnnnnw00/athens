@@ -178,10 +178,33 @@ added a `/v1/artists?ids=` call (a dev-mode-forbidden bulk-metadata endpoint).
 4. Removed `_enrichArtistImages`/`fetchArtistImages` — search payload already
    carries artist images; the bulk endpoint was forbidden + wasteful.
 
-**Checks:** `make analyze` 0 issues ✅ · `flutter test` 119 pass (added a
-429→iTunes fallback test) ✅ · edge fn redeployed ✅ · web redeployed (alias
-re-pinned). Live search 200 to be confirmed once the prior `retry-after` window
-(~9 min from the diagnostic curls) lapses.
+**Two further root causes found + fixed (commit 4f30195):**
+5. **Spotify dev-mode caps `/search` `limit` at 10** — `limit>10` → HTTP 400
+   "Invalid limit" (verified: 10→200, 11→400; offset paging fine to ~1000).
+   The app used limit=20 everywhere → *every* Spotify search 400'd → silent
+   iTunes fallback (≤20 results, no artist artwork). This — not the 429 — was
+   the dominant cause of "results cap out / no artist photos". Set
+   `kSearchPageSize=10`; more results via `offset` paging. Dropped the
+   speculative `market=KR` (it filters tracks unlicensed in-market). With
+   Spotify search succeeding, artist images return from the search payload.
+6. **Web landing + profiles were dead** (`/`, `/u/[handle]` → 404). Vercel
+   project had `framework: null` → served only static `public/`, ignored Next
+   routing; the Flutter bundle at `/app` masked it. Project also had ZERO env
+   vars → `NEXT_PUBLIC_SUPABASE_*` empty → every profile `notFound()`. Fix:
+   pinned `framework: nextjs` via `web/vercel.json`; added
+   `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable,
+   public) to the Vercel project (prod+preview+dev).
+
+**Fresh live checks (athens.vercel.app, after final deploy):**
+| Check | Result |
+|------|--------|
+| `/` · `/u/nerdyahh_` · `/app` · `/app/main.dart.js` | all 200 ✅ |
+| `/u/nerdyahh_` SSR | `<title>nerdyahh_ — Athens</title>` ✅ |
+| Spotify search `limit=10` | 10 tracks + 10 artists, every artist has images ✅ |
+| `make analyze` / `flutter test` | 0 issues / 119 pass (added 429→iTunes test) ✅ |
+
+Non-obvious Spotify dev-mode caps saved to agent memory
+(`athens-spotify-devmode-limits`).
 
 ## Genre stats & Profile Top Genres (2026-05-31)
 
