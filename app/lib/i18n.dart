@@ -138,7 +138,7 @@ class I18n {
     'edit_display_name': {AppLanguage.ko: '표시 이름', AppLanguage.en: 'Display Name'},
     'edit_bio': {AppLanguage.ko: '소개', AppLanguage.en: 'Bio'},
     'edit_public_label': {AppLanguage.ko: '프로필 공개 여부', AppLanguage.en: 'Public Profile'},
-    'edit_public_desc': {AppLanguage.ko: '프로필을 공개하면 다른 사람도 나의 탑 10 음악 리스트를 조회할 수 있습니다.', AppLanguage.en: 'When public, others can view your Top 10 music list.'},
+    'edit_public_desc': {AppLanguage.ko: '프로필을 공개하면 다른 사람도 나의 평가된 음악 리스트를 조회할 수 있습니다.', AppLanguage.en: 'When public, others can view your rated music list.'},
     'edit_saving': {AppLanguage.ko: '저장 중...', AppLanguage.en: 'Saving...'},
     'edit_save': {AppLanguage.ko: '프로필 저장', AppLanguage.en: 'Save Profile'},
     'edit_choose_gallery': {AppLanguage.ko: '갤러리에서 선택', AppLanguage.en: 'Choose from Gallery'},
