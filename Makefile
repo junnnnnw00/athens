@@ -68,6 +68,10 @@ web-build: web-flutter ## Full production build: Flutter bundle + Next.js (local
 # CLI still uploads it for the remote `next build` to serve.
 web-deploy: web-flutter ## Build the Flutter bundle and deploy the unified site to Vercel (prod)
 	cd $(WEB) && vercel deploy --prod
+	@echo "🔗  Re-pinning domain aliases to the latest production deployment..."
+	$(eval LATEST := $(shell cd $(WEB) && vercel ls --prod 2>/dev/null | awk 'NR==3{print $$3}'))
+	@cd $(WEB) && vercel alias set $(LATEST) athens.vercel.app 2>/dev/null && echo "✅  athens.vercel.app → $(LATEST)" || echo "⚠️  alias set failed — run manually: cd web && npx vercel alias ls"
+	@cd $(WEB) && vercel alias set $(LATEST) athens-sand.vercel.app 2>/dev/null && echo "✅  athens-sand.vercel.app → $(LATEST)" || true
 
 # ---- Supabase (LOCAL is only for testing migrations; app uses hosted) ----
 .PHONY: db-reset-local sb-stop deploy-functions
