@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/repository/library_providers.dart';
 import '../../domain/pair_selector.dart';
+import '../../domain/score.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/filter_chips.dart';
+import '../../widgets/score_ring.dart';
+import '../../widgets/cover_art.dart';
 import '../catalog/catalog_service.dart';
 import '../../i18n.dart';
 
@@ -351,26 +354,80 @@ class _PlacementDone extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(context.t('home_rate', ref: ref))),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xxxl),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl, vertical: AppSpacing.xl),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.check_circle_rounded, size: 56, color: p.accent),
-              const SizedBox(height: AppSpacing.lg),
-              Text(context.t('duel_placement_complete', ref: ref),
-                  style: Theme.of(context).textTheme.titleLarge),
+              Icon(Icons.check_circle_rounded, size: 48, color: p.accent),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                context.t('duel_placement_complete', ref: ref),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
               if (item != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  lang == AppLanguage.ko
-                      ? '"${item.title}" — ${_localizedKindLabel(item.kind, lang)} ${sameKind.length}개 중 $rank위'
-                      : '"${item.title}" — Rank $rank of ${sameKind.length} ${_localizedKindLabel(item.kind, lang, plural: true)}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: p.muted),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  decoration: BoxDecoration(
+                    color: p.surface,
+                    borderRadius: BorderRadius.circular(AppRadii.card),
+                    border: Border.all(color: p.line),
+                  ),
+                  child: Column(
+                    children: [
+                      CoverArt(
+                        title: item.title,
+                        imageUrl: item.imageUrl,
+                        size: 140,
+                        radius: item.kind == 'artist' ? 70 : AppRadii.card,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        item.title,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (item.primaryArtist != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          item.primaryArtist!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: p.muted, fontSize: 14),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.xl),
+                      ScoreRing(
+                        score: scoreFromElo(item.elo),
+                        size: 96,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: p.accentSoft.withAlpha(38),
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                        child: Text(
+                          lang == AppLanguage.ko
+                              ? '${_localizedKindLabel(item.kind, lang)} ${sameKind.length}개 중 $rank위'
+                              : 'Rank $rank of ${sameKind.length} ${_localizedKindLabel(item.kind, lang, plural: true)}',
+                          style: TextStyle(
+                            color: p.accentText,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.xxl),
               FilledButton(
                 onPressed: () => context.go('/library'),
                 child: Text(context.t('duel_view_library', ref: ref)),
