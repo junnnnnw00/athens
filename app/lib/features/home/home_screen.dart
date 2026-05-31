@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/repository/library_providers.dart';
-import '../../domain/elo.dart';
+import '../../domain/score.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
 import '../catalog/catalog_service.dart';
 import '../../i18n.dart';
 import '../../widgets/update_banner.dart';
+import '../../widgets/initial_score_dialog.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -152,67 +153,22 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
     if (_busy) return;
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final startingElo = await showDialog<double>(
+    final score = await showDialog<double>(
       context: context,
-      builder: (c) {
-        final p = c.palette;
-        return SimpleDialog(
-          title: Text(
-            widget.item.kind == 'track'
-                ? '이 곡은 어땠나요?'
-                : widget.item.kind == 'album'
-                    ? '이 앨범은 어땠나요?'
-                    : '이 아티스트는 어땠나요?',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-              child: Text(
-                '"${widget.item.title}"',
-                style: TextStyle(color: p.muted, fontSize: 13),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloGood),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('좋았어요!', style: TextStyle(color: p.accentText, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloSlightlyGood),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('조금 좋아요'),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloAverage),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('평범해요'),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloSlightlyBad),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('조금 별로예요'),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloBad),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('별로예요', style: TextStyle(color: Colors.redAccent)),
-              ),
-            ),
-          ],
-        );
-      },
+      builder: (c) => InitialScoreDialog(
+        title: widget.item.kind == 'track'
+            ? '이 곡은 어땠나요?'
+            : widget.item.kind == 'album'
+                ? '이 앨범은 어땠나요?'
+                : '이 아티스트는 어땠나요?',
+        itemTitle: widget.item.title,
+        itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
+        imageUrl: widget.item.imageUrl,
+        initialValue: 5.0,
+      ),
     );
-    if (startingElo == null) return;
+    if (score == null) return;
+    final startingElo = eloFromScore(score);
 
     if (!mounted) return;
     setState(() => _busy = true);

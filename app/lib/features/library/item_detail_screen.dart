@@ -4,12 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../data/repository/library_providers.dart';
 import '../../domain/score.dart';
-import '../../domain/elo.dart';
 import '../catalog/catalog_service.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
 import '../../widgets/score_ring.dart';
+import '../../widgets/initial_score_dialog.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
   const ItemDetailScreen({super.key, required this.itemId});
@@ -58,67 +58,22 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   Future<void> _replace() async {
     final items = ref.read(ratedItemsProvider);
     final item = items.firstWhere((i) => i.id == widget.itemId);
-    final startingElo = await showDialog<double>(
+    final score = await showDialog<double>(
       context: context,
-      builder: (c) {
-        final p = c.palette;
-        return SimpleDialog(
-          title: Text(
-            item.kind == 'track'
-                ? '이 곡은 어땠나요?'
-                : item.kind == 'album'
-                    ? '이 앨범은 어땠나요?'
-                    : '이 아티스트는 어땠나요?',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-              child: Text(
-                '"${item.title}"',
-                style: TextStyle(color: p.muted, fontSize: 13),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloGood),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('좋았어요!', style: TextStyle(color: p.accentText, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloSlightlyGood),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('조금 좋아요'),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloAverage),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('평범해요'),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloSlightlyBad),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('조금 별로예요'),
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(c, Elo.startingEloBad),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8.0),
-                child: Text('별로예요', style: TextStyle(color: Colors.redAccent)),
-              ),
-            ),
-          ],
-        );
-      },
+      builder: (c) => InitialScoreDialog(
+        title: item.kind == 'track'
+            ? '이 곡은 어땠나요?'
+            : item.kind == 'album'
+                ? '이 앨범은 어땠나요?'
+                : '이 아티스트는 어땠나요?',
+        itemTitle: item.title,
+        itemArtist: item.kind == 'artist' ? null : item.primaryArtist,
+        imageUrl: item.imageUrl,
+        initialValue: scoreFromElo(item.elo),
+      ),
     );
-    if (startingElo == null) return;
+    if (score == null) return;
+    final startingElo = eloFromScore(score);
 
     if (!mounted) return;
     await ref
