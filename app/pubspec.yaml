@@ -64,6 +64,25 @@ dev_dependencies:
   freezed: ^2.5.7
   json_serializable: ^6.9.5
   riverpod_generator: ^2.6.1
+  flutter_launcher_icons: ^0.14.1
+
+# App icon (the orange bull). Regenerate platform icons with:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/icon/logo_1024.png"
+  android: true
+  adaptive_icon_background: "#F93902"
+  adaptive_icon_foreground: "assets/icon/logo_foreground.png"
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generated: true
+    image_path: "assets/icon/logo_1024.png"
+    background_color: "#F93902"
+    theme_color: "#F93902"
+  macos:
+    generated: true
+    image_path: "assets/icon/logo_1024.png"
 
 flutter:
   uses-material-design: true
