@@ -253,7 +253,7 @@ export default function Home() {
               >
                 GitHub Releases
               </a>
-              에서 최신 버전의 <code style={{ background: 'var(--line)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', fontSize: 13 }}>athens-1.1.1.apk</code> 파일을 다운로드합니다.
+              에서 최신 버전의 <code style={{ background: 'var(--line)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', fontSize: 13 }}>athens-1.1.2.apk</code> 파일을 다운로드합니다.
             </li>
             <li style={{ marginBottom: 12 }}>
               <strong style={{ color: 'var(--text)' }}>출처를 알 수 없는 앱 설치 권한 허용</strong>
