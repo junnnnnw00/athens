@@ -32,5 +32,14 @@
 	<string>Athens requires access to your photo library to choose a profile picture.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Athens requires access to your camera to take a profile picture.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>athens</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
