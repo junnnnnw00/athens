@@ -40,10 +40,10 @@ git tag "v$VERSION"
 git push origin main --tags
 
 # --- 4. Create GitHub Release and upload APK ---
-echo "🚀  Creating GitHub Release v$VERSION…"
-gh release create "v$VERSION" \
-  "$APK_PATH#athens-$VERSION.apk" \
-  --title "Athens v$VERSION" \
+echo "🚀  Creating GitHub Release v${VERSION}..."
+gh release create "v${VERSION}" \
+  "${APK_PATH}#athens-${VERSION}.apk" \
+  --title "Athens v${VERSION}" \
   --generate-notes
 
-echo "🎉  Done! APK published at: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/releases/tag/v$VERSION"
+echo "🎉  Done! APK published at: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/releases/tag/v${VERSION}"
