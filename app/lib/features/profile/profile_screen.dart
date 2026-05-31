@@ -43,7 +43,8 @@ class ProfileScreen extends ConsumerWidget {
     final profileAsync = ref.watch(myProfileProvider);
     final profile = profileAsync.valueOrNull;
     final currentLang = ref.watch(localeProvider);
-    final stats = ref.watch(statsProvider);
+    final statsAsync = ref.watch(statsProvider);
+    final stats = statsAsync.valueOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -121,7 +122,7 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             _PublicProfileCard(handle: profile.handle, isPublic: profile.isPublic),
           ],
-          if (stats.topGenres.isNotEmpty) ...[
+          if (stats != null && stats.topGenres.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
             Text(context.t('profile_top_genres', ref: ref), style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: AppSpacing.sm),

@@ -8,8 +8,10 @@ import '../features/catalog/catalog_service.dart';
 /// Spotify is unavailable or returns nothing.
 abstract class ItunesApi {
   /// [entity] is the iTunes entity filter (song,album,musicArtist by default).
+  /// [offset] is accepted for interface compatibility but ignored (iTunes does
+  /// not support reliable offset-based pagination).
   Future<List<CatalogItem>> search(String query,
-      {String entity = 'song,album,musicArtist', int offset = 0});
+      {String entity = 'song,album,musicArtist', int offset = 0, int limit = 20});
 }
 
 class ItunesApiHttp implements ItunesApi {
@@ -20,14 +22,14 @@ class ItunesApiHttp implements ItunesApi {
 
   @override
   Future<List<CatalogItem>> search(String query,
-      {String entity = 'song,album,musicArtist', int offset = 0}) async {
-    final limit = entity.contains(',') ? '10' : '30';
+      {String entity = 'song,album,musicArtist',
+      int offset = 0,
+      int limit = 20}) async {
     final res = await _http.get(Uri.https('itunes.apple.com', '/search', {
       'term': query,
       'media': 'music',
       'entity': entity,
-      'limit': limit,
-      'offset': '$offset',
+      'limit': '$limit',
     }));
     if (res.statusCode != 200) {
       throw StateError('iTunes search failed: ${res.statusCode}');

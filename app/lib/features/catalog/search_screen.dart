@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,11 +20,42 @@ const _kindLabels = {
 };
 const _kindHeaders = {'track': '곡', 'album': '앨범', 'artist': '아티스트'};
 
-class SearchScreen extends ConsumerWidget {
-  const SearchScreen({super.key});
+class SearchScreen extends ConsumerStatefulWidget {
+  /// When [debounceDuration] is [Duration.zero] (the default) searches fire
+  /// immediately on every keystroke — useful for tests and direct construction.
+  /// Pass a non-zero duration (e.g. 400 ms) to debounce API calls in production.
+  const SearchScreen(
+      {super.key, this.debounceDuration = Duration.zero});
+
+  /// The debounce delay before a search fires.
+  final Duration debounceDuration;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SearchScreen> createState() => _SearchScreenState();
+}
+
+class _SearchScreenState extends ConsumerState<SearchScreen> {
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    if (widget.debounceDuration == Duration.zero) {
+      ref.read(searchQueryProvider.notifier).state = value;
+      return;
+    }
+    _debounce = Timer(widget.debounceDuration, () {
+      ref.read(searchQueryProvider.notifier).state = value;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final query = ref.watch(searchQueryProvider);
     final kind = ref.watch(searchKindProvider);
     final selectedLabel =
@@ -37,7 +70,7 @@ class SearchScreen extends ConsumerWidget {
             hintText: '트랙, 앨범, 아티스트 검색…',
             border: InputBorder.none,
           ),
-          onChanged: (v) => ref.read(searchQueryProvider.notifier).state = v,
+          onChanged: _onSearchChanged,
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),
@@ -92,7 +125,7 @@ class _SearchBody extends ConsumerWidget {
         rows.add(_ResultRow(item: item, added: addedIds.contains(item.id)));
         rows.add(Divider(height: 1, color: p.line, indent: AppSpacing.xl));
       }
-      if (kind == 'all' && group.length >= 10) {
+      if (kind == 'all' && group.length >= kSearchPageSizeAll) {
         rows.add(
           InkWell(
             onTap: () {
@@ -128,25 +161,116 @@ class _SearchBody extends ConsumerWidget {
       }
     }
     if (s.hasMore) {
-      rows.add(Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Center(
-          child: s.loadingMore
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : OutlinedButton(
-                  onPressed: () =>
-                      ref.read(searchControllerProvider.notifier).loadMore(),
-                  child: const Text('더 보기'),
+      rows.add(
+        s.loadingMore
+            ? const _LoadMoreShimmer()
+            : Padding(
+                padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.lg, horizontal: AppSpacing.xl),
+                child: Center(
+                  child: OutlinedButton(
+                    onPressed: () =>
+                        ref.read(searchControllerProvider.notifier).loadMore(),
+                    child: const Text('더 보기'),
+                  ),
                 ),
-        ),
-      ));
+              ),
+      );
     }
     return ListView(
-      padding: const EdgeInsets.only(bottom: 110),
+      padding: const EdgeInsets.only(bottom: 130),
       children: rows,
+    );
+  }
+}
+
+/// Animated shimmer row shown while loading the next page of results.
+class _LoadMoreShimmer extends StatefulWidget {
+  const _LoadMoreShimmer();
+
+  @override
+  State<_LoadMoreShimmer> createState() => _LoadMoreShimmerState();
+}
+
+class _LoadMoreShimmerState extends State<_LoadMoreShimmer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) {
+        final opacity = 0.3 + 0.5 * _anim.value;
+        return Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl, vertical: AppSpacing.md),
+          child: Row(
+            children: [
+              Opacity(
+                opacity: opacity,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: p.surface2,
+                    borderRadius: BorderRadius.circular(AppRadii.cover),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Opacity(
+                      opacity: opacity,
+                      child: Container(
+                        height: 13,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: p.surface2,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Opacity(
+                      opacity: opacity * 0.7,
+                      child: Container(
+                        height: 10,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          color: p.surface2,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -368,7 +492,7 @@ class _SearchSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     return ListView.builder(
-      padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: 110),
+      padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: 130),
       itemCount: 8,
       itemBuilder: (_, __) => Padding(
         padding: const EdgeInsets.symmetric(

@@ -1,7 +1,31 @@
+import 'dart:ui' show lerpDouble;
+
 import 'package:flutter/widgets.dart';
 
 /// Design tokens for Athens — refined minimalism, one mint accent.
 /// Source of truth: DESIGN.md. Never hardcode a color/size outside this file.
+
+/// Maps a 0–10 score to its display colour. This is *data encoding* (like album
+/// art), not chrome — a low→high spectrum (muted red → amber → mint) so a score
+/// reads at a glance. The single-accent rule still governs all UI chrome.
+Color scoreColor(double score, {bool dark = true}) {
+  final t = (score / 10).clamp(0.0, 1.0);
+  // Stops: red (0) → amber (0.5) → mint (1.0).
+  const low = Color(0xFFE5604D); // muted red
+  const mid = Color(0xFFE3B341); // amber
+  final high = dark ? const Color(0xFF56D08D) : const Color(0xFF2E9E58); // mint
+  if (t < 0.5) return _lerp(low, mid, t / 0.5);
+  return _lerp(mid, high, (t - 0.5) / 0.5);
+}
+
+Color _lerp(Color a, Color b, double t) {
+  return Color.fromARGB(
+    255,
+    lerpDouble(a.r * 255, b.r * 255, t)!.round(),
+    lerpDouble(a.g * 255, b.g * 255, t)!.round(),
+    lerpDouble(a.b * 255, b.b * 255, t)!.round(),
+  );
+}
 
 /// Color palette for a single mode (dark or light).
 @immutable

@@ -136,7 +136,7 @@ void main() {
       ];
       final stats = engine.compute(items);
       final genreNames = stats.topGenres.map((t) => t.name).toList();
-      expect(genreNames, contains('shoegaze'));
+      expect(genreNames, contains('Shoegaze'));
     });
 
     test('mood tags separated from genre tags', () {
@@ -153,8 +153,8 @@ void main() {
       final stats = engine.compute(items);
       final moodNames = stats.topMoods.map((t) => t.name).toList();
       final genreNames = stats.topGenres.map((t) => t.name).toList();
-      expect(moodNames, contains('melancholic'));
-      expect(genreNames, contains('shoegaze'));
+      expect(moodNames, contains('Melancholic'));
+      expect(genreNames, contains('Shoegaze'));
     });
   });
 
@@ -190,66 +190,70 @@ void main() {
       final stats = engine.compute(items);
       
       expect(stats.genrePreferences, isNotEmpty);
-      expect(stats.genrePreferences.first.name, 'shoegaze');
-      expect(stats.genrePreferences.first.averageScore, greaterThan(stats.genrePreferences[1].averageScore));
+      expect(stats.genrePreferences.length, 1);
+      expect(stats.genrePreferences.first.name, 'Shoegaze');
       expect(stats.genrePreferences.first.count, 2);
-      expect(stats.genrePreferences[1].name, 'indie rock');
-      expect(stats.genrePreferences[1].count, 1);
 
       expect(stats.moodPreferences, isNotEmpty);
-      expect(stats.moodPreferences.first.name, 'melancholic');
+      expect(stats.moodPreferences.first.name, 'Melancholic');
       expect(stats.moodPreferences.first.averageScore, closeTo(5.0, 0.05));
+    });
+
+    test('ignores items with comparisons < 1 in preference calculation', () {
+      final items = [
+        makeItem(
+          id: '1',
+          kind: ItemKind.track,
+          elo: 1200,
+          comparisons: 0,
+          tags: const [
+            TagEntry(name: 'shoegaze', source: 'lastfm'),
+          ],
+        ),
+        makeItem(
+          id: '2',
+          kind: ItemKind.track,
+          elo: 800,
+          comparisons: 5,
+          tags: const [
+            TagEntry(name: 'shoegaze', source: 'lastfm'),
+          ],
+        ),
+      ];
+      final stats = engine.compute(items);
+      expect(stats.genrePreferences.first.name, 'Shoegaze');
+      expect(stats.genrePreferences.first.count, 1);
+      expect(stats.genrePreferences.first.averageScore, closeTo(2.68, 0.01));
     });
   });
 
   group('StatsEngine.compute — activityOverTime', () {
     test('groups comparisons by day', () {
-      final items = [
-        makeItem(
-          id: '1',
-          kind: ItemKind.track,
-          comparisons: 5,
-          updatedAt: DateTime(2026, 1, 10),
-        ),
-        makeItem(
-          id: '2',
-          kind: ItemKind.track,
-          comparisons: 3,
-          updatedAt: DateTime(2026, 1, 10),
-        ),
-        makeItem(
-          id: '3',
-          kind: ItemKind.track,
-          comparisons: 7,
-          updatedAt: DateTime(2026, 1, 11),
-        ),
+      final items = [makeItem(id: '1', kind: ItemKind.track)];
+      final dates = [
+        DateTime(2026, 1, 10, 14, 30),
+        DateTime(2026, 1, 10, 18, 0),
+        DateTime(2026, 1, 11, 9, 15),
       ];
-      final activity = engine.compute(items).activityOverTime;
+      final activity = engine.compute(items, dates).activityOverTime;
       expect(activity.length, 2);
       expect(
         activity.firstWhere((a) => a.date == DateTime(2026, 1, 10)).comparisons,
-        8,
+        2,
       );
       expect(
         activity.firstWhere((a) => a.date == DateTime(2026, 1, 11)).comparisons,
-        7,
+        1,
       );
     });
 
     test('activity is sorted chronologically', () {
-      final items = [
-        makeItem(
-          id: '1',
-          kind: ItemKind.track,
-          updatedAt: DateTime(2026, 1, 15),
-        ),
-        makeItem(
-          id: '2',
-          kind: ItemKind.track,
-          updatedAt: DateTime(2026, 1, 10),
-        ),
+      final items = [makeItem(id: '1', kind: ItemKind.track)];
+      final dates = [
+        DateTime(2026, 1, 15),
+        DateTime(2026, 1, 10),
       ];
-      final activity = engine.compute(items).activityOverTime;
+      final activity = engine.compute(items, dates).activityOverTime;
       expect(activity.first.date.isBefore(activity.last.date), isTrue);
     });
   });

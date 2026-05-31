@@ -13,8 +13,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://athens.vercel.app"),
   title: "Athens — Rate your music",
   description: "Pairwise music rating. Discover your taste.",
+  openGraph: {
+    title: "Athens — Rate your music",
+    description: "Pairwise music rating. Discover your taste.",
+    url: "https://athens.vercel.app",
+    siteName: "Athens",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

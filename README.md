@@ -2,7 +2,7 @@
 
 **Athens** is an open-source music rating app built around a pairwise "which do you prefer?" mini-game that converts head-to-head choices into per-user 0–10 scores and ranked lists.
 
-Rate tracks, albums, and artists. Get deep genre + mood tags (powered by Last.fm + MusicBrainz). Optionally connect Spotify to rate music you've actually been listening to. Share your taste with a public profile page and Instagram-story image.
+Rate tracks, albums, and artists. Get deep genre + mood tags (powered by Last.fm + MusicBrainz). Optionally connect Spotify to rate music you've actually been listening to. Share your taste with a public profile page.
 
 **One official hosted instance** — sign up at the hosted service. Source code is MIT-licensed and open to contributions.
 
@@ -15,7 +15,7 @@ Rate tracks, albums, and artists. Get deep genre + mood tags (powered by Last.fm
 - **Spotify integration** (optional, allow-listed) — import recently-played → rate what you listen to
 - **Cross-device sync** — Supabase Realtime, offline-first with local Drift cache
 - **Public profile** — shareable web page at `/u/[handle]`
-- **IG Story export** — 1080×1920 PNG with "Top 5" or "Taste Snapshot" template
+- **Public sharing** — copy a public profile link at `https://athens.vercel.app/u/[handle]`
 
 ## Tech Stack
 
@@ -26,7 +26,7 @@ Rate tracks, albums, and artists. Get deep genre + mood tags (powered by Last.fm
 | Catalog | Spotify Client Credentials (app token) + iTunes fallback |
 | Tags | Last.fm + MusicBrainz |
 | Public web | Next.js App Router (Vercel) |
-| Share image | `screenshot` + `share_plus` |
+| Share image | Temporarily hidden in the app UI |
 | Charts | `fl_chart` |
 
 ## Design

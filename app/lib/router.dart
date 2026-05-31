@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'api/supabase.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/rank/duel_screen.dart';
@@ -20,14 +20,18 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/home',
     redirect: (context, state) {
+      if (!isSupabaseInitialized) {
+        if (state.matchedLocation == '/auth') {
+          return '/home';
+        }
+        return null;
+      }
       Session? session;
-      var initialized = true;
       try {
         session = Supabase.instance.client.auth.currentSession;
       } catch (_) {
-        initialized = false; // offline / not configured — allow local use
+        // Fallback for offline network failure or transient errors
       }
-      if (!initialized) return null;
       final loggingIn = state.matchedLocation == '/auth';
       if (session == null) return loggingIn ? null : '/auth';
       if (loggingIn) return '/home';
@@ -51,9 +55,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/profile/edit',
               builder: (c, s) => const ProfileEditScreen()),
-          GoRoute(path: '/search', builder: (c, s) => const SearchScreen()),
+          GoRoute(
+              path: '/search',
+              builder: (c, s) => const SearchScreen(
+                  debounceDuration: Duration(milliseconds: 400))),
           GoRoute(
               path: '/spotify-connect',
+              builder: (c, s) => const SpotifyConnectScreen()),
+          GoRoute(
+              path: '/spotify-callback',
               builder: (c, s) => const SpotifyConnectScreen()),
           GoRoute(path: '/share', builder: (c, s) => const ShareScreen()),
           GoRoute(
@@ -97,8 +107,7 @@ class _AppShell extends StatelessWidget {
                 alignment: Alignment.bottomCenter,
                 child: FloatingNav(
                   currentIndex: _navIndex,
-                  onSelect: (i) =>
-                      context.go(i == 0 ? '/home' : '/library'),
+                  onSelect: (i) => context.go(i == 0 ? '/home' : '/library'),
                   onAdd: () => context.go('/search'),
                 ),
               ),

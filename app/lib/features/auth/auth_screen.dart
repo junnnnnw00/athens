@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../api/supabase.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -80,6 +81,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           children: [
             Text('로그인', style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 24),
+            if (!isSupabaseInitialized) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Supabase가 설정되지 않았습니다. 로컬 모드로 동작합니다.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             TextField(
               controller: _emailController,
               decoration: const InputDecoration(labelText: '이메일'),
@@ -98,7 +116,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ],
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: _isLoading ? null : _signIn,
+              onPressed: (_isLoading || !isSupabaseInitialized) ? null : _signIn,
               child: _isLoading
                   ? const SizedBox(
                       height: 16,
@@ -109,7 +127,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: _isLoading ? null : _signUp,
+              onPressed: (_isLoading || !isSupabaseInitialized) ? null : _signUp,
               child: const Text('계정 만들기'),
             ),
           ],

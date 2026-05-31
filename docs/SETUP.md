@@ -108,7 +108,7 @@ For production deploy, see [Vercel deployment](#vercel).
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your anon/publishable key
 5. Deploy
 
-Public profiles will be at `https://your-domain.vercel.app/u/[handle]`.
+Public profiles will be at `https://athens.vercel.app/u/[handle]`.
 
 ## 8. Spotify Allow-List Management
 

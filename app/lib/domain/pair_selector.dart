@@ -28,26 +28,33 @@ class PairSelector {
   (RatedItem, RatedItem)? selectPair(List<RatedItem> items) {
     if (items.length < 2) return null;
 
-    final sorted = List<RatedItem>.from(items)
-      ..sort((a, b) => a.comparisons.compareTo(b.comparisons));
+    // Map items to pairs with comparison count + random noise to safely break ties.
+    final itemsWithNoise = items
+        .map((item) => (item, item.comparisons.toDouble() + _random.nextDouble()))
+        .toList();
+    itemsWithNoise.sort((a, b) => a.$2.compareTo(b.$2));
+    
+    final sorted = itemsWithNoise.map((e) => e.$1).toList();
 
-    // Pick from bottom 20% of comparison counts with some randomness.
+    // Pick from bottom 20% of comparison counts.
     final candidateCount = (sorted.length * 0.2).ceil().clamp(1, sorted.length);
     final pivot = sorted[_random.nextInt(candidateCount)];
 
-    // Find nearest-elo opponent.
-    RatedItem? best;
-    double bestDiff = double.infinity;
+    // Find all opponents and their Elo differences.
+    final candidates = <(RatedItem, double)>[];
     for (final item in items) {
       if (item.id == pivot.id) continue;
       final diff = (item.elo - pivot.elo).abs();
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        best = item;
-      }
+      candidates.add((item, diff));
     }
 
-    if (best == null) return null;
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) => a.$2.compareTo(b.$2));
+
+    // Choose randomly from the top 3 closest opponents.
+    final poolSize = min(3, candidates.length);
+    final best = candidates[_random.nextInt(poolSize)].$1;
+
     return (pivot, best);
   }
 

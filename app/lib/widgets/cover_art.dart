@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
@@ -48,19 +49,30 @@ class CoverArt extends StatelessWidget {
   }
 
   Widget _fallback(AppPalette p) {
-    return Container(
-      color: p.surface2,
-      alignment: Alignment.center,
-      child: Text(
-        initialsOf(title),
-        style: TextStyle(
-          fontFamily: AppFonts.display,
-          fontFamilyFallback: AppFonts.fallback,
-          fontSize: size * 0.24,
-          fontWeight: FontWeight.w700,
-          color: p.faint,
-        ),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final actualSize = (size == double.infinity || size.isInfinite || size <= 0)
+            ? min(
+                constraints.maxWidth.isFinite ? constraints.maxWidth : 56.0,
+                constraints.maxHeight.isFinite ? constraints.maxHeight : 56.0,
+              )
+            : size;
+        final fontSize = actualSize * 0.24;
+        return Container(
+          color: p.surface2,
+          alignment: Alignment.center,
+          child: Text(
+            initialsOf(title),
+            style: TextStyle(
+              fontFamily: AppFonts.display,
+              fontFamilyFallback: AppFonts.fallback,
+              fontSize: fontSize <= 0 ? 14.0 : fontSize,
+              fontWeight: FontWeight.w700,
+              color: p.faint,
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,14 +1,14 @@
-# Crate — Overnight Build Prompt (Claude Code + OMC)
+# Athens — Overnight Build Prompt (Claude Code + OMC)
 
 > 사용법: 새 빈 폴더에 이 파일을 `PROMPT.md`로 저장 → 그 폴더에서 Claude Code 실행 →
 > 아래 "HOW TO RUN"의 OMC `/ralph` 명령으로 자율 실행.
-> 본문은 영어 (오픈소스 레포 + 에이전트 정확도). `Crate`는 가칭이니 자유롭게 rename ("Podiums"는 실제 앱 이름이라 사용 금지).
+> 본문은 영어 (오픈소스 레포 + 에이전트 정확도). `Athens`는 가칭이니 자유롭게 rename ("Podiums"는 실제 앱 이름이라 사용 금지).
 
 ---
 
 ## GOAL
 
-Build **Crate**: an open-source, **single centralized hosted service** (one Supabase backend that
+Build **Athens**: an open-source, **single centralized hosted service** (one Supabase backend that
 anyone can sign up for) whose source code is MIT-licensed and open to contributions. Its core
 interaction is a **pairwise "which do you prefer?" mini-game** that converts head-to-head choices
 into a per-user 0–10 score and a ranked list. Users rate tracks/albums/artists, see deep

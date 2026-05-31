@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
@@ -21,6 +22,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   bool _loaded = false;
   bool _saving = false;
   String? _error;
+  String? _avatarUrl;
+  bool _uploadingImage = false;
 
   @override
   void dispose() {
@@ -37,6 +40,76 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     _displayName.text = p.displayName ?? '';
     _bio.text = p.bio ?? '';
     _isPublic = p.isPublic;
+    _avatarUrl = p.avatarUrl;
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('갤러리에서 선택'),
+              onTap: () => Navigator.pop(context, 'pick'),
+            ),
+            if (_avatarUrl != null && _avatarUrl!.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                title: const Text('사진 삭제', style: TextStyle(color: Colors.red)),
+                onTap: () => Navigator.pop(context, 'delete'),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (action == 'delete') {
+      setState(() {
+        _avatarUrl = null;
+      });
+      return;
+    }
+
+    if (action != 'pick') return;
+
+    setState(() {
+      _uploadingImage = true;
+      _error = null;
+    });
+
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 400,
+        maxHeight: 400,
+      );
+      if (image == null) {
+        setState(() => _uploadingImage = false);
+        return;
+      }
+
+      final service = ref.read(profileServiceProvider);
+      final ext = image.name.split('.').lastOrNull ?? 'jpg';
+      final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final url = await service.uploadAvatar(image.path, fileName);
+
+      setState(() {
+        _avatarUrl = url;
+        _uploadingImage = false;
+      });
+      messenger.showSnackBar(const SnackBar(content: Text('프로필 사진 업로드됨')));
+    } catch (e) {
+      setState(() {
+        _uploadingImage = false;
+        _error = '이미지 업로드 실패: $e';
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -59,13 +132,14 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         handle: _handle.text,
         displayName: _displayName.text,
         bio: _bio.text,
+        avatarUrl: _avatarUrl,
         isPublic: _isPublic,
       );
       container.invalidate(myProfileProvider);
       messenger.showSnackBar(
         const SnackBar(content: Text('프로필 저장됨')),
       );
-      router.pop();
+      router.go('/profile');
     } on HandleTakenException {
       if (mounted) setState(() => _error = '이미 사용 중인 핸들이에요');
     } catch (e) {
@@ -94,6 +168,78 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             padding: const EdgeInsets.fromLTRB(
                 AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 40),
             children: [
+              Center(
+                child: Column(
+                  children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            color: p.surface2,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: p.line, width: 2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              )
+                            ],
+                          ),
+                          child: _avatarUrl != null && _avatarUrl!.isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(48),
+                                  child: Image.network(
+                                    _avatarUrl!,
+                                    width: 96,
+                                    height: 96,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                        Icons.person_rounded,
+                                        color: p.muted,
+                                        size: 40),
+                                  ),
+                                )
+                              : Icon(Icons.person_rounded,
+                                  color: p.muted, size: 40),
+                        ),
+                        if (_uploadingImage)
+                          Container(
+                            width: 96,
+                            height: 96,
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextButton.icon(
+                      onPressed: _uploadingImage ? null : _pickAndUploadImage,
+                      icon: const Icon(Icons.photo_library_outlined, size: 16),
+                      label: const Text('프로필 사진 변경'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: p.accentText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
               _Label('핸들'),
               TextField(
                 controller: _handle,

@@ -19,6 +19,8 @@ class ScoreRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final fraction = (score / 10).clamp(0.0, 1.0);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = scoreColor(score, dark: isDark);
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: fraction),
       duration: const Duration(milliseconds: 500),
@@ -31,7 +33,7 @@ class ScoreRing extends StatelessWidget {
             painter: _RingPainter(
               fraction: value,
               track: p.line,
-              stroke: p.accent,
+              stroke: color,
             ),
             child: Center(
               child: Text(
@@ -41,7 +43,7 @@ class ScoreRing extends StatelessWidget {
                   fontFamilyFallback: AppFonts.fallback,
                   fontSize: size * 0.29,
                   fontWeight: FontWeight.w700,
-                  color: p.accentText,
+                  color: color,
                 ),
               ),
             ),

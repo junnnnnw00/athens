@@ -1,4 +1,4 @@
-package com.crate.app.crate
+package com.athens.app.athens
 
 import io.flutter.embedding.android.FlutterActivity
 
