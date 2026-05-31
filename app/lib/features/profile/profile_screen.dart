@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../data/repository/library_providers.dart';
+import '../../api/spotify_pkce_service.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import 'profile_service.dart';
@@ -61,6 +62,9 @@ class ProfileScreen extends ConsumerWidget {
               icon: const Icon(Icons.logout_rounded),
               tooltip: context.t('profile_logout', ref: ref),
               onPressed: () async {
+                try {
+                  await SpotifyPkceService.disconnect();
+                } catch (_) {}
                 try {
                   await Supabase.instance.client.auth.signOut();
                 } catch (_) {}

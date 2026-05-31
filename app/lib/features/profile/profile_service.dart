@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../api/supabase.dart';
+import '../../data/repository/library_providers.dart';
 
 /// The signed-in user's profile row from Supabase `profiles`.
 class UserProfile {
@@ -123,5 +124,7 @@ final profileServiceProvider =
 /// The current user's profile; invalidate to refresh after an edit.
 final myProfileProvider = FutureProvider<UserProfile?>((ref) async {
   if (!isSupabaseInitialized) return null;
+  // Watch user ID to force re-evaluation when authentication changes
+  ref.watch(currentUserIdProvider);
   return ref.watch(profileServiceProvider).getMyProfile();
 });
