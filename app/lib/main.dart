@@ -1,23 +1,26 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api/spotify_pkce_service.dart';
+import 'features/spotify_connect/spotify_connect_screen.dart';
 import 'dev_seed.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 
-const _supabaseUrl =
-    String.fromEnvironment('SUPABASE_URL', defaultValue: '');
-const _supabaseAnonKey =
-    String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY', defaultValue: '');
+import 'api/supabase.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (_supabaseUrl.isNotEmpty && _supabaseAnonKey.isNotEmpty) {
-    await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
+  if (isSupabaseInitialized) {
+    await Supabase.initialize(
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey,
+      authOptions: const FlutterAuthClientOptions(detectSessionInUri: false),
+    );
   }
 
   final container = ProviderContainer();
@@ -48,14 +51,18 @@ class _AthensAppState extends ConsumerState<AthensApp> {
     _appLinks.getInitialLink().then((uri) {
       if (uri != null) _handleDeepLink(uri);
     });
+    _handleDeepLink(Uri.base);
   }
 
   Future<void> _handleDeepLink(Uri uri) async {
     final ok = await SpotifyPkceService.handleCallback(uri);
     if (ok && mounted) {
+      // Refresh the connect screen's cached state so it flips to "connected".
+      ref.invalidate(spotifyConnectedProvider);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Spotify 연결됨')),
       );
+      context.go('/spotify-connect');
     }
   }
 
