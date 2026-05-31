@@ -25,14 +25,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _signIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = '이메일과 비밀번호를 입력해주세요.');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
     });
     try {
       await Supabase.instance.client.auth.signInWithPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+        email: email,
+        password: password,
       );
       if (mounted) context.go('/home');
     } on AuthException catch (e) {
@@ -43,14 +50,25 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _signUp() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = '이메일과 비밀번호를 입력해주세요.');
+      return;
+    }
+    if (password.length < 6) {
+      setState(() => _error = '비밀번호는 최소 6글자 이상이어야 합니다.');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
     });
     try {
       final res = await Supabase.instance.client.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+        email: email,
+        password: password,
       );
       if (!mounted) return;
       if (res.session != null) {

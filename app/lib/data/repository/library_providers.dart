@@ -17,11 +17,22 @@ final appDatabaseProvider = Provider<AppDatabase>((ref) {
   return db;
 });
 
+/// A stream of Supabase AuthState changes to trigger reactivity on login/logout.
+final authStateProvider = StreamProvider<AuthState>((ref) {
+  if (isSupabaseInitialized) {
+    return Supabase.instance.client.auth.onAuthStateChange;
+  }
+  return const Stream.empty();
+});
+
 /// The active user id. Falls back to a stable local id when not signed in,
 /// so the app is fully usable offline / before auth.
 final currentUserIdProvider = Provider<String>((ref) {
   if (isSupabaseInitialized) {
     try {
+      // Listen to auth state changes to force re-evaluation
+      ref.watch(authStateProvider);
+
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) return user.id;
     } catch (_) {
@@ -58,10 +69,11 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
 
   @override
   Future<List<RatedCatalogItem>> build() async {
+    final repo = ref.watch(libraryRepositoryProvider);
     // Pull remote ratings into the local cache first, so a fresh browser/device
     // shows the library other devices created (no-op when signed out / offline).
-    await _repo.pullRemote();
-    final lib = await _repo.loadLibrary();
+    await repo.pullRemote();
+    final lib = await repo.loadLibrary();
     // Backfill tags for items that have none (e.g. added before the artist-tag
     // fallback existed, or pulled from an older row). Runs detached.
     unawaited(_backfillTags(lib));
