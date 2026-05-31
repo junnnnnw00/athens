@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/repository/library_providers.dart';
+import '../../domain/elo.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
@@ -67,6 +68,7 @@ class _SearchBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final s = ref.watch(searchControllerProvider);
+    final kind = ref.watch(searchKindProvider);
     final addedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
 
     if (s.loading) return const _SearchSkeleton();
@@ -88,6 +90,40 @@ class _SearchBody extends ConsumerWidget {
       rows.add(_SectionHeader(label: _kindHeaders[k]!, count: group.length));
       for (final item in group) {
         rows.add(_ResultRow(item: item, added: addedIds.contains(item.id)));
+        rows.add(Divider(height: 1, color: p.line, indent: AppSpacing.xl));
+      }
+      if (kind == 'all' && group.length >= 10) {
+        rows.add(
+          InkWell(
+            onTap: () {
+              ref.read(searchKindProvider.notifier).state = k;
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.md,
+                horizontal: AppSpacing.xl,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${_kindHeaders[k]} 카테고리에서 더보기',
+                    style: TextStyle(
+                      color: p.accentText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: p.accentText,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
         rows.add(Divider(height: 1, color: p.line, indent: AppSpacing.xl));
       }
     }
@@ -158,13 +194,76 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
   bool _busy = false;
 
   Future<void> _add() async {
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final startingElo = await showDialog<double>(
+      context: context,
+      builder: (c) {
+        final p = c.palette;
+        return SimpleDialog(
+          title: Text(
+            widget.item.kind == 'track'
+                ? '이 곡은 어땠나요?'
+                : widget.item.kind == 'album'
+                    ? '이 앨범은 어땠나요?'
+                    : '이 아티스트는 어땠나요?',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              child: Text(
+                '"${widget.item.title}"',
+                style: TextStyle(color: p.muted, fontSize: 13),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloGood),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('좋았어요!', style: TextStyle(color: p.accentText, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloSlightlyGood),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('조금 좋아요'),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloAverage),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('평범해요'),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloSlightlyBad),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('조금 별로예요'),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloBad),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('별로예요', style: TextStyle(color: Colors.redAccent)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (startingElo == null) return;
+
+    if (!mounted) return;
     setState(() => _busy = true);
     // Capture everything that touches ref/context BEFORE any await — the row may
     // be disposed (e.g. by navigation) while the network call is in flight.
     final service = ref.read(catalogServiceProvider);
     final controller = ref.read(libraryControllerProvider.notifier);
-    final router = GoRouter.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     // Are there already-rated items of the same kind to place this against?
     final hasOpponents = ref
         .read(ratedItemsProvider)
@@ -177,7 +276,7 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
     } catch (_) {
       // Enrichment is best-effort; add without tags on failure.
     }
-    await controller.addItem(item);
+    await controller.addItem(item, startingElo: startingElo);
 
     if (hasOpponents) {
       // Place the new item by duelling it against existing same-kind items.

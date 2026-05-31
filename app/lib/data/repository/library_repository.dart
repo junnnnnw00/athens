@@ -172,7 +172,7 @@ class LibraryRepository {
   }
 
   /// Adds a catalog item to the library (idempotent) at the starting Elo.
-  Future<void> addItem(CatalogItem item) async {
+  Future<void> addItem(CatalogItem item, {double startingElo = Elo.startingElo}) async {
     await _db.upsertItem(LocalItemsCompanion(
       id: Value(item.id),
       kind: Value(item.kind),
@@ -189,11 +189,11 @@ class LibraryRepository {
       id: Value(_ratingId(item.id)),
       userId: Value(userId),
       itemId: Value(item.id),
-      elo: const Value(Elo.startingElo),
+      elo: Value(startingElo),
       comparisons: const Value(0),
       updatedAt: Value(DateTime.now()),
     ));
-    await _pushRating(item.id, Elo.startingElo, 0);
+    await _pushRating(item.id, startingElo, 0);
   }
 
   /// Removes an item from the user's library: deletes their rating, comparisons
@@ -215,18 +215,18 @@ class LibraryRepository {
 
   /// Resets an item to the starting Elo and clears its past comparisons so it can
   /// be placed again from scratch (re-run the placement flow against same-kind).
-  Future<void> resetForPlacement(String localId) async {
+  Future<void> resetForPlacement(String localId, {double startingElo = Elo.startingElo}) async {
     if (await _db.getItemById(localId) == null) return;
     await _db.deleteComparisonsForItem(userId, localId);
     await _db.upsertRating(LocalRatingsCompanion(
       id: Value(_ratingId(localId)),
       userId: Value(userId),
       itemId: Value(localId),
-      elo: const Value(Elo.startingElo),
+      elo: Value(startingElo),
       comparisons: const Value(0),
       updatedAt: Value(DateTime.now()),
     ));
-    await _pushRating(localId, Elo.startingElo, 0);
+    await _pushRating(localId, startingElo, 0);
     if (!_syncEnabled) return;
     try {
       final uuid = await _remoteItemId(localId);
@@ -341,5 +341,10 @@ class LibraryRepository {
       ratingSnapshot: Value(ratingSnapshot),
       updatedAt: Value(DateTime.now()),
     ));
+  }
+
+  Future<List<DateTime>> getComparisonDates() async {
+    final list = await _db.getComparisonsForUser(userId);
+    return list.map((c) => c.createdAt).toList();
   }
 }

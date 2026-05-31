@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../api/supabase.dart';
+import '../../domain/elo.dart';
 import '../../features/catalog/catalog_service.dart';
 import '../local/app_database.dart';
 import '../remote/supabase_gateway.dart';
@@ -98,9 +99,9 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
     }
   }
 
-  Future<void> addItem(CatalogItem item) async {
-    await _repo.addItem(item);
-    await _reload();
+  Future<void> addItem(CatalogItem item, {double startingElo = Elo.startingEloGood}) async {
+    await _repo.addItem(item, startingElo: startingElo);
+    state = AsyncData(await _repo.loadLibrary());
   }
 
   Future<void> recordComparison({
@@ -116,8 +117,8 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
     await _reload();
   }
 
-  Future<void> resetForPlacement(String itemId) async {
-    await _repo.resetForPlacement(itemId);
+  Future<void> resetForPlacement(String itemId, {double startingElo = Elo.startingElo}) async {
+    await _repo.resetForPlacement(itemId, startingElo: startingElo);
     await _reload();
   }
 

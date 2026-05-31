@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/repository/library_providers.dart';
+import '../../domain/elo.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
@@ -16,7 +17,13 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final recentAsync = ref.watch(recentlyPlayedProvider);
-    final ratedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
+    final ratedItems = ref.watch(ratedItemsProvider);
+    final ratedIds = ratedItems.map((e) => e.id).toSet();
+    final ratedKeys = ratedItems.map((r) {
+      final title = r.title.toLowerCase().trim();
+      final artist = (r.primaryArtist ?? '').toLowerCase().trim();
+      return '${r.kind}_${title}_$artist';
+    }).toSet();
 
     return Scaffold(
       appBar: AppBar(
@@ -44,9 +51,11 @@ class HomeScreen extends ConsumerWidget {
             loading: () => _skeletonList(p),
             error: (e, _) => _RecentEmpty(message: context.t('home_recent_error', ref: ref)),
             data: (items) {
-              // Surface only tracks the user hasn't rated yet.
-              final unrated =
-                  items.where((it) => !ratedIds.contains(it.id)).toList();
+              // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
+              final unrated = items.where((it) {
+                final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
+                return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
+              }).toList();
               return unrated.isEmpty
                   ? const _RecentEmpty()
                   : Column(
@@ -133,14 +142,77 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
 
   Future<void> _rate() async {
     if (_busy) return;
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final startingElo = await showDialog<double>(
+      context: context,
+      builder: (c) {
+        final p = c.palette;
+        return SimpleDialog(
+          title: Text(
+            widget.item.kind == 'track'
+                ? '이 곡은 어땠나요?'
+                : widget.item.kind == 'album'
+                    ? '이 앨범은 어땠나요?'
+                    : '이 아티스트는 어땠나요?',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              child: Text(
+                '"${widget.item.title}"',
+                style: TextStyle(color: p.muted, fontSize: 13),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloGood),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('좋았어요!', style: TextStyle(color: p.accentText, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloSlightlyGood),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('조금 좋아요'),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloAverage),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('평범해요'),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloSlightlyBad),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('조금 별로예요'),
+              ),
+            ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(c, Elo.startingEloBad),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('별로예요', style: TextStyle(color: Colors.redAccent)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (startingElo == null) return;
+
+    if (!mounted) return;
     setState(() => _busy = true);
     // Mirror the search-screen add flow: enrich tags, then run *placement*
     // (duel against existing same-kind items) instead of a plain free duel.
     final item = widget.item;
     final service = ref.read(catalogServiceProvider);
     final controller = ref.read(libraryControllerProvider.notifier);
-    final router = GoRouter.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     final hasOpponents = ref
         .read(ratedItemsProvider)
         .any((i) => i.kind == item.kind && i.id != item.id);
@@ -151,7 +223,8 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
     } catch (_) {
       // Enrichment is best-effort; add without tags on failure.
     }
-    await controller.addItem(enriched);
+    await controller.addItem(enriched, startingElo: startingElo);
+    ref.invalidate(recentlyPlayedProvider);
 
     if (!mounted) return;
     if (hasOpponents) {

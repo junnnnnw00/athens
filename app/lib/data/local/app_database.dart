@@ -69,7 +69,21 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (m) async {
+        await m.createAll();
+      },
+      onUpgrade: (m, from, to) async {
+        if (from < 2) {
+          await customStatement('UPDATE local_ratings SET elo = elo + 200.0;');
+        }
+      },
+    );
+  }
 
   // Items
   Future<List<LocalItem>> getAllItems() => select(localItems).get();
@@ -95,6 +109,9 @@ class AppDatabase extends _$AppDatabase {
   // Comparisons
   Future<void> insertComparison(LocalComparisonsCompanion comparison) =>
       into(localComparisons).insert(comparison);
+
+  Future<List<LocalComparison>> getComparisonsForUser(String userId) =>
+      (select(localComparisons)..where((c) => c.userId.equals(userId))).get();
 
   Future<void> deleteComparisonsForItem(String userId, String itemId) =>
       (delete(localComparisons)

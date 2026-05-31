@@ -42,8 +42,9 @@ void main() {
 
     // Add the first result.
     await tester.tap(find.text('추가').first);
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('좋았어요!'));
+    await tester.pumpAndSettle();
 
     final container = ProviderScope.containerOf(
         tester.element(find.byType(SearchScreen)));

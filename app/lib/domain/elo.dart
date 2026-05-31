@@ -5,6 +5,11 @@ class Elo {
 
   static const double defaultK = 32;
   static const double startingElo = 1000;
+  static const double startingEloGood = 1200;
+  static const double startingEloSlightlyGood = 1100;
+  static const double startingEloAverage = 1000;
+  static const double startingEloSlightlyBad = 900;
+  static const double startingEloBad = 800;
 
   /// Expected score for player A against player B.
   static double expected(double a, double b) {
