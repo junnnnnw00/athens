@@ -140,7 +140,41 @@ export default function Home() {
                 <path d="m6 11 6 6 6-6" />
                 <path d="M19 21H5" />
               </svg>
-              Android 앱 다운로드
+              Android 앱
+            </a>
+            <a
+              href="https://github.com/junnnnnw00/athens/releases/latest"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                height: 50,
+                padding: '0 24px',
+                borderRadius: 999,
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                color: 'var(--text)',
+                fontWeight: 600,
+                fontSize: 15,
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 17V3" />
+                <path d="m6 11 6 6 6-6" />
+                <path d="M19 21H5" />
+              </svg>
+              macOS 앱
             </a>
             <a
               href="https://github.com/junnnnnw00/athens"
@@ -244,7 +278,7 @@ export default function Home() {
             <li style={{ marginBottom: 12 }}>
               <strong style={{ color: 'var(--text)' }}>APK 파일 다운로드</strong>
               <br />
-              위의 <span style={{ color: 'var(--accent-text)', fontWeight: 600 }}>Android 앱 다운로드</span> 버튼 또는{' '}
+              위의 <span style={{ color: 'var(--accent-text)', fontWeight: 600 }}>Android 앱</span> 버튼 또는{' '}
               <a
                 href="https://github.com/junnnnnw00/athens/releases/latest"
                 target="_blank"
@@ -253,7 +287,7 @@ export default function Home() {
               >
                 GitHub Releases
               </a>
-              에서 최신 버전의 <code style={{ background: 'var(--line)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', fontSize: 13 }}>athens-1.1.4.apk</code> 파일을 다운로드합니다.
+              에서 최신 버전의 <code style={{ background: 'var(--line)', padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', fontSize: 13 }}>athens-1.1.9.apk</code> 파일을 다운로드합니다.
             </li>
             <li style={{ marginBottom: 12 }}>
               <strong style={{ color: 'var(--text)' }}>출처를 알 수 없는 앱 설치 권한 허용</strong>
