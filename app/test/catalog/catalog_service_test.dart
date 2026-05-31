@@ -34,6 +34,19 @@ void main() {
       expect(results.first.source, 'itunes');
     });
 
+    test('falls back to iTunes when Spotify is rate-limited (429)', () async {
+      final svc = CatalogService(
+        spotifyApi: _RateLimitedSpotifyApi(),
+        itunesApi: FakeItunesApi(),
+        lastfmApi: FakeLastfmApi(),
+        musicBrainzApi: FakeMusicBrainzApi(),
+      );
+
+      final results = await svc.search('test');
+      expect(results, isNotEmpty);
+      expect(results.first.source, 'itunes');
+    });
+
     test('returns empty list for empty query', () async {
       final svc = CatalogService(
         spotifyApi: FakeSpotifyApi(),
@@ -115,8 +128,22 @@ void main() {
 class _ThrowingSpotifyApi implements SpotifyApi {
   @override
   Future<List<CatalogItem>> search(String query,
-          {String types = 'track,album,artist', int offset = 0}) =>
+          {String types = 'track,album,artist',
+          int offset = 0,
+          int limit = 20}) =>
       Future.error(Exception('Spotify unavailable'));
+
+  @override
+  Future<List<CatalogItem>> getRecentlyPlayed() => Future.value([]);
+}
+
+class _RateLimitedSpotifyApi implements SpotifyApi {
+  @override
+  Future<List<CatalogItem>> search(String query,
+          {String types = 'track,album,artist',
+          int offset = 0,
+          int limit = 20}) =>
+      Future.error(const SpotifyRateLimitException(532));
 
   @override
   Future<List<CatalogItem>> getRecentlyPlayed() => Future.value([]);

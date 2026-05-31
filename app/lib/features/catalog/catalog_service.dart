@@ -138,16 +138,20 @@ class CatalogService {
   /// the whole result limit to that type, so e.g. an artist's tracks aren't
   /// crowded out by albums/artists.
   Future<List<CatalogItem>> search(String query,
-      {String kind = 'all', int offset = 0}) async {
+      {String kind = 'all', int offset = 0, int limit = 20}) async {
     final (spotifyTypes, itunesEntity) = _kindToFilters(kind);
+    // 'all' mode asks Spotify for all three types in ONE request (not three
+    // parallel calls) — Spotify's `/search` accepts a combined `type` filter,
+    // and a single call costs 1/3 of the rate-limit budget. Artist images come
+    // straight from the search payload, so no follow-up enrichment call.
     try {
       final results = await _spotifyApi.search(query,
-          types: spotifyTypes, offset: offset);
+          types: spotifyTypes, offset: offset, limit: limit);
       if (results.isNotEmpty) return results;
     } catch (_) {
-      // Fall through to iTunes
+      // Rate-limited or unavailable → fall through to iTunes.
     }
-    return _itunesApi.search(query, entity: itunesEntity, offset: offset);
+    return _itunesApi.search(query, entity: itunesEntity, limit: limit);
   }
 
   static (String, String) _kindToFilters(String kind) => switch (kind) {
@@ -269,8 +273,14 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 /// Active search-kind filter: 'all' | 'track' | 'album' | 'artist'.
 final searchKindProvider = StateProvider<String>((ref) => 'all');
 
-/// Page size per request (mirrors the API limit).
-const int kSearchPageSize = 10;
+/// Page size per request for single-kind (track/album/artist) searches.
+const int kSearchPageSizeSingle = 20;
+
+/// Per-type page size used when fetching 'all' results (one call per type).
+const int kSearchPageSizeAll = 10;
+
+/// Kept for backwards compatibility — equals the single-kind page size.
+const int kSearchPageSize = kSearchPageSizeSingle;
 
 /// Accumulated, paginated search results for the current query + kind.
 class SearchState {
@@ -327,20 +337,28 @@ class SearchController extends Notifier<SearchState> {
   Future<void> _load(String query, String kind,
       {required bool first, required int gen}) async {
     final svc = ref.read(catalogServiceProvider);
+    // Every mode paginates the same way now: ask for [kSearchPageSize] per
+    // Spotify object type at the current offset and append. In 'all' mode the
+    // single combined call returns that many of *each* type (up to 3×), so a
+    // page is "full" whenever at least one type came back full.
+    const pageLimit = kSearchPageSize;
     try {
-      final page = await svc.search(query, kind: kind, offset: _offset);
+      final page = await svc.search(query,
+          kind: kind, offset: _offset, limit: pageLimit);
       if (gen != _generation) return; // a newer query/kind superseded this
       final fresh = page.where((i) => _seen.add(i.id)).toList();
-      final pageSize = kind == 'all' ? 10 : 30;
-      _offset += pageSize;
+      _offset += pageLimit;
+      // More pages exist when the results came from Spotify (iTunes has no
+      // reliable pagination) and a full page worth came back.
+      final hasMore = page.isNotEmpty &&
+          page.first.source != 'itunes' &&
+          page.length >= pageLimit;
       state = state.copyWith(
         items: first ? fresh : [...state.items, ...fresh],
         loading: false,
         loadingMore: false,
         error: false,
-        // If the API returned a full page, assume there may be more.
-        // Disable pagination entirely for iTunes results since it does not support it.
-        hasMore: page.isNotEmpty && page.length >= pageSize && page.first.source != 'itunes',
+        hasMore: hasMore,
       );
     } catch (_) {
       if (gen != _generation) return;

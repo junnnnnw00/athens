@@ -12,12 +12,22 @@ import 'spotify_pkce_service.dart';
 /// Catalog search uses an app-level token (Client Credentials) minted by the
 /// `spotify-app-token` edge function, so the client never holds the secret.
 /// Recently-played uses the per-user PKCE token (allow-listed users only).
+/// Thrown when Spotify replies 429. Carries the server's Retry-After (seconds)
+/// when present so callers can back off instead of hammering the rate limit.
+class SpotifyRateLimitException implements Exception {
+  const SpotifyRateLimitException(this.retryAfterSeconds);
+  final int? retryAfterSeconds;
+  @override
+  String toString() =>
+      'SpotifyRateLimitException(retryAfter: $retryAfterSeconds s)';
+}
+
 abstract class SpotifyApi {
   /// [types] is the Spotify `type` filter, e.g. 'track', 'album', 'artist', or
   /// the combined default. A single type lets the whole limit go to it.
   /// [offset] pages through results (Spotify caps offset+limit at 1000).
   Future<List<CatalogItem>> search(String query,
-      {String types = 'track,album,artist', int offset = 0});
+      {String types = 'track,album,artist', int offset = 0, int limit = 20});
   Future<List<CatalogItem>> getRecentlyPlayed();
 }
 
@@ -31,30 +41,52 @@ class SpotifyApiHttp implements SpotifyApi {
 
   SupabaseClient get _client => _providedClient ?? Supabase.instance.client;
 
+  // Client-side app-token cache. The edge function also caches, but holding the
+  // token here avoids a Supabase function round-trip on every keystroke-driven
+  // search. Refreshed 60s before expiry to absorb skew.
+  String? _cachedToken;
+  DateTime _tokenExpiry = DateTime.fromMillisecondsSinceEpoch(0);
+
   Future<String> _appToken() async {
     if (!isSupabaseInitialized) throw StateError('Supabase is not initialized');
+    final now = DateTime.now();
+    final cached = _cachedToken;
+    if (cached != null && now.isBefore(_tokenExpiry)) return cached;
+
     final res = await _client.functions.invoke('spotify-app-token');
     final data = res.data as Map<String, dynamic>;
     final token = data['access_token'] as String?;
     if (token == null) throw StateError('No Spotify app token');
+    final expiresIn = (data['expires_in'] as num?)?.toInt() ?? 3600;
+    _cachedToken = token;
+    _tokenExpiry = now.add(Duration(seconds: (expiresIn - 60).clamp(1, 3600)));
     return token;
   }
 
+  /// Catalog market. Without a market Spotify search returns inconsistent /
+  /// reduced results; pinning one improves coverage. Client-Credentials cannot
+  /// use `from_token`, so a fixed market is used.
+  static const _market = 'KR';
+
   @override
   Future<List<CatalogItem>> search(String query,
-      {String types = 'track,album,artist', int offset = 0}) async {
+      {String types = 'track,album,artist', int offset = 0, int limit = 20}) async {
     if (query.trim().isEmpty) return [];
     final token = await _appToken();
-    final limit = types.contains(',') ? '10' : '30';
     final res = await _http.get(
       Uri.https('api.spotify.com', '/v1/search', {
         'q': query,
         'type': types,
-        'limit': limit,
+        'limit': '$limit',
         'offset': '$offset',
+        'market': _market,
       }),
       headers: {'Authorization': 'Bearer $token'},
     );
+    if (res.statusCode == 429) {
+      final retry = int.tryParse(res.headers['retry-after'] ?? '');
+      throw SpotifyRateLimitException(retry);
+    }
     if (res.statusCode != 200) {
       throw StateError('Spotify search failed: ${res.statusCode}');
     }

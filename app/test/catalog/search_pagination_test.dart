@@ -6,15 +6,19 @@ import 'package:flutter_test/flutter_test.dart';
 import '../fakes/fakes.dart';
 
 /// Spotify fake that returns full pages so pagination kicks in.
+/// Returns [kSearchPageSizeSingle] items per page for two pages, then a short
+/// final page — matching single-kind pagination behaviour.
 class _PagingSpotify implements SpotifyApi {
   @override
   Future<List<CatalogItem>> search(String query,
-      {String types = 'track,album,artist', int offset = 0}) async {
-    // Two full pages (>= kSearchPageSize), then a short final page.
-    if (offset >= kSearchPageSize * 2) {
+      {String types = 'track,album,artist',
+      int offset = 0,
+      int limit = 20}) async {
+    // Two full pages (>= kSearchPageSizeSingle), then a short final page.
+    if (offset >= kSearchPageSizeSingle * 2) {
       return [_item(offset)]; // short page → hasMore false
     }
-    return List.generate(kSearchPageSize, (i) => _item(offset + i));
+    return List.generate(kSearchPageSizeSingle, (i) => _item(offset + i));
   }
 
   CatalogItem _item(int n) => CatalogItem(
@@ -46,13 +50,15 @@ void main() {
   test('first page loads and reports hasMore', () async {
     final c = makeContainer();
     addTearDown(c.dispose);
+    // Use single-kind mode so pagination is enabled.
+    c.read(searchKindProvider.notifier).state = 'track';
     c.read(searchQueryProvider.notifier).state = 'radiohead';
     // build() kicks off the async first page.
     c.read(searchControllerProvider);
     await Future<void>.delayed(const Duration(milliseconds: 10));
 
     final s = c.read(searchControllerProvider);
-    expect(s.items.length, kSearchPageSize);
+    expect(s.items.length, kSearchPageSizeSingle);
     expect(s.hasMore, isTrue);
     expect(s.loading, isFalse);
   });
@@ -60,6 +66,7 @@ void main() {
   test('loadMore appends a second page and de-dupes', () async {
     final c = makeContainer();
     addTearDown(c.dispose);
+    c.read(searchKindProvider.notifier).state = 'track';
     c.read(searchQueryProvider.notifier).state = 'radiohead';
     c.read(searchControllerProvider);
     await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -68,7 +75,7 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 10));
 
     final s = c.read(searchControllerProvider);
-    expect(s.items.length, kSearchPageSize * 2);
+    expect(s.items.length, kSearchPageSizeSingle * 2);
     // Unique ids only.
     expect(s.items.map((e) => e.id).toSet().length, s.items.length);
   });
@@ -76,6 +83,7 @@ void main() {
   test('reaching a short final page clears hasMore', () async {
     final c = makeContainer();
     addTearDown(c.dispose);
+    c.read(searchKindProvider.notifier).state = 'track';
     c.read(searchQueryProvider.notifier).state = 'radiohead';
     c.read(searchControllerProvider);
     await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -91,15 +99,18 @@ void main() {
   test('changing the query resets results', () async {
     final c = makeContainer();
     addTearDown(c.dispose);
+    c.read(searchKindProvider.notifier).state = 'track';
     c.read(searchQueryProvider.notifier).state = 'a';
     c.read(searchControllerProvider);
     await Future<void>.delayed(const Duration(milliseconds: 10));
     c.read(searchControllerProvider.notifier).loadMore();
     await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(c.read(searchControllerProvider).items.length, kSearchPageSize * 2);
+    expect(
+        c.read(searchControllerProvider).items.length, kSearchPageSizeSingle * 2);
 
     c.read(searchQueryProvider.notifier).state = 'b';
     await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(c.read(searchControllerProvider).items.length, kSearchPageSize);
+    expect(
+        c.read(searchControllerProvider).items.length, kSearchPageSizeSingle);
   });
 }
