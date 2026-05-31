@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/repository/library_providers.dart';
 import '../../api/spotify_pkce_service.dart';
@@ -258,7 +259,22 @@ class _PublicProfileCard extends ConsumerWidget {
               ],
             ),
           ),
-          if (isPublic)
+          if (isPublic) ...[
+            IconButton(
+              icon: Icon(Icons.open_in_new_rounded, size: 18, color: p.accentText),
+              tooltip: '프로필 보기',
+              onPressed: () async {
+                final uri = Uri.parse(url);
+                try {
+                  await launchUrl(
+                    uri,
+                    mode: LaunchMode.inAppBrowserView,
+                  );
+                } catch (_) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
             IconButton(
               icon: Icon(Icons.copy_rounded, size: 18, color: p.accentText),
               tooltip: context.t('profile_copy_link', ref: ref),
@@ -271,6 +287,7 @@ class _PublicProfileCard extends ConsumerWidget {
                 }
               },
             ),
+          ],
         ],
       ),
     );
