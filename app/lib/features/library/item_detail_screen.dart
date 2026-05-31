@@ -70,6 +70,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         itemArtist: item.kind == 'artist' ? null : item.primaryArtist,
         imageUrl: item.imageUrl,
         initialValue: scoreFromElo(item.elo),
+        itemKind: item.kind,
       ),
     );
     if (score == null) return;

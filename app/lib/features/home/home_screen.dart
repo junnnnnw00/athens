@@ -165,6 +165,7 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
         itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
         imageUrl: widget.item.imageUrl,
         initialValue: 5.0,
+        itemKind: widget.item.kind,
       ),
     );
     if (score == null) return;
