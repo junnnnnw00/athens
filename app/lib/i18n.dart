@@ -105,6 +105,8 @@ class I18n {
     'profile_share': {AppLanguage.ko: '취향 공유', AppLanguage.en: 'Share Taste'},
     'profile_spotify_sub': {AppLanguage.ko: '최근 들은 곡 가져오기', AppLanguage.en: 'Import recently played tracks'},
     'profile_language': {AppLanguage.ko: '언어 설정 (Language)', AppLanguage.en: 'Language Settings'},
+    'profile_feedback_title': {AppLanguage.ko: '기능 건의함', AppLanguage.en: 'Suggest Features'},
+    'profile_feedback_subtitle': {AppLanguage.ko: '의견이나 건의사항은 Instagram DM(@nerdyahh_)으로 보내주세요', AppLanguage.en: 'Send feedback or suggestions via Instagram DM (@nerdyahh_)'},
     'profile_top_genres': {AppLanguage.ko: '선호 장르', AppLanguage.en: 'Top Genres'},
     // Stats Screen
     'stats_title': {AppLanguage.ko: 'Stats', AppLanguage.en: 'Stats'},

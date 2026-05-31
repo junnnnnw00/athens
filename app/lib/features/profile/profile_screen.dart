@@ -182,6 +182,21 @@ class ProfileScreen extends ConsumerWidget {
                   builder: (context) => const _LanguageDialog(),
                 );
               }),
+          _Tile(
+              icon: Icons.chat_bubble_outline_rounded,
+              title: context.t('profile_feedback_title', ref: ref),
+              subtitle: context.t('profile_feedback_subtitle', ref: ref),
+              onTap: () async {
+                final uri = Uri.parse('https://instagram.com/nerdyahh_');
+                try {
+                  await launchUrl(
+                    uri,
+                    mode: LaunchMode.externalApplication,
+                  );
+                } catch (_) {
+                  await launchUrl(uri);
+                }
+              }),
         ],
       ),
     );
