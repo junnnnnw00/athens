@@ -52,6 +52,8 @@ android-logs: ## Stream logcat from connected device (filter by athens)
 
 
 # ---- Unified web app (Next.js host: / landing, /u/[handle] profile, /app Flutter) ----
+# Deploy pipeline: flutter build web → copy → vercel deploy --prod → re-pin aliases.
+# Always use `make web-deploy` — never run `vercel deploy` directly (aliases won't update).
 .PHONY: web-dev web-flutter web-build web-deploy
 web-dev: ## Run the host site locally (needs `make web-flutter` first for /app)
 	cd $(WEB) && npm run dev
@@ -62,16 +64,8 @@ web-flutter: ## Build the Flutter web app into web/public/app (base-href /app/)
 	cp -R $(APP)/build/web/. $(WEB)/public/app/
 web-build: web-flutter ## Full production build: Flutter bundle + Next.js (local verify)
 	cd $(WEB) && npm ci && npm run build
-# Deploy via REMOTE build: Vercel injects the real (sensitive) NEXT_PUBLIC_* env
-# vars at build time — local `vercel build` only sees empty pulled values. The Flutter
-# bundle in public/app is gitignored, so `.vercelignore` (which omits it) ensures the
-# CLI still uploads it for the remote `next build` to serve.
-web-deploy: web-flutter ## Build the Flutter bundle and deploy the unified site to Vercel (prod)
-	cd $(WEB) && vercel deploy --prod
-	@echo "🔗  Re-pinning domain aliases to the latest production deployment..."
-	$(eval LATEST := $(shell cd $(WEB) && vercel ls --prod 2>/dev/null | awk 'NR==3{print $$3}'))
-	@cd $(WEB) && vercel alias set $(LATEST) athens.vercel.app 2>/dev/null && echo "✅  athens.vercel.app → $(LATEST)" || echo "⚠️  alias set failed — run manually: cd web && npx vercel alias ls"
-	@cd $(WEB) && vercel alias set $(LATEST) athens-sand.vercel.app 2>/dev/null && echo "✅  athens-sand.vercel.app → $(LATEST)" || true
+web-deploy: ## Build Flutter bundle + deploy to Vercel + re-pin athens.vercel.app alias
+	@bash scripts/deploy-web.sh
 
 # ---- Supabase (LOCAL is only for testing migrations; app uses hosted) ----
 .PHONY: db-reset-local sb-stop deploy-functions

@@ -88,18 +88,23 @@ Still manual (you):
 
 ## 5. Deploy the unified web app (Vercel)
 
-The app + public profiles now live on ONE site (Next.js project `web` is the host;
-Flutter app is served as static assets under `/app`). See DECISIONS.md → "Web
-deployment — single unified site".
+The app + public profiles live on ONE site (`athens` Vercel project).
+URL layout: `/` landing · `/app` Flutter app · `/u/[handle]` public profiles.
 
-1. One-command deploy from the repo root: `make web-deploy`
-   - builds Flutter web `--base-href /app/` with the hosted client config,
-   - copies the bundle into `web/public/app/`,
-   - `next build`, then `vercel --prod` on the linked `web` project.
-2. Env vars on the `web` Vercel project (already set): `NEXT_PUBLIC_SUPABASE_URL`,
-   `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-3. After deploy the single domain serves:
-   - `/` landing · `/app` the app · `/u/[handle]` public profiles.
+**One-command deploy from repo root:**
+```bash
+make web-deploy
+```
+
+This runs `scripts/deploy-web.sh` which:
+1. `flutter build web` (fresh build, always)
+2. Copies bundle → `web/public/app/`
+3. `vercel deploy --prod`
+4. Automatically re-pins `athens.vercel.app` alias → latest deployment
+
+After deploy: open https://athens.vercel.app and **Cmd+Shift+R** to hard-refresh.
+
+> ⚠️ Never run `vercel deploy` directly — the alias won't update and the domain will serve stale content.
 
 ## 6. Test on Physical Device (iOS/Android)
 
