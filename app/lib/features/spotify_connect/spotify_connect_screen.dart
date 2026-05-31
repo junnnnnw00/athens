@@ -168,11 +168,10 @@ class _SpotifyConnectFlowState extends ConsumerState<_SpotifyConnectFlow> {
     // Desktop builds lack the keychain entitlement (ad-hoc signed), so the PKCE
     // token store fails there. Web + mobile use PKCE in-page / via deep link.
     if (!kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.macOS ||
-            defaultTargetPlatform == TargetPlatform.windows ||
+        (defaultTargetPlatform == TargetPlatform.windows ||
             defaultTargetPlatform == TargetPlatform.linux)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Spotify 연결은 모바일 앱에서만 지원돼요.')),
+        const SnackBar(content: Text('Spotify 연결은 모바일 및 macOS 앱에서만 지원돼요.')),
       );
       return;
     }

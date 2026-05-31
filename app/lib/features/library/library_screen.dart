@@ -83,13 +83,50 @@ class LibraryScreen extends ConsumerWidget {
                     ? Center(
                         child: Text(context.t('lib_empty_filter', ref: ref),
                             style: TextStyle(color: p.muted)))
-                    : ListView.separated(
+                    : SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.only(bottom: 110),
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) =>
-                            Divider(height: 1, color: p.line, indent: AppSpacing.xl),
-                        itemBuilder: (context, i) =>
-                            _LibraryRow(rank: i + 1, item: filtered[i]),
+                        child: Builder(
+                          builder: (context) {
+                            final tops = <double>[];
+                            final heights = <double>[];
+                            double currentTop = 0.0;
+                            for (final item in filtered) {
+                              final h = item.tags.isNotEmpty ? 126.0 : 86.0;
+                              tops.add(currentTop);
+                              heights.add(h);
+                              currentTop += h;
+                            }
+                            return SizedBox(
+                              height: currentTop,
+                              child: Stack(
+                                children: [
+                                  for (int i = 0; i < filtered.length; i++)
+                                    AnimatedPositioned(
+                                      key: ValueKey(filtered[i].id),
+                                      duration: const Duration(milliseconds: 500),
+                                      curve: Curves.easeInOut,
+                                      top: tops[i],
+                                      left: 0,
+                                      right: 0,
+                                      height: heights[i],
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: Column(
+                                          children: [
+                                            Expanded(
+                                              child: _LibraryRow(rank: i + 1, item: filtered[i]),
+                                            ),
+                                            Divider(height: 1, color: p.line, indent: AppSpacing.xl),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
               ),
             ],

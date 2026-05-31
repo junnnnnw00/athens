@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -52,11 +56,21 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     _selector = widget.selector ?? PairSelector();
   }
 
+  @override
+  void dispose() {
+    _streakTimer?.cancel();
+    super.dispose();
+  }
+
   (RatedCatalogItem, RatedCatalogItem)? _pair;
   String? _picked;
 
   /// Active duel kind (free mode only). Placement uses the focus item's kind.
   String? _kind;
+
+  int _streak = 0;
+  bool _showStreakNudge = false;
+  Timer? _streakTimer;
 
   // Placement state.
   bool get _placement => widget.focusId != null;
@@ -136,6 +150,9 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
   Future<void> _pick(String winnerId) async {
     if (_picked != null || _pair == null) return;
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      HapticFeedback.lightImpact();
+    }
     final (a, b) = _pair!;
     final loserId = winnerId == a.id ? b.id : a.id;
     setState(() => _picked = winnerId);
@@ -147,6 +164,18 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     final fresh = ref.read(ratedItemsProvider);
     setState(() {
       _picked = null;
+      _streak++;
+      if (_streak % 3 == 0) {
+        _showStreakNudge = true;
+        _streakTimer?.cancel();
+        _streakTimer = Timer(const Duration(seconds: 2), () {
+          if (mounted) {
+            setState(() {
+              _showStreakNudge = false;
+            });
+          }
+        });
+      }
       if (_placement) {
         // The opponent this round was whichever card wasn't the focus.
         final oppId = a.id == widget.focusId ? b.id : a.id;
@@ -162,6 +191,9 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
   void _skip(List<RatedCatalogItem> items) {
     setState(() {
+      _streak = 0;
+      _showStreakNudge = false;
+      _streakTimer?.cancel();
       if (_placement) {
         final (a, b) = _pair!;
         final oppId = a.id == widget.focusId ? b.id : a.id;
@@ -242,64 +274,108 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
               )
             : null,
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 100),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_placement) ...[
-                _PlacementProgress(round: _rounds, target: _target),
-                const SizedBox(height: AppSpacing.lg),
-              ] else if (kinds.length > 1) ...[
-                FilterChips(
-                  options: [for (final k in kinds) _localizedKindLabel(k, lang)],
-                  selected: _localizedKindLabel(_kind!, lang),
-                  onSelect: (label) => setState(() {
-                    final kindKey = kinds.firstWhere((k) => _localizedKindLabel(k, lang) == label);
-                    _kind = kindKey;
-                    _picked = null;
-                    _pair = _selectFree(items);
-                  }),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-              ],
-              Text(title, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: AppSpacing.lg),
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _DuelCard(
-                        item: a,
-                        dim: _picked != null && _picked != a.id,
-                        win: _picked == a.id,
-                        onTap: () => _pick(a.id),
-                      ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_placement) ...[
+                    _PlacementProgress(round: _rounds, target: _target),
+                    const SizedBox(height: AppSpacing.lg),
+                  ] else if (kinds.length > 1) ...[
+                    FilterChips(
+                      options: [for (final k in kinds) _localizedKindLabel(k, lang)],
+                      selected: _localizedKindLabel(_kind!, lang),
+                      onSelect: (label) => setState(() {
+                        final kindKey = kinds.firstWhere((k) => _localizedKindLabel(k, lang) == label);
+                        _kind = kindKey;
+                        _picked = null;
+                        _pair = _selectFree(items);
+                      }),
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: _DuelCard(
-                        item: b,
-                        dim: _picked != null && _picked != b.id,
-                        win: _picked == b.id,
-                        onTap: () => _pick(b.id),
-                      ),
-                    ),
+                    const SizedBox(height: AppSpacing.lg),
                   ],
-                ),
+                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: AppSpacing.lg),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _DuelCard(
+                            item: a,
+                            dim: _picked != null && _picked != a.id,
+                            win: _picked == a.id,
+                            onTap: () => _pick(a.id),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: _DuelCard(
+                            item: b,
+                            dim: _picked != null && _picked != b.id,
+                            win: _picked == b.id,
+                            onTap: () => _pick(b.id),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  Center(
+                    child: TextButton(
+                      onPressed: _picked == null ? () => _skip(items) : null,
+                      child: Text(_placement ? context.t('duel_not_sure', ref: ref) : context.t('duel_skip_btn', ref: ref)),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: AppSpacing.xl),
-              Center(
-                child: TextButton(
-                  onPressed: _picked == null ? () => _skip(items) : null,
-                  child: Text(_placement ? context.t('duel_not_sure', ref: ref) : context.t('duel_skip_btn', ref: ref)),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+          Positioned(
+            top: AppSpacing.sm,
+            left: 0,
+            right: 0,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: AnimatedSlide(
+                offset: _showStreakNudge ? Offset.zero : const Offset(0, -0.5),
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOutBack,
+                child: AnimatedOpacity(
+                  opacity: _showStreakNudge ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 250),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      context.t('duel_streak', args: ['$_streak'], ref: ref),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

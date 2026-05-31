@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'api/platform_storage.dart';
 
-const _storage = FlutterSecureStorage();
 const _localeKey = 'athens_locale';
 
 enum AppLanguage {
@@ -21,7 +20,7 @@ class LocaleNotifier extends StateNotifier<AppLanguage> {
 
   Future<void> _loadLocale() async {
     try {
-      final code = await _storage.read(key: _localeKey);
+      final code = await PlatformStorage.read(key: _localeKey);
       if (code == AppLanguage.en.code) {
         state = AppLanguage.en;
       } else {
@@ -34,7 +33,7 @@ class LocaleNotifier extends StateNotifier<AppLanguage> {
 
   Future<void> setLanguage(AppLanguage language) async {
     try {
-      await _storage.write(key: _localeKey, value: language.code);
+      await PlatformStorage.write(key: _localeKey, value: language.code);
     } catch (_) {}
     state = language;
   }
@@ -158,6 +157,7 @@ class I18n {
     'duel_add_more': {AppLanguage.ko: '더 추가하기', AppLanguage.en: 'Add More'},
     'duel_empty_library': {AppLanguage.ko: '듀얼을 시작하려면 음악을 추가하세요', AppLanguage.en: 'Add music to start a duel'},
     'duel_empty_sub': {AppLanguage.ko: '같은 종류끼리 겨뤄요 — 한 종류에 2개 이상 추가하면 시작돼요', AppLanguage.en: 'Compare items of the same type — add 2 or more of one type to start'},
+    'duel_streak': {AppLanguage.ko: '🔥 {0}개 연속 평가 중!', AppLanguage.en: '🔥 {0} in a row!'},
   };
 
   static String get(String key, AppLanguage lang, [List<String>? args]) {

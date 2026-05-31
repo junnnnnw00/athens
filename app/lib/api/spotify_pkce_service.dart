@@ -3,11 +3,11 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'supabase.dart';
+import 'platform_storage.dart';
 
 const _clientId = String.fromEnvironment(
   'SPOTIFY_CLIENT_ID',
@@ -15,7 +15,6 @@ const _clientId = String.fromEnvironment(
 );
 const _scopes = 'user-read-recently-played';
 
-const _storage = FlutterSecureStorage();
 const _kVerifier = 'spotify_code_verifier';
 const _kAccessToken = 'spotify_access_token';
 const _kRefreshToken = 'spotify_refresh_token';
@@ -41,7 +40,7 @@ class SpotifyPkceService {
 
   static Future<void> launchAuth() async {
     final v = _verifier();
-    await _storage.write(key: _kVerifier, value: v);
+    await PlatformStorage.write(key: _kVerifier, value: v);
     final uri = Uri.https('accounts.spotify.com', '/authorize', {
       'client_id': _clientId,
       'response_type': 'code',
@@ -70,7 +69,7 @@ class SpotifyPkceService {
     final isWebCallback = kIsWeb;
     if (!isNativeCallback && !isWebCallback) return false;
 
-    final verifier = await _storage.read(key: _kVerifier);
+    final verifier = await PlatformStorage.read(key: _kVerifier);
     if (verifier == null) return false;
 
     final res = await http.post(
@@ -92,11 +91,11 @@ class SpotifyPkceService {
         .toIso8601String();
 
     await Future.wait([
-      _storage.write(key: _kAccessToken, value: data['access_token'] as String),
-      _storage.write(
+      PlatformStorage.write(key: _kAccessToken, value: data['access_token'] as String),
+      PlatformStorage.write(
           key: _kRefreshToken, value: (data['refresh_token'] as String?) ?? ''),
-      _storage.write(key: _kExpiry, value: expiry),
-      _storage.delete(key: _kVerifier),
+      PlatformStorage.write(key: _kExpiry, value: expiry),
+      PlatformStorage.delete(key: _kVerifier),
     ]);
 
     // Fetch Spotify user ID and mark profile enabled.
@@ -122,9 +121,9 @@ class SpotifyPkceService {
   }
 
   static Future<String?> getValidAccessToken() async {
-    final token = await _storage.read(key: _kAccessToken);
+    final token = await PlatformStorage.read(key: _kAccessToken);
     if (token == null) return null;
-    final expiryStr = await _storage.read(key: _kExpiry);
+    final expiryStr = await PlatformStorage.read(key: _kExpiry);
     if (expiryStr != null) {
       final expiry = DateTime.parse(expiryStr);
       if (DateTime.now()
@@ -136,7 +135,7 @@ class SpotifyPkceService {
   }
 
   static Future<String?> _refresh() async {
-    final refreshToken = await _storage.read(key: _kRefreshToken);
+    final refreshToken = await PlatformStorage.read(key: _kRefreshToken);
     if (refreshToken == null || refreshToken.isEmpty) return null;
     final res = await http.post(
       Uri.https('accounts.spotify.com', '/api/token'),
@@ -153,17 +152,17 @@ class SpotifyPkceService {
         .add(Duration(seconds: data['expires_in'] as int))
         .toIso8601String();
     await Future.wait([
-      _storage.write(key: _kAccessToken, value: data['access_token'] as String),
-      _storage.write(key: _kExpiry, value: expiry),
+      PlatformStorage.write(key: _kAccessToken, value: data['access_token'] as String),
+      PlatformStorage.write(key: _kExpiry, value: expiry),
       if (data['refresh_token'] != null)
-        _storage.write(
+        PlatformStorage.write(
             key: _kRefreshToken, value: data['refresh_token'] as String),
     ]);
     return data['access_token'] as String;
   }
 
   static Future<bool> isConnected() async =>
-      (await _storage.read(key: _kAccessToken)) != null;
+      (await PlatformStorage.read(key: _kAccessToken)) != null;
 
   static Future<void> disconnect() async {
     if (isSupabaseInitialized) {
@@ -176,9 +175,9 @@ class SpotifyPkceService {
       }
     }
     await Future.wait([
-      _storage.delete(key: _kAccessToken),
-      _storage.delete(key: _kRefreshToken),
-      _storage.delete(key: _kExpiry),
+      PlatformStorage.delete(key: _kAccessToken),
+      PlatformStorage.delete(key: _kRefreshToken),
+      PlatformStorage.delete(key: _kExpiry),
     ]);
   }
 }

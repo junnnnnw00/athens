@@ -41,38 +41,47 @@ class HomeScreen extends ConsumerWidget {
         children: [
           const UpdateBanner(),
           Expanded(
-            child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
-        children: [
-          Text(context.t('home_title', ref: ref),
-              style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: AppSpacing.lg),
-          const _DuelCallout(onTap: null), // Tap behavior is embedded inside _DuelCallout or can be passed
-          const SizedBox(height: AppSpacing.xxl),
-          Text(context.t('home_recent', ref: ref),
-              style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.md),
-          recentAsync.when(
-            loading: () => _skeletonList(p),
-            error: (e, _) => _RecentEmpty(message: context.t('home_recent_error', ref: ref)),
-            data: (items) {
-              // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
-              final unrated = items.where((it) {
-                final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
-                return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
-              }).toList();
-              return unrated.isEmpty
-                  ? const _RecentEmpty()
-                  : Column(
-                      children: unrated
-                          .take(10)
-                          .map((it) => _RecentCard(item: it))
-                          .toList(),
-                    );
-            },
-          ),
-        ],
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(recentlyPlayedProvider);
+                try {
+                  await ref.read(recentlyPlayedProvider.future);
+                } catch (_) {}
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
+                children: [
+                  Text(context.t('home_title', ref: ref),
+                      style: Theme.of(context).textTheme.headlineSmall),
+                  const SizedBox(height: AppSpacing.lg),
+                  const _DuelCallout(onTap: null), // Tap behavior is embedded inside _DuelCallout or can be passed
+                  const SizedBox(height: AppSpacing.xxl),
+                  Text(context.t('home_recent', ref: ref),
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.md),
+                  recentAsync.when(
+                    loading: () => _skeletonList(p),
+                    error: (e, _) => _RecentEmpty(message: context.t('home_recent_error', ref: ref)),
+                    data: (items) {
+                      // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
+                      final unrated = items.where((it) {
+                        final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
+                        return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
+                      }).toList();
+                      return unrated.isEmpty
+                          ? const _RecentEmpty()
+                          : Column(
+                              children: unrated
+                                  .take(10)
+                                  .map((it) => _RecentCard(item: it))
+                                  .toList(),
+                            );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ],
