@@ -116,3 +116,36 @@ the whole pipeline.
 
 ## Package Substitutions
 None — all specified packages verified available on pub.dev.
+
+## Android distribution — sideload via APK (2026-05-31)
+
+**Decision:** No Play Store yet. Distribute signed APK via GitHub Releases; in-app update check
+polls GitHub Releases API.
+
+| Item | Detail |
+|------|--------|
+| Keystore | `app/android/app/upload-keystore.jks` (JKS, 10,000-day, RSA-2048, alias `athens`) |
+| Signing config | `app/android/key.properties` — both files gitignored |
+| Release flow | `./release-android.sh <version>` — bumps pubspec, builds APK, `git tag`, GitHub Release |
+| In-app update | `UpdateService` (Android only) polls `api.github.com/repos/junnnnnw00/athens/releases/latest` on launch |
+| Update UI | `UpdateBanner` slides in on home screen; taps → browser download of `.apk` asset |
+| Dependency added | `package_info_plus` for reading the current installed version |
+
+**Why GitHub Releases instead of a custom endpoint:** zero infrastructure cost, integrates with
+the existing repo, `gh release create` is one command, and the GitHub API returns structured
+release data (tag, assets) without auth for public repos.
+
+## Elo starting points — 5-option initial rating (2026-05-31)
+
+When a user first adds an item (song/album/artist), they pick one of 5 sentiments:
+
+| Option | Starting Elo | Constant |
+|--------|-------------|----------|
+| 좋았어요! | 1200 | `startingEloGood` |
+| 조금 좋아요 | 1100 | `startingEloSlightlyGood` |
+| 평범해요 | 1000 | `startingEloAverage` |
+| 조금 별로예요 | 900 | `startingEloSlightlyBad` |
+| 별로예요 | 800 | `startingEloBad` |
+
+Applies to: search-add, home/recent-add, item detail re-rating.
+Existing items migrated +200 Elo (Supabase migration `0009`, local DB schema v2).

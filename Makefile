@@ -34,6 +34,23 @@ build-apk: ## Debug APK (needs JDK + Android SDK)
 build-web: ## Flutter web build
 	cd $(APP) && flutter build web
 
+# ---- Android (sideload / USB) ----
+ADB := /opt/homebrew/share/android-commandlinetools/platform-tools/adb
+DEFINE_ANDROID := --dart-define-from-file=config/app_config.json
+
+.PHONY: android-run android-apk android-install android-logs
+android-run: ## Run debug build on USB-connected Android device
+	cd $(APP) && flutter run -d $(shell $(ADB) devices | awk 'NR==2{print $$1}') $(DEFINE_ANDROID)
+android-apk: ## Build signed release APK → app/build/app/outputs/flutter-apk/app-release.apk
+	cd $(APP) && flutter build apk --release $(DEFINE_ANDROID)
+	@echo "✅  APK: $(APP)/build/app/outputs/flutter-apk/app-release.apk"
+android-install: android-apk ## Build + install release APK to USB device
+	$(ADB) install -r $(APP)/build/app/outputs/flutter-apk/app-release.apk
+	@echo "✅  Installed on device"
+android-logs: ## Stream logcat from connected device (filter by athens)
+	$(ADB) logcat | grep -i athens
+
+
 # ---- Unified web app (Next.js host: / landing, /u/[handle] profile, /app Flutter) ----
 .PHONY: web-dev web-flutter web-build web-deploy
 web-dev: ## Run the host site locally (needs `make web-flutter` first for /app)

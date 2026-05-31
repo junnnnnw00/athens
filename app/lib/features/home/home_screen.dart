@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
 import '../catalog/catalog_service.dart';
 import '../../i18n.dart';
+import '../../widgets/update_banner.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -35,7 +36,11 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
+      body: Column(
+        children: [
+          const UpdateBanner(),
+          Expanded(
+            child: ListView(
         padding: const EdgeInsets.fromLTRB(
             AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
         children: [
@@ -65,6 +70,9 @@ class HomeScreen extends ConsumerWidget {
                           .toList(),
                     );
             },
+          ),
+        ],
+            ),
           ),
         ],
       ),
