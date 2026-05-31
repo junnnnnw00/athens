@@ -14,8 +14,8 @@ class UpdateService {
 
   /// Returns [UpdateInfo] if a newer version is available, else null.
   static Future<UpdateInfo?> checkForUpdate() async {
-    // Only check on Android (APK sideloading). Skip on web/iOS/desktop.
-    if (kIsWeb || !Platform.isAndroid) return null;
+    // Check on Android (APK sideloading) and macOS. Skip on web/iOS/linux/windows.
+    if (kIsWeb || (!Platform.isAndroid && !Platform.isMacOS)) return null;
 
     try {
       final info = await PackageInfo.fromPlatform();
@@ -33,14 +33,15 @@ class UpdateService {
 
       if (!_isNewer(latest, current)) return null;
 
-      // Find the APK asset URL
+      // Find the correct asset (.apk for Android, .zip for macOS)
+      final extension = Platform.isAndroid ? '.apk' : '.zip';
       final assets = data['assets'] as List<dynamic>? ?? [];
-      final apkAsset = assets.firstWhere(
-        (a) => (a['name'] as String).endsWith('.apk'),
+      final targetAsset = assets.firstWhere(
+        (a) => (a['name'] as String).endsWith(extension),
         orElse: () => null,
       );
-      final downloadUrl = apkAsset != null
-          ? apkAsset['browser_download_url'] as String
+      final downloadUrl = targetAsset != null
+          ? targetAsset['browser_download_url'] as String
           : data['html_url'] as String;
 
       return UpdateInfo(
