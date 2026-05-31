@@ -1,7 +1,7 @@
 name: athens
 description: "Athens — pairwise music rating app. Open-source, single hosted instance."
 publish_to: 'none'
-version: 1.1.0+10100
+version: 1.1.1+10101
 
 environment:
   sdk: ^3.6.0
