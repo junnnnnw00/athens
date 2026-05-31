@@ -213,6 +213,25 @@ class LibraryRepository {
     }
   }
 
+  /// Returns the current streak for an item. A positive number indicates a win streak,
+  /// and a negative number indicates a loss streak.
+  Future<int> getItemStreak(String itemId) async {
+    final comps = await _db.getComparisonsForItem(userId, itemId);
+    if (comps.isEmpty) return 0;
+    
+    final firstIsWin = comps.first.winnerItemId == itemId;
+    int count = 0;
+    for (final c in comps) {
+      final isWin = c.winnerItemId == itemId;
+      if (isWin == firstIsWin) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return firstIsWin ? count : -count;
+  }
+
   /// Resets an item to the starting Elo and clears its past comparisons so it can
   /// be placed again from scratch (re-run the placement flow against same-kind).
   Future<void> resetForPlacement(String localId, {double startingElo = Elo.startingElo}) async {

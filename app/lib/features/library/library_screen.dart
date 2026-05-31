@@ -13,14 +13,24 @@ import '../catalog/catalog_service.dart';
 import '../../i18n.dart';
 
 final _libraryFilterProvider = StateProvider<String>((ref) => 'All');
+final _lastLibraryOrderProvider = StateProvider<Map<String, List<String>>>((ref) => {});
 
-class LibraryScreen extends ConsumerWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   static const _kinds = {'Albums': 'album', 'Tracks': 'track', 'Artists': 'artist'};
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
+}
+
+class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+  List<RatedCatalogItem>? _animatedItems;
+  String? _lastFilter;
+  bool _animating = false;
+
+  @override
+  Widget build(BuildContext context) {
     final p = context.palette;
     final async = ref.watch(libraryControllerProvider);
     final filter = ref.watch(_libraryFilterProvider);
@@ -62,7 +72,79 @@ class LibraryScreen extends ConsumerWidget {
           if (items.isEmpty) return const _LibraryEmpty();
           final filtered = filter == 'All'
               ? items
-              : items.where((i) => i.kind == _kinds[filter]).toList();
+              : items.where((i) => i.kind == LibraryScreen._kinds[filter]).toList();
+
+          if (_lastFilter != filter || _animatedItems == null) {
+            _lastFilter = filter;
+            final lastOrderMap = ref.read(_lastLibraryOrderProvider);
+            final lastIds = lastOrderMap[filter];
+
+            if (lastIds != null && lastIds.isNotEmpty) {
+              final Map<String, int> orderMap = {
+                for (int i = 0; i < lastIds.length; i++) lastIds[i]: i
+              };
+              final sortedToMatchLast = List<RatedCatalogItem>.from(filtered)
+                ..sort((a, b) {
+                  final indexA = orderMap[a.id];
+                  final indexB = orderMap[b.id];
+                  if (indexA != null && indexB != null) {
+                    return indexA.compareTo(indexB);
+                  }
+                  if (indexA != null) return -1;
+                  if (indexB != null) return 1;
+                  return b.elo.compareTo(a.elo);
+                });
+              _animatedItems = sortedToMatchLast;
+
+              if (!_animating) {
+                _animating = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    Future.delayed(const Duration(milliseconds: 150), () {
+                      if (mounted) {
+                        setState(() {
+                          _animatedItems = filtered;
+                          _animating = false;
+                        });
+                        final newIds = filtered.map((i) => i.id).toList();
+                        ref.read(_lastLibraryOrderProvider.notifier).update((state) => {
+                          ...state,
+                          filter: newIds,
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+            } else {
+              _animatedItems = filtered;
+              final newIds = filtered.map((i) => i.id).toList();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  ref.read(_lastLibraryOrderProvider.notifier).update((state) => {
+                    ...state,
+                    filter: newIds,
+                  });
+                }
+              });
+            }
+          } else {
+            if (!_animating) {
+              _animatedItems = filtered;
+              final newIds = filtered.map((i) => i.id).toList();
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  ref.read(_lastLibraryOrderProvider.notifier).update((state) => {
+                    ...state,
+                    filter: newIds,
+                  });
+                }
+              });
+            }
+          }
+
+          final displayItems = _animatedItems ?? filtered;
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -79,7 +161,7 @@ class LibraryScreen extends ConsumerWidget {
                 ),
               ),
               Expanded(
-                child: filtered.isEmpty
+                child: displayItems.isEmpty
                     ? Center(
                         child: Text(context.t('lib_empty_filter', ref: ref),
                             style: TextStyle(color: p.muted)))
@@ -91,7 +173,7 @@ class LibraryScreen extends ConsumerWidget {
                             final tops = <double>[];
                             final heights = <double>[];
                             double currentTop = 0.0;
-                            for (final item in filtered) {
+                            for (final item in displayItems) {
                               final h = item.tags.isNotEmpty ? 126.0 : 86.0;
                               tops.add(currentTop);
                               heights.add(h);
@@ -101,10 +183,10 @@ class LibraryScreen extends ConsumerWidget {
                               height: currentTop,
                               child: Stack(
                                 children: [
-                                  for (int i = 0; i < filtered.length; i++)
+                                  for (int i = 0; i < displayItems.length; i++)
                                     AnimatedPositioned(
-                                      key: ValueKey(filtered[i].id),
-                                      duration: const Duration(milliseconds: 500),
+                                      key: ValueKey(displayItems[i].id),
+                                      duration: const Duration(milliseconds: 600),
                                       curve: Curves.easeInOut,
                                       top: tops[i],
                                       left: 0,
@@ -115,7 +197,7 @@ class LibraryScreen extends ConsumerWidget {
                                         child: Column(
                                           children: [
                                             Expanded(
-                                              child: _LibraryRow(rank: i + 1, item: filtered[i]),
+                                              child: _LibraryRow(rank: i + 1, item: displayItems[i]),
                                             ),
                                             Divider(height: 1, color: p.line, indent: AppSpacing.xl),
                                           ],

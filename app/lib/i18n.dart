@@ -158,6 +158,8 @@ class I18n {
     'duel_empty_library': {AppLanguage.ko: '듀얼을 시작하려면 음악을 추가하세요', AppLanguage.en: 'Add music to start a duel'},
     'duel_empty_sub': {AppLanguage.ko: '같은 종류끼리 겨뤄요 — 한 종류에 2개 이상 추가하면 시작돼요', AppLanguage.en: 'Compare items of the same type — add 2 or more of one type to start'},
     'duel_streak': {AppLanguage.ko: '🔥 {0}개 연속 평가 중!', AppLanguage.en: '🔥 {0} in a row!'},
+    'duel_win_streak': {AppLanguage.ko: '🔥 {0} {1}연승!', AppLanguage.en: '🔥 {0} is on a {1}-win streak!'},
+    'duel_loss_streak': {AppLanguage.ko: '💀 {0} {1}연패...', AppLanguage.en: '💀 {0} is on a {1}-loss streak...'},
   };
 
   static String get(String key, AppLanguage lang, [List<String>? args]) {

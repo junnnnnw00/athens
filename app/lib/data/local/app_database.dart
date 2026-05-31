@@ -113,6 +113,14 @@ class AppDatabase extends _$AppDatabase {
   Future<List<LocalComparison>> getComparisonsForUser(String userId) =>
       (select(localComparisons)..where((c) => c.userId.equals(userId))).get();
 
+  Future<List<LocalComparison>> getComparisonsForItem(String userId, String itemId) =>
+      (select(localComparisons)
+            ..where((c) =>
+                c.userId.equals(userId) &
+                (c.winnerItemId.equals(itemId) | c.loserItemId.equals(itemId)))
+            ..orderBy([(c) => OrderingTerm(expression: c.createdAt, mode: OrderingMode.desc)]))
+          .get();
+
   Future<void> deleteComparisonsForItem(String userId, String itemId) =>
       (delete(localComparisons)
             ..where((c) =>

@@ -68,8 +68,8 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   /// Active duel kind (free mode only). Placement uses the focus item's kind.
   String? _kind;
 
-  int _streak = 0;
   bool _showStreakNudge = false;
+  String _streakText = '';
   Timer? _streakTimer;
 
   // Placement state.
@@ -155,17 +155,36 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     }
     final (a, b) = _pair!;
     final loserId = winnerId == a.id ? b.id : a.id;
+    final winner = winnerId == a.id ? a : b;
+    final loser = winnerId == a.id ? b : a;
+
     setState(() => _picked = winnerId);
     await ref
         .read(libraryControllerProvider.notifier)
         .recordComparison(winnerId: winnerId, loserId: loserId);
+
+    // Calculate streaks
+    final winnerStreak = await ref.read(libraryRepositoryProvider).getItemStreak(winnerId);
+    final loserStreak = await ref.read(libraryRepositoryProvider).getItemStreak(loserId);
+
+    final lang = ref.read(localeProvider);
+    String streakText = '';
+    bool showNudge = false;
+    if (winnerStreak >= 2) {
+      streakText = I18n.get('duel_win_streak', lang, [winner.title, '$winnerStreak']);
+      showNudge = true;
+    } else if (loserStreak <= -2) {
+      streakText = I18n.get('duel_loss_streak', lang, [loser.title, '${-loserStreak}']);
+      showNudge = true;
+    }
+
     await Future<void>.delayed(const Duration(milliseconds: 450));
     if (!mounted) return;
     final fresh = ref.read(ratedItemsProvider);
     setState(() {
       _picked = null;
-      _streak++;
-      if (_streak % 3 == 0) {
+      if (showNudge) {
+        _streakText = streakText;
         _showStreakNudge = true;
         _streakTimer?.cancel();
         _streakTimer = Timer(const Duration(seconds: 2), () {
@@ -191,7 +210,6 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
   void _skip(List<RatedCatalogItem> items) {
     setState(() {
-      _streak = 0;
       _showStreakNudge = false;
       _streakTimer?.cancel();
       if (_placement) {
@@ -363,7 +381,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                       ],
                     ),
                     child: Text(
-                      context.t('duel_streak', args: ['$_streak'], ref: ref),
+                      _streakText,
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
