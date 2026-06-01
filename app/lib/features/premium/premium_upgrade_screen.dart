@@ -459,7 +459,7 @@ class _PremiumUpgradeScreenState extends ConsumerState<PremiumUpgradeScreen> {
                           try {
                             await ref.read(profileServiceProvider).togglePremium(true);
                             ref.invalidate(myProfileProvider);
-                            if (mounted) {
+                            if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('개발용 프리미엄 활성화 완료')),

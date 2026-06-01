@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
-import '../../widgets/premium_lock_overlay.dart';
 import '../profile/profile_service.dart';
 import '../../data/repository/library_providers.dart';
 import '../catalog/catalog_service.dart';
@@ -605,9 +604,13 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
 
   Widget _stdDevChip(String label, double stdDev, AppPalette p) {
     String interpretation;
-    if (stdDev < 1.2) interpretation = '고른 평가';
-    else if (stdDev < 2.2) interpretation = '적당한 호불호';
-    else interpretation = '강한 호불호';
+    if (stdDev < 1.2) {
+      interpretation = '고른 평가';
+    } else if (stdDev < 2.2) {
+      interpretation = '적당한 호불호';
+    } else {
+      interpretation = '강한 호불호';
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1086,35 +1089,35 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     _                => const Color(0xFFE3B341),
   };
 
-  List<MatchItemInfo> _sliceForTier(List<MatchItemInfo> items, bool isPremium, int freeMax) {
-    return isPremium ? items : items.take(freeMax).toList();
-  }
+  // List<MatchItemInfo> _sliceForTier(List<MatchItemInfo> items, bool isPremium, int freeMax) {
+  //   return isPremium ? items : items.take(freeMax).toList();
+  // }
 
-  Widget _buildCategoryChip(String label, int count, Color textColor, Color bgColor) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8, bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label, style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(
-              color: textColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text('$count', style: TextStyle(color: textColor, fontSize: 9, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildCategoryChip(String label, int count, Color textColor, Color bgColor) {
+  //   return Container(
+  //     margin: const EdgeInsets.only(right: 8, bottom: 12),
+  //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+  //     decoration: BoxDecoration(
+  //       color: bgColor,
+  //       borderRadius: BorderRadius.circular(20),
+  //     ),
+  //     child: Row(
+  //       mainAxisSize: MainAxisSize.min,
+  //       children: [
+  //         Text(label, style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.bold)),
+  //         const SizedBox(width: 4),
+  //         Container(
+  //           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+  //           decoration: BoxDecoration(
+  //             color: textColor.withValues(alpha: 0.15),
+  //             borderRadius: BorderRadius.circular(8),
+  //           ),
+  //           child: Text('$count', style: TextStyle(color: textColor, fontSize: 9, fontWeight: FontWeight.bold)),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildTrackSectionHeader(String title, String subtitle, int count, Color accent) {
     final p = context.palette;
@@ -1134,26 +1137,26 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     );
   }
 
-  Widget _buildLockedMoreRow(int count) {
-    final p = context.palette;
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: AppSpacing.md),
-      decoration: BoxDecoration(
-        color: p.surface2,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: p.line),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.lock_outline_rounded, size: 13, color: p.muted),
-          const SizedBox(width: 6),
-          Text('${count}곡 더 — Premium에서 전체 보기', style: TextStyle(color: p.muted, fontSize: 11)),
-        ],
-      ),
-    );
-  }
+  // Widget _buildLockedMoreRow(int count) {
+  //   final p = context.palette;
+  //   return Container(
+  //     margin: const EdgeInsets.only(top: 6),
+  //     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: AppSpacing.md),
+  //     decoration: BoxDecoration(
+  //       color: p.surface2,
+  //       borderRadius: BorderRadius.circular(10),
+  //       border: Border.all(color: p.line),
+  //     ),
+  //     child: Row(
+  //       mainAxisAlignment: MainAxisAlignment.center,
+  //       children: [
+  //         Icon(Icons.lock_outline_rounded, size: 13, color: p.muted),
+  //         const SizedBox(width: 6),
+  //         Text('$count곡 더 — Premium에서 전체 보기', style: TextStyle(color: p.muted, fontSize: 11)),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildTrackRow(MatchItemInfo item, int category) {
     final p = context.palette;

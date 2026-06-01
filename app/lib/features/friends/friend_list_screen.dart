@@ -6,7 +6,6 @@ import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../profile/profile_service.dart';
 import 'friends_service.dart';
-import '../../widgets/premium_lock_overlay.dart';
 import '../../data/repository/library_providers.dart';
 
 class FriendListScreen extends ConsumerStatefulWidget {

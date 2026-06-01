@@ -63,3 +63,30 @@ a {
   pointer-events: none;
   z-index: 0;
 }
+
+/* Rich card hover effects for web profile */
+.profile-card {
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.profile-card:hover {
+  transform: translateY(-2.5px);
+  border-color: rgba(116, 224, 164, 0.4) !important;
+  background-color: var(--surface2) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Link hover effects */
+.profile-link {
+  transition: all 0.25s ease;
+}
+
+.profile-link:hover {
+  opacity: 0.85;
+  color: var(--accent) !important;
+}
+

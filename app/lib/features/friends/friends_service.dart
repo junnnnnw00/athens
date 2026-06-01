@@ -424,14 +424,14 @@ class FriendsService {
     }
 
     // 6. Standard deviation
-    double _stdDev(List<double> scores) {
+    double stdDev(List<double> scores) {
       if (scores.length < 2) return 0.0;
       final mean = scores.reduce((a, b) => a + b) / scores.length;
       final variance = scores.map((s) => math.pow(s - mean, 2)).reduce((a, b) => a + b) / scores.length;
       return math.sqrt(variance);
     }
-    final myStdDev = _stdDev(myScores);
-    final theirStdDev = _stdDev(theirScores);
+    final myStdDev = stdDev(myScores);
+    final theirStdDev = stdDev(theirScores);
 
     // 7. Artist analysis
     final myArtists = <String, int>{};
@@ -460,16 +460,22 @@ class FriendsService {
         .toList();
 
     // 8. Score distribution buckets
-    Map<String, int> _scoreDist(List<double> scores) {
+    Map<String, int> scoreDist(List<double> scores) {
       final buckets = <String, int>{
         '1-2': 0, '3-4': 0, '5-6': 0, '7-8': 0, '9-10': 0,
       };
       for (final s in scores) {
-        if (s <= 2) buckets['1-2'] = buckets['1-2']! + 1;
-        else if (s <= 4) buckets['3-4'] = buckets['3-4']! + 1;
-        else if (s <= 6) buckets['5-6'] = buckets['5-6']! + 1;
-        else if (s <= 8) buckets['7-8'] = buckets['7-8']! + 1;
-        else buckets['9-10'] = buckets['9-10']! + 1;
+        if (s <= 2) {
+          buckets['1-2'] = buckets['1-2']! + 1;
+        } else if (s <= 4) {
+          buckets['3-4'] = buckets['3-4']! + 1;
+        } else if (s <= 6) {
+          buckets['5-6'] = buckets['5-6']! + 1;
+        } else if (s <= 8) {
+          buckets['7-8'] = buckets['7-8']! + 1;
+        } else {
+          buckets['9-10'] = buckets['9-10']! + 1;
+        }
       }
       return buckets;
     }
@@ -506,8 +512,8 @@ class FriendsService {
       sharedArtistCount: sharedArtistNames.length,
       myTopArtists: myTopArtists,
       theirTopArtists: theirTopArtists,
-      myScoreDistribution: _scoreDist(myScores),
-      theirScoreDistribution: _scoreDist(theirScores),
+      myScoreDistribution: scoreDist(myScores),
+      theirScoreDistribution: scoreDist(theirScores),
       agreementRate: agreementRate,
       controversialSongs: controversialSongs.take(5).toList(),
     );

@@ -112,8 +112,38 @@ class ProfileScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(profile?.displayName ?? email ?? context.t('profile_local_user', ref: ref),
-                        style: Theme.of(context).textTheme.titleMedium),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            profile?.displayName ?? email ?? context.t('profile_local_user', ref: ref),
+                            style: Theme.of(context).textTheme.titleMedium,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (profile?.isPremium ?? false) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: p.accentSoft,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: p.accent.withValues(alpha: 0.5), width: 0.8),
+                            ),
+                            child: Text(
+                              'Premium',
+                              style: TextStyle(
+                                color: p.accentText,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     const SizedBox(height: 2),
                     Text(
                         profile != null
@@ -156,31 +186,42 @@ class ProfileScreen extends ConsumerWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: p.surface2,
+                    gradient: LinearGradient(
+                      colors: [
+                        p.accentSoft.withValues(alpha: 0.1),
+                        p.accent.withValues(alpha: 0.15)
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(AppRadii.card),
-                    border: Border.all(color: p.line),
+                    border: Border.all(color: p.accent.withValues(alpha: 0.4)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.workspace_premium_rounded, color: p.muted),
+                      Icon(Icons.workspace_premium_rounded, color: p.accentText),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Athens Premium 가입하기',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: p.accentText,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               '상세 통계 및 곡 대조 리포트를 해제하세요',
-                              style: TextStyle(color: p.muted, fontSize: 11),
+                              style: TextStyle(
+                                color: p.accentText.withValues(alpha: 0.8),
+                                fontSize: 11,
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      Icon(Icons.chevron_right_rounded, color: p.muted),
+                      Icon(Icons.chevron_right_rounded, color: p.accentText),
                     ],
                   ),
                 ),

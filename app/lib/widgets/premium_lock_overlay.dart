@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../theme/tokens.dart';
 import '../theme/app_theme.dart';
-import '../features/profile/profile_service.dart';
 
 class PremiumLockOverlay extends ConsumerWidget {
   const PremiumLockOverlay({

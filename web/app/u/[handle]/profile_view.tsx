@@ -53,6 +53,7 @@ export interface PublicProfile {
   created_at: string;
   top_items: TopItem[];
   stats: ProfileStats;
+  is_premium?: boolean;
 }
 
 interface ProfileViewProps {
@@ -139,6 +140,7 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
   const [viewMode, setViewMode] = useState<'list' | 'cover'>('list');
   const [sortBy, setSortBy] = useState<'score' | 'latest'>('score');
   const [activeTab, setActiveTab] = useState<'distribution' | 'genres' | 'moods'>('distribution');
+  const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
   const tagPreferences = profile.stats?.tag_preferences ?? [];
 
@@ -242,8 +244,33 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
             fontWeight: 800,
             letterSpacing: '-0.03em',
             color: 'var(--text)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
           }}>
             {profile.display_name ?? profile.handle}
+            {profile.is_premium && (
+              <span style={{
+                fontSize: 11,
+                fontWeight: 800,
+                color: 'var(--accent-text)',
+                background: 'rgba(86, 208, 141, 0.15)',
+                border: '1px solid rgba(86, 208, 141, 0.3)',
+                borderRadius: 12,
+                padding: '2px 8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style={{ marginBottom: 1 }}>
+                  <path d="M12 2L15 8L22 9L17 14L18.5 21L12 17.5L5.5 21L7 14L2 9L9 8L12 2Z" />
+                </svg>
+                Premium
+              </span>
+            )}
           </h1>
           <p style={{
             margin: '4px 0 0',
@@ -378,10 +405,13 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
               const maxCount = Math.max(...Object.values(profile.stats.distribution ?? {}).map(Number), 1);
               const heightPercent = (count / maxCount) * 100;
               const barColor = getScoreColor(idx + 0.5);
+              const isHovered = hoveredBar === idx;
 
               return (
                 <div
                   key={idx}
+                  onMouseEnter={() => setHoveredBar(idx)}
+                  onMouseLeave={() => setHoveredBar(null)}
                   style={{
                     flex: 1,
                     display: 'flex',
@@ -390,33 +420,42 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                     gap: 6,
                     height: '100%',
                     justifyContent: 'flex-end',
+                    cursor: 'pointer',
+                    transform: isHovered ? 'scale(1.08)' : 'scale(1)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   }}
                 >
                   <span style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    color: count > 0 ? 'var(--text)' : 'transparent',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: count > 0 ? (isHovered ? 'var(--accent)' : 'var(--text)') : 'transparent',
                     fontVariantNumeric: 'tabular-nums',
                     marginBottom: -4,
+                    transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                    transition: 'all 0.2s ease',
                   }}>
                     {count}
                   </span>
 
                   <div style={{
                     width: '100%',
-                    height: `${Math.max(heightPercent, 3)}%`,
-                    background: count > 0 ? barColor : 'var(--line)',
-                    opacity: count > 0 ? 0.85 : 0.4,
-                    borderRadius: '4px 4px 0 0',
-                    transition: 'all 0.3s ease',
+                    height: `${Math.max(heightPercent, 4)}%`,
+                    background: count > 0 
+                      ? `linear-gradient(to top, var(--accent-soft), ${barColor})` 
+                      : 'var(--line)',
+                    opacity: count > 0 ? (isHovered ? 1 : 0.8) : 0.3,
+                    borderRadius: '6px 6px 0 0',
+                    boxShadow: isHovered && count > 0 ? `0 0 12px ${barColor}50` : 'none',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   }}
                   title={`${idx}-${idx + 1}점: ${count}개`}
                   />
 
                   <span style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: 'var(--muted)',
+                    fontSize: 11,
+                    fontWeight: isHovered ? 800 : 600,
+                    color: isHovered ? 'var(--text)' : 'var(--muted)',
+                    transition: 'all 0.2s ease',
                   }}>
                     {idx}
                   </span>
@@ -439,7 +478,7 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                     <div style={{
                       width: 100,
                       fontSize: 14,
-                      fontWeight: 600,
+                      fontWeight: 700,
                       color: 'var(--text)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -450,8 +489,9 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                     <div style={{
                       flex: 1,
                       height: 8,
-                      background: 'var(--line)',
-                      borderRadius: 4,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.05)',
+                      borderRadius: 99,
                       overflow: 'hidden',
                       position: 'relative',
                     }}>
@@ -461,8 +501,9 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                         top: 0,
                         height: '100%',
                         width: progressWidth,
-                        background: barColor,
-                        borderRadius: 4,
+                        background: `linear-gradient(to right, var(--accent-soft), ${barColor})`,
+                        borderRadius: 99,
+                        boxShadow: `0 0 8px ${barColor}40`,
                       }} />
                     </div>
                     <div style={{
@@ -505,7 +546,7 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                     <div style={{
                       width: 100,
                       fontSize: 14,
-                      fontWeight: 600,
+                      fontWeight: 700,
                       color: 'var(--text)',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -516,8 +557,9 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                     <div style={{
                       flex: 1,
                       height: 8,
-                      background: 'var(--line)',
-                      borderRadius: 4,
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.05)',
+                      borderRadius: 99,
                       overflow: 'hidden',
                       position: 'relative',
                     }}>
@@ -527,8 +569,9 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                         top: 0,
                         height: '100%',
                         width: progressWidth,
-                        background: barColor,
-                        borderRadius: 4,
+                        background: `linear-gradient(to right, var(--accent-soft), ${barColor})`,
+                        borderRadius: 99,
+                        boxShadow: `0 0 8px ${barColor}40`,
                       }} />
                     </div>
                     <div style={{
@@ -672,6 +715,7 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                 return (
                   <div
                     key={item.id}
+                    className="profile-card"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -681,7 +725,6 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                       border: '1px solid var(--line)',
                       borderRadius: 16,
                       boxShadow: '0 2px 8px var(--shadow)',
-                      transition: 'all 0.2s ease',
                     }}
                   >
                     {/* Rank Badge */}
@@ -809,6 +852,7 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                 return (
                   <div
                     key={item.id}
+                    className="profile-card"
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
@@ -927,12 +971,13 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
       }}>
         <a
           href="/app"
+          className="profile-link"
           style={{
             color: 'var(--accent-text)',
             display: 'inline-flex',
             alignItems: 'center',
             gap: 4,
-            transition: 'opacity 0.2s ease',
+            fontWeight: 600,
           }}
         >
           Athens에서 음악 평가 시작하기 →
