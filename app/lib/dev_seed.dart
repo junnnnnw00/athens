@@ -1,9 +1,13 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'api/supabase.dart';
 import 'data/local/app_database.dart';
 import 'data/repository/library_providers.dart';
 import 'features/catalog/catalog_service.dart';
+import 'features/profile/profile_service.dart';
+import 'features/stats/stats_screen.dart';
 
 /// Dev-only seed flag. `false` in release builds. When enabled, real sample data
 /// is written into the actual Drift layer and flows through the same providers
@@ -103,3 +107,57 @@ Future<void> seedDevData(ProviderContainer container) async {
     ));
   }
 }
+
+/// Clears all existing data for the active user locally and remotely, then seeds a rich data set.
+Future<void> forceReSeed(WidgetRef ref) async {
+  final db = ref.read(appDatabaseProvider);
+  final client = Supabase.instance.client;
+  final userId = ref.read(currentUserIdProvider);
+
+  // 1. Clear remote ratings & comparisons in Supabase for this user (if signed in)
+  if (isSupabaseInitialized && client.auth.currentUser != null) {
+    try {
+      await client.from('ratings').delete().eq('user_id', userId);
+      await client.from('comparisons').delete().eq('user_id', userId);
+    } catch (_) {}
+  }
+
+  // 2. Clear local Drift database for this user
+  await db.transaction(() async {
+    await (db.delete(db.localRatings)..where((t) => t.userId.equals(userId))).go();
+    await (db.delete(db.localComparisons)..where((t) => t.userId.equals(userId))).go();
+  });
+
+  // 3. Seed data
+  final controller = ref.read(libraryControllerProvider.notifier);
+  final items = devSeedItems();
+  for (final item in items) {
+    await controller.addItem(item);
+  }
+
+  for (var i = 0; i < items.length - 1; i++) {
+    for (var j = i + 1; j < items.length; j++) {
+      await controller.recordComparison(
+        winnerId: items[i].id,
+        loserId: items[j].id,
+      );
+    }
+  }
+
+  // 4. Backdate comparisons in SQLite to populate the history chart
+  final comps = await db.select(db.localComparisons).get();
+  for (var i = 0; i < comps.length; i++) {
+    final offsetDays = (i % 14);
+    final backdate = DateTime.now().subtract(Duration(days: offsetDays, hours: i % 24, minutes: i % 60));
+    await (db.update(db.localComparisons)..where((t) => t.id.equals(comps[i].id)))
+        .write(LocalComparisonsCompanion(
+      createdAt: Value(backdate),
+    ));
+  }
+
+  // 5. Invalidate providers to force UI refresh
+  ref.invalidate(libraryControllerProvider);
+  ref.invalidate(statsProvider);
+  ref.invalidate(myProfileProvider);
+}
+

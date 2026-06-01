@@ -12,6 +12,7 @@ import '../../theme/app_theme.dart';
 import 'profile_service.dart';
 import '../../i18n.dart';
 import '../stats/stats_screen.dart';
+import '../../dev_seed.dart';
 
 /// Base URL of the public web profile site (override at build time).
 const _webBase = String.fromEnvironment('WEB_PROFILE_BASE',
@@ -153,6 +154,75 @@ class ProfileScreen extends ConsumerWidget {
                         ref.invalidate(myProfileProvider);
                       } catch (_) {}
                     },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: p.surface2,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                border: Border.all(color: p.line),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.query_stats_rounded, size: 20, color: p.accentText),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '개발용 데모 데이터 주입',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '18개 명반 평가 + 153개 듀얼 내역을 생성합니다.',
+                          style: TextStyle(color: p.muted, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: p.accent,
+                      foregroundColor: p.bg,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      minimumSize: const Size(60, 32),
+                    ),
+                    onPressed: () async {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                      try {
+                        await forceReSeed(ref);
+                        if (context.mounted) {
+                          Navigator.pop(context); // Close loading dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('데모 데이터 주입 완료!')),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          Navigator.pop(context); // Close loading dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('데이터 주입 실패: $e')),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('주입', style: TextStyle(fontSize: 12)),
                   ),
                 ],
               ),
