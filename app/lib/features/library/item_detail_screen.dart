@@ -173,6 +173,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       );
     }
 
+    final displayTags = !isUnrated ? item.tags : widget.catalogItem?.tags ?? [];
+
     if (!isUnrated && !_loadedReview) {
       _loadedReview = true;
       _loadReview();
@@ -254,13 +256,17 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               if (!isUnrated)
                 ScoreRing(score: score, size: 64)
               else
-                IconButton.filled(
+                IconButton(
                   onPressed: _busy ? null : _addFromUnrated,
-                  icon: const Icon(Icons.add_rounded),
+                  icon: const Icon(Icons.add_rounded, size: 24),
                   style: IconButton.styleFrom(
-                    minimumSize: const Size(64, 64),
-                    backgroundColor: p.accent,
-                    foregroundColor: Colors.white,
+                    minimumSize: const Size(44, 44),
+                    backgroundColor: p.surface2,
+                    foregroundColor: p.text,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      side: BorderSide(color: p.line),
+                    ),
                   ),
                 ),
             ],
@@ -286,14 +292,14 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                 style: TextStyle(color: p.muted, fontSize: 13),
               ),
             ),
-          if (!isUnrated && item.tags.isNotEmpty) ...[
+          if (displayTags.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
             Text('태그', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: item.tags.map((t) => _TagChip(t.name)).toList(),
+              children: displayTags.map((t) => _TagChip(t.name)).toList(),
             ),
           ],
           _InfoSection(
@@ -372,25 +378,33 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                 ),
               ),
           ] else ...[
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: FilledButton.icon(
-                onPressed: _busy ? null : _addFromUnrated,
-                icon: _busy
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.add_rounded),
-                label: const Text('라이브러리에 추가하여 평가하기',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                style: FilledButton.styleFrom(
-                  backgroundColor: p.accent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.card),
+            Center(
+              child: SizedBox(
+                width: 200,
+                height: 44,
+                child: OutlinedButton.icon(
+                  onPressed: _busy ? null : _addFromUnrated,
+                  icon: _busy
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: p.accentText,
+                          ),
+                        )
+                      : const Icon(Icons.add_rounded),
+                  label: const Text('라이브러리에 추가'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: p.accentText,
+                    side: BorderSide(color: p.accent, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

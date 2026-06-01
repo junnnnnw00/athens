@@ -54,14 +54,13 @@ class $LocalItemsTable extends LocalItems
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('[]'));
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
   @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+  late final GeneratedColumnWithTypeConverter<DateTime, DateTime> createdAt =
+      GeneratedColumn<DateTime>('created_at', aliasedName, false,
+              type: DriftSqlType.dateTime,
+              requiredDuringInsert: false,
+              defaultValue: currentDateAndTime)
+          .withConverter<DateTime>($LocalItemsTable.$convertercreatedAt);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -127,10 +126,6 @@ class $LocalItemsTable extends LocalItems
       context.handle(
           _tagsMeta, tags.isAcceptableOrUnknown(data['tags']!, _tagsMeta));
     }
-    if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
-    }
     return context;
   }
 
@@ -156,8 +151,9 @@ class $LocalItemsTable extends LocalItems
           .read(DriftSqlType.string, data['${effectivePrefix}image_url']),
       tags: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}tags'])!,
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      createdAt: $LocalItemsTable.$convertercreatedAt.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!),
     );
   }
 
@@ -165,6 +161,9 @@ class $LocalItemsTable extends LocalItems
   $LocalItemsTable createAlias(String alias) {
     return $LocalItemsTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<DateTime, DateTime> $convertercreatedAt =
+      const DateTimeCorrectionConverter();
 }
 
 class LocalItem extends DataClass implements Insertable<LocalItem> {
@@ -202,7 +201,10 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
       map['image_url'] = Variable<String>(imageUrl);
     }
     map['tags'] = Variable<String>(tags);
-    map['created_at'] = Variable<DateTime>(createdAt);
+    {
+      map['created_at'] = Variable<DateTime>(
+          $LocalItemsTable.$convertercreatedAt.toSql(createdAt));
+    }
     return map;
   }
 
@@ -445,7 +447,8 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
       map['tags'] = Variable<String>(tags.value);
     }
     if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
+      map['created_at'] = Variable<DateTime>(
+          $LocalItemsTable.$convertercreatedAt.toSql(createdAt.value));
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -507,14 +510,13 @@ class $LocalRatingsTable extends LocalRatings
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
-  static const VerificationMeta _updatedAtMeta =
-      const VerificationMeta('updatedAt');
   @override
-  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-      'updated_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+  late final GeneratedColumnWithTypeConverter<DateTime, DateTime> updatedAt =
+      GeneratedColumn<DateTime>('updated_at', aliasedName, false,
+              type: DriftSqlType.dateTime,
+              requiredDuringInsert: false,
+              defaultValue: currentDateAndTime)
+          .withConverter<DateTime>($LocalRatingsTable.$converterupdatedAt);
   @override
   List<GeneratedColumn> get $columns =>
       [id, userId, itemId, elo, comparisons, updatedAt];
@@ -555,10 +557,6 @@ class $LocalRatingsTable extends LocalRatings
           comparisons.isAcceptableOrUnknown(
               data['comparisons']!, _comparisonsMeta));
     }
-    if (data.containsKey('updated_at')) {
-      context.handle(_updatedAtMeta,
-          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
-    }
     return context;
   }
 
@@ -578,8 +576,9 @@ class $LocalRatingsTable extends LocalRatings
           .read(DriftSqlType.double, data['${effectivePrefix}elo'])!,
       comparisons: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}comparisons'])!,
-      updatedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      updatedAt: $LocalRatingsTable.$converterupdatedAt.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!),
     );
   }
 
@@ -587,6 +586,9 @@ class $LocalRatingsTable extends LocalRatings
   $LocalRatingsTable createAlias(String alias) {
     return $LocalRatingsTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<DateTime, DateTime> $converterupdatedAt =
+      const DateTimeCorrectionConverter();
 }
 
 class LocalRating extends DataClass implements Insertable<LocalRating> {
@@ -611,7 +613,10 @@ class LocalRating extends DataClass implements Insertable<LocalRating> {
     map['item_id'] = Variable<String>(itemId);
     map['elo'] = Variable<double>(elo);
     map['comparisons'] = Variable<int>(comparisons);
-    map['updated_at'] = Variable<DateTime>(updatedAt);
+    {
+      map['updated_at'] = Variable<DateTime>(
+          $LocalRatingsTable.$converterupdatedAt.toSql(updatedAt));
+    }
     return map;
   }
 
@@ -792,7 +797,8 @@ class LocalRatingsCompanion extends UpdateCompanion<LocalRating> {
       map['comparisons'] = Variable<int>(comparisons.value);
     }
     if (updatedAt.present) {
-      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+      map['updated_at'] = Variable<DateTime>(
+          $LocalRatingsTable.$converterupdatedAt.toSql(updatedAt.value));
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -843,14 +849,13 @@ class $LocalComparisonsTable extends LocalComparisons
   late final GeneratedColumn<String> loserItemId = GeneratedColumn<String>(
       'loser_item_id', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _createdAtMeta =
-      const VerificationMeta('createdAt');
   @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-      'created_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+  late final GeneratedColumnWithTypeConverter<DateTime, DateTime> createdAt =
+      GeneratedColumn<DateTime>('created_at', aliasedName, false,
+              type: DriftSqlType.dateTime,
+              requiredDuringInsert: false,
+              defaultValue: currentDateAndTime)
+          .withConverter<DateTime>($LocalComparisonsTable.$convertercreatedAt);
   @override
   List<GeneratedColumn> get $columns =>
       [id, userId, winnerItemId, loserItemId, createdAt];
@@ -891,10 +896,6 @@ class $LocalComparisonsTable extends LocalComparisons
     } else if (isInserting) {
       context.missing(_loserItemIdMeta);
     }
-    if (data.containsKey('created_at')) {
-      context.handle(_createdAtMeta,
-          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
-    }
     return context;
   }
 
@@ -912,8 +913,9 @@ class $LocalComparisonsTable extends LocalComparisons
           .read(DriftSqlType.string, data['${effectivePrefix}winner_item_id'])!,
       loserItemId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}loser_item_id'])!,
-      createdAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      createdAt: $LocalComparisonsTable.$convertercreatedAt.fromSql(
+          attachedDatabase.typeMapping.read(
+              DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!),
     );
   }
 
@@ -921,6 +923,9 @@ class $LocalComparisonsTable extends LocalComparisons
   $LocalComparisonsTable createAlias(String alias) {
     return $LocalComparisonsTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<DateTime, DateTime> $convertercreatedAt =
+      const DateTimeCorrectionConverter();
 }
 
 class LocalComparison extends DataClass implements Insertable<LocalComparison> {
@@ -942,7 +947,10 @@ class LocalComparison extends DataClass implements Insertable<LocalComparison> {
     map['user_id'] = Variable<String>(userId);
     map['winner_item_id'] = Variable<String>(winnerItemId);
     map['loser_item_id'] = Variable<String>(loserItemId);
-    map['created_at'] = Variable<DateTime>(createdAt);
+    {
+      map['created_at'] = Variable<DateTime>(
+          $LocalComparisonsTable.$convertercreatedAt.toSql(createdAt));
+    }
     return map;
   }
 
@@ -1108,7 +1116,8 @@ class LocalComparisonsCompanion extends UpdateCompanion<LocalComparison> {
       map['loser_item_id'] = Variable<String>(loserItemId.value);
     }
     if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
+      map['created_at'] = Variable<DateTime>(
+          $LocalComparisonsTable.$convertercreatedAt.toSql(createdAt.value));
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1162,14 +1171,13 @@ class $LocalReviewsTable extends LocalReviews
   late final GeneratedColumn<double> ratingSnapshot = GeneratedColumn<double>(
       'rating_snapshot', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
-  static const VerificationMeta _updatedAtMeta =
-      const VerificationMeta('updatedAt');
   @override
-  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
-      'updated_at', aliasedName, false,
-      type: DriftSqlType.dateTime,
-      requiredDuringInsert: false,
-      defaultValue: currentDateAndTime);
+  late final GeneratedColumnWithTypeConverter<DateTime, DateTime> updatedAt =
+      GeneratedColumn<DateTime>('updated_at', aliasedName, false,
+              type: DriftSqlType.dateTime,
+              requiredDuringInsert: false,
+              defaultValue: currentDateAndTime)
+          .withConverter<DateTime>($LocalReviewsTable.$converterupdatedAt);
   @override
   List<GeneratedColumn> get $columns =>
       [id, userId, itemId, body, ratingSnapshot, updatedAt];
@@ -1212,10 +1220,6 @@ class $LocalReviewsTable extends LocalReviews
           ratingSnapshot.isAcceptableOrUnknown(
               data['rating_snapshot']!, _ratingSnapshotMeta));
     }
-    if (data.containsKey('updated_at')) {
-      context.handle(_updatedAtMeta,
-          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
-    }
     return context;
   }
 
@@ -1235,8 +1239,9 @@ class $LocalReviewsTable extends LocalReviews
           .read(DriftSqlType.string, data['${effectivePrefix}body'])!,
       ratingSnapshot: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}rating_snapshot']),
-      updatedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      updatedAt: $LocalReviewsTable.$converterupdatedAt.fromSql(attachedDatabase
+          .typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!),
     );
   }
 
@@ -1244,6 +1249,9 @@ class $LocalReviewsTable extends LocalReviews
   $LocalReviewsTable createAlias(String alias) {
     return $LocalReviewsTable(attachedDatabase, alias);
   }
+
+  static TypeConverter<DateTime, DateTime> $converterupdatedAt =
+      const DateTimeCorrectionConverter();
 }
 
 class LocalReview extends DataClass implements Insertable<LocalReview> {
@@ -1270,7 +1278,10 @@ class LocalReview extends DataClass implements Insertable<LocalReview> {
     if (!nullToAbsent || ratingSnapshot != null) {
       map['rating_snapshot'] = Variable<double>(ratingSnapshot);
     }
-    map['updated_at'] = Variable<DateTime>(updatedAt);
+    {
+      map['updated_at'] = Variable<DateTime>(
+          $LocalReviewsTable.$converterupdatedAt.toSql(updatedAt));
+    }
     return map;
   }
 
@@ -1456,7 +1467,8 @@ class LocalReviewsCompanion extends UpdateCompanion<LocalReview> {
       map['rating_snapshot'] = Variable<double>(ratingSnapshot.value);
     }
     if (updatedAt.present) {
-      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+      map['updated_at'] = Variable<DateTime>(
+          $LocalReviewsTable.$converterupdatedAt.toSql(updatedAt.value));
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1553,8 +1565,10 @@ class $$LocalItemsTableFilterComposer
   ColumnFilters<String> get tags => $composableBuilder(
       column: $table.tags, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+  ColumnWithTypeConverterFilters<DateTime, DateTime, DateTime> get createdAt =>
+      $composableBuilder(
+          column: $table.createdAt,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 }
 
 class $$LocalItemsTableOrderingComposer
@@ -1628,7 +1642,7 @@ class $$LocalItemsTableAnnotationComposer
   GeneratedColumn<String> get tags =>
       $composableBuilder(column: $table.tags, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get createdAt =>
+  GeneratedColumnWithTypeConverter<DateTime, DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
 
@@ -1766,8 +1780,10 @@ class $$LocalRatingsTableFilterComposer
   ColumnFilters<int> get comparisons => $composableBuilder(
       column: $table.comparisons, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+  ColumnWithTypeConverterFilters<DateTime, DateTime, DateTime> get updatedAt =>
+      $composableBuilder(
+          column: $table.updatedAt,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 }
 
 class $$LocalRatingsTableOrderingComposer
@@ -1822,7 +1838,7 @@ class $$LocalRatingsTableAnnotationComposer
   GeneratedColumn<int> get comparisons => $composableBuilder(
       column: $table.comparisons, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get updatedAt =>
+  GeneratedColumnWithTypeConverter<DateTime, DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 
@@ -1949,8 +1965,10 @@ class $$LocalComparisonsTableFilterComposer
   ColumnFilters<String> get loserItemId => $composableBuilder(
       column: $table.loserItemId, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+  ColumnWithTypeConverterFilters<DateTime, DateTime, DateTime> get createdAt =>
+      $composableBuilder(
+          column: $table.createdAt,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 }
 
 class $$LocalComparisonsTableOrderingComposer
@@ -2000,7 +2018,7 @@ class $$LocalComparisonsTableAnnotationComposer
   GeneratedColumn<String> get loserItemId => $composableBuilder(
       column: $table.loserItemId, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get createdAt =>
+  GeneratedColumnWithTypeConverter<DateTime, DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
 
@@ -2130,8 +2148,10 @@ class $$LocalReviewsTableFilterComposer
       column: $table.ratingSnapshot,
       builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
-      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+  ColumnWithTypeConverterFilters<DateTime, DateTime, DateTime> get updatedAt =>
+      $composableBuilder(
+          column: $table.updatedAt,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
 }
 
 class $$LocalReviewsTableOrderingComposer
@@ -2187,7 +2207,7 @@ class $$LocalReviewsTableAnnotationComposer
   GeneratedColumn<double> get ratingSnapshot => $composableBuilder(
       column: $table.ratingSnapshot, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get updatedAt =>
+  GeneratedColumnWithTypeConverter<DateTime, DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 }
 

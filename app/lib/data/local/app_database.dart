@@ -4,6 +4,31 @@ import 'package:drift_flutter/drift_flutter.dart';
 part 'app_database.g.dart';
 
 // ============================================================================
+// Converters
+// ============================================================================
+
+class DateTimeCorrectionConverter extends TypeConverter<DateTime, DateTime> {
+  const DateTimeCorrectionConverter();
+
+  @override
+  DateTime fromSql(DateTime fromDb) {
+    // If the parsed date is before year 1975, it's highly likely that the
+    // database stored unix epoch seconds (e.g. 1780132586) but the reader
+    // parsed it as milliseconds (yielding Jan 21, 1970). We correct this by
+    // multiplying by 1000.
+    if (fromDb.year < 1975) {
+      return DateTime.fromMillisecondsSinceEpoch(fromDb.millisecondsSinceEpoch * 1000).toLocal();
+    }
+    return fromDb;
+  }
+
+  @override
+  DateTime toSql(DateTime value) {
+    return value;
+  }
+}
+
+// ============================================================================
 // Tables
 // ============================================================================
 
@@ -16,7 +41,7 @@ class LocalItems extends Table {
   TextColumn get primaryArtist => text().nullable()();
   TextColumn get imageUrl => text().nullable()();
   TextColumn get tags => text().withDefault(const Constant('[]'))();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().map(const DateTimeCorrectionConverter()).withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -28,7 +53,7 @@ class LocalRatings extends Table {
   TextColumn get itemId => text()();
   RealColumn get elo => real().withDefault(const Constant(1000.0))();
   IntColumn get comparisons => integer().withDefault(const Constant(0))();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().map(const DateTimeCorrectionConverter()).withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -39,7 +64,7 @@ class LocalComparisons extends Table {
   TextColumn get userId => text()();
   TextColumn get winnerItemId => text()();
   TextColumn get loserItemId => text()();
-  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().map(const DateTimeCorrectionConverter()).withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -51,7 +76,7 @@ class LocalReviews extends Table {
   TextColumn get itemId => text()();
   TextColumn get body => text()();
   RealColumn get ratingSnapshot => real().nullable()();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().map(const DateTimeCorrectionConverter()).withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
