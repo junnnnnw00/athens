@@ -342,7 +342,33 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                     const SizedBox(width: AppSpacing.sm),
                     // Match percentage indicator (Locked or unlocked)
                     _buildMatchBadge(friend.id, isPremium),
-                    const SizedBox(width: AppSpacing.sm),
+                    const SizedBox(width: AppSpacing.xs),
+                    IconButton(
+                      icon: Icon(Icons.delete_outline_rounded, size: 20, color: p.muted),
+                      tooltip: '친구 삭제',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('친구 삭제'),
+                            content: Text('${friend.displayName ?? friend.handle}님을 친구 목록에서 삭제하시겠습니까?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('취소', style: TextStyle(color: p.text)),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  _toggleFollow(friend.id, true);
+                                },
+                                child: const Text('삭제', style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                     Icon(Icons.chevron_right_rounded, color: p.faint),
                   ],
                 ),
