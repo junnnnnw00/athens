@@ -89,7 +89,7 @@ class FriendsService {
 
     final rows = await _client
         .from('follows')
-        .select('following:profiles(id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium)')
+        .select('following:profiles!follows_following_id_fkey(id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium)')
         .eq('follower_id', user.id);
 
     return rows

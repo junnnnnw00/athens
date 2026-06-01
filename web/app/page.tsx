@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import AuthRedirectHandler from './components/AuthRedirectHandler';
 
 export const metadata = {
   title: 'Athens — 음악을 평가하고, 취향을 발견하세요',
@@ -28,6 +29,7 @@ const features: { title: string; body: string }[] = [
 export default function Home() {
   return (
     <>
+      <AuthRedirectHandler />
       <div className="bg-glow" />
       <main
         style={{
