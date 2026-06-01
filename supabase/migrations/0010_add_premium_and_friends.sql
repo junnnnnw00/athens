@@ -1,7 +1,10 @@
 -- 1. Add is_premium column to profiles table
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_premium boolean NOT NULL DEFAULT false;
 
--- 2. Update public_profiles view to include is_premium
+-- 2. Drop the existing public_profiles view to allow altering column structure
+DROP VIEW IF EXISTS public.public_profiles CASCADE;
+
+-- 3. Create public_profiles view to include is_premium
 CREATE OR REPLACE VIEW public.public_profiles
 WITH (security_invoker = false)
 AS
