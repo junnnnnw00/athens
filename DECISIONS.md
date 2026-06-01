@@ -203,3 +203,25 @@ secrets, so they stay out of the repo but must exist on the project.
   * Development Redirect URI: `athens-dev://spotify-callback` and `http://127.0.0.1:8888/callback`.
   * Allows keeping production users and dev testing accounts completely isolated.
 
+
+---
+
+## Admin / Developer Dashboard (web `/admin/<secret>`)
+
+* **What:** server-rendered Next.js page showing aggregate stats
+  (유저/성장 + 참여도). No per-user PII beyond handles already public via
+  `public_profiles`.
+* **Hidden URL:** route is `app/admin/[gate]`. Real entrance is
+  `/admin/<ADMIN_PATH_SECRET>`; bare `/admin` and any wrong segment return a real
+  404 (no page exists / `notFound()`) so it isn't discoverable by guessing
+  `/admin`. Defense-in-depth on top of the password.
+* **Data access:** Supabase `service_role` key, read **server-only**
+  (`web/app/admin/stats.ts`, guarded by `import 'server-only'`). Bypasses RLS to
+  count all rows. Key is NOT exposed to the browser and NOT bundled in Flutter.
+* **Auth gate:** single shared password `ADMIN_DASHBOARD_PASSWORD`. Cookie stores
+  `sha256(password)` (httpOnly, secure, sameSite=lax, path=/admin, 12h). Plaintext
+  never leaves the server. Fail-closed if the env var is unset.
+* **Reversible:** delete `web/app/admin/` + the two env vars. No schema/RLS change.
+* **Required env (set in Vercel project + `web/.env.local`, never commit):**
+  `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_DASHBOARD_PASSWORD`, `ADMIN_PATH_SECRET`
+  (long random slug — the hidden path).
