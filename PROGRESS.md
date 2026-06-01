@@ -36,6 +36,16 @@ The runtime now renders only real data through Riverpod → repository → Drift
 | D6 RUN.md | ✅ written |
 | secret-leak grep | ✅ returns nothing |
 
+## Infrastructure Separation for Crowdfunding (2026-06-01)
+
+- **Crowdfunding Planning**: Brainstormed paid feature ideas, App Store compliance, and crowdfunding platforms (Tumblbug, etc.). Created `funding_and_premium_features_plan.md` in conversation artifacts.
+- **Git Branching Strategy**: Checked out `dev` branch to isolate crowdfunding & premium features development.
+- **Environment Isolation**:
+  - Created `app/config/app_config_dev.json` to configure the `athens-dev` Supabase project.
+  - Added Makefile commands `run-dev` and `run-dev-seed` for running with development configurations.
+  - Added Makefile command `web-deploy-dev` and script `scripts/deploy-web-dev.sh` to trigger Vercel Preview/Preview builds, preventing impact on the live production URL.
+  - Updated documentation files `RUN.md` and `docs/SETUP.md` to explain how to configure and run the isolated development environment.
+
 ## What changed this run
 
 - `lib/theme/` (tokens + ThemeData, dark+light, mint accent, Hanken/Pretendard bundled).
