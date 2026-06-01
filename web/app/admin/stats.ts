@@ -82,12 +82,12 @@ export interface DashboardStats {
   users: UserRow[];
   // 참여도
   totalRatings: number;
-  totalComparisons: number;
+  totalDuels: number; // ratings.comparisons 합 / 2 (comparisons 테이블은 미사용)
   totalReviews: number;
   totalItems: number;
   avgRatingsPerUser: number;
+  avgDuelsPerRating: number;
   activeUsers7d: number;
-  duels7d: number;
   ratings7d: number;
   // 차트
   signupsDaily: ChartPoint[]; // 최근 30일 일별 가입
@@ -151,10 +151,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     publicProfiles,
     spotifyConnected,
     totalRatings,
-    totalComparisons,
     totalReviews,
     totalItems,
-    duels7d,
     ratings7d,
   ] = await Promise.all([
     count(sb, 'profiles'),
@@ -165,21 +163,10 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     count(sb, 'profiles', (q) => q.eq('is_public', true)),
     count(sb, 'profiles', (q) => q.eq('spotify_enabled', true)),
     count(sb, 'ratings'),
-    count(sb, 'comparisons'),
     count(sb, 'reviews'),
     count(sb, 'items'),
-    count(sb, 'comparisons', (q) => q.gte('created_at', d7)),
     count(sb, 'ratings', (q) => q.gte('updated_at', d7)),
   ]);
-
-  // Active users = distinct users who logged a duel in the last 7 days.
-  // Small dataset (≤ a few users) → dedupe in JS is fine.
-  const { data: recentComps, error: compErr } = await sb
-    .from('comparisons')
-    .select('user_id')
-    .gte('created_at', d7);
-  if (compErr) throw new Error(`active users 조회 실패: ${compErr.message}`);
-  const activeUsers7d = new Set((recentComps ?? []).map((r) => r.user_id)).size;
 
   // Full data pulls for the user table + charts (small dataset → fetch & aggregate in JS).
   const { data: usersRaw, error: usersErr } = await sb
@@ -188,9 +175,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     .order('created_at', { ascending: false });
   if (usersErr) throw new Error(`유저 목록 조회 실패: ${usersErr.message}`);
 
+  // NB: the `comparisons` table is unused by the app — duels are recorded on
+  // ratings.comparisons (per-item count). Total duels ≈ sum / 2 (each duel
+  // bumps two items). Active = distinct users with a rating updated in 7d.
   const { data: ratingRows, error: rErr } = await sb
     .from('ratings')
-    .select('user_id, score, updated_at');
+    .select('user_id, score, updated_at, comparisons');
   if (rErr) throw new Error(`평가 조회 실패: ${rErr.message}`);
 
   const { data: itemRows, error: iErr } = await sb.from('items').select('kind');
@@ -201,6 +191,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   for (const r of ratings) {
     ratingCountByUser.set(r.user_id, (ratingCountByUser.get(r.user_id) ?? 0) + 1);
   }
+
+  // 듀얼 횟수: ratings.comparisons 합 / 2 (듀얼당 두 아이템이 +1).
+  const comparisonsSum = ratings.reduce(
+    (a, r) => a + Number(r.comparisons ?? 0),
+    0,
+  );
+  const totalDuels = Math.round(comparisonsSum / 2);
+  // 활성 유저(7일): 최근 7일 내 평가가 갱신된(=듀얼한) 유저 수.
+  const activeUsers7d = new Set(
+    ratings.filter((r) => (r.updated_at as string) >= d7).map((r) => r.user_id),
+  ).size;
   const users: UserRow[] = (usersRaw ?? []).map((u) => ({
     id: u.id,
     handle: u.handle,
@@ -239,12 +240,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     spotifyConnected,
     users,
     totalRatings,
-    totalComparisons,
+    totalDuels,
     totalReviews,
     totalItems,
     avgRatingsPerUser: totalUsers ? totalRatings / totalUsers : 0,
+    avgDuelsPerRating: totalRatings ? comparisonsSum / totalRatings : 0,
     activeUsers7d,
-    duels7d,
     ratings7d,
     signupsDaily,
     activityDaily,
@@ -275,7 +276,7 @@ export interface UserDetail {
   avgElo: number;
   avgScore: number;
   reviewCount: number;
-  comparisonCount: number;
+  duelCount: number; // 이 유저 ratings.comparisons 합 / 2
   topItems: TopItem[];
 }
 
@@ -294,7 +295,7 @@ export async function getUserDetail(userId: string): Promise<UserDetail | null> 
 
   const { data: ratingRows, error: rErr } = await sb
     .from('ratings')
-    .select('elo, score')
+    .select('elo, score, comparisons')
     .eq('user_id', userId);
   if (rErr) throw new Error(`유저 평가 조회 실패: ${rErr.message}`);
   const rr = ratingRows ?? [];
@@ -305,11 +306,11 @@ export async function getUserDetail(userId: string): Promise<UserDetail | null> 
   const avgScore = ratingCount
     ? rr.reduce((a, r) => a + Number(r.score), 0) / ratingCount
     : 0;
+  const duelCount = Math.round(
+    rr.reduce((a, r) => a + Number(r.comparisons ?? 0), 0) / 2,
+  );
 
-  const [reviewCount, comparisonCount] = await Promise.all([
-    count(sb, 'reviews', (q) => q.eq('user_id', userId)),
-    count(sb, 'comparisons', (q) => q.eq('user_id', userId)),
-  ]);
+  const reviewCount = await count(sb, 'reviews', (q) => q.eq('user_id', userId));
 
   const { data: topRaw, error: tErr } = await sb
     .from('ratings')
@@ -342,7 +343,7 @@ export async function getUserDetail(userId: string): Promise<UserDetail | null> 
     avgElo,
     avgScore,
     reviewCount,
-    comparisonCount,
+    duelCount,
     topItems,
   };
 }

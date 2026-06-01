@@ -195,7 +195,7 @@ function UserDetailPanel({
     { label: '평가 수', value: fmt(user.ratingCount) },
     { label: '평균 점수', value: fmt1(user.avgScore) },
     { label: '평균 Elo', value: fmt(Math.round(user.avgElo)) },
-    { label: 'duel', value: fmt(user.comparisonCount) },
+    { label: 'duel', value: fmt(user.duelCount) },
     { label: '리뷰', value: fmt(user.reviewCount) },
   ];
   return (
@@ -444,7 +444,7 @@ function Dashboard({
         <StatCard
           label="활성 유저 (7일)"
           value={fmt(stats.activeUsers7d)}
-          sub="최근 7일 duel 기록 기준"
+          sub="최근 7일 평가 갱신 기준"
           accent
         />
         <StatCard label="총 평가" value={fmt(stats.totalRatings)} />
@@ -454,8 +454,8 @@ function Dashboard({
         />
         <StatCard
           label="총 duel"
-          value={fmt(stats.totalComparisons)}
-          sub={`최근 7일 +${fmt(stats.duels7d)}`}
+          value={fmt(stats.totalDuels)}
+          sub={`평가당 평균 ${fmt1(stats.avgDuelsPerRating)}회`}
         />
         <StatCard
           label="평가 활동 (7일)"
