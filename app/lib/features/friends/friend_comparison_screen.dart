@@ -809,15 +809,18 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.md),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: p.accent,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'Premium으로 업그레이드',
-              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13),
+          GestureDetector(
+            onTap: () => context.push('/premium-upgrade'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: p.accent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Premium으로 업그레이드',
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
             ),
           ),
         ],

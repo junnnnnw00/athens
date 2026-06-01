@@ -518,6 +518,83 @@ class FriendsService {
       controversialSongs: controversialSongs.take(5).toList(),
     );
   }
+
+  /// Get the list of profiles of followers (users following the current user).
+  Future<List<UserProfile>> getFollowers() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return [];
+
+    final rows = await _client
+        .from('follows')
+        .select('follower:profiles!follows_follower_id_fkey(id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium)')
+        .eq('following_id', user.id);
+
+    return rows
+        .map((r) => r['follower'])
+        .where((f) => f != null)
+        .map((f) => UserProfile.fromMap(f as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Get recent ratings of friends, mapped to CatalogItem list.
+  Future<List<CatalogItem>> getFriendsRecentRatings() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return [];
+
+    // 1. Get friend IDs (following_id)
+    final followRows = await _client
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id);
+    
+    final friendIds = followRows.map((r) => r['following_id'] as String).toList();
+    if (friendIds.isEmpty) return [];
+
+    // 2. Get recent ratings of these friends, including item info
+    final ratingRows = await _client
+        .from('ratings')
+        .select('updated_at, item_id, items!inner(id, kind, source, source_id, title, primary_artist, image_url, tags)')
+        .inFilter('user_id', friendIds)
+        .order('updated_at', ascending: false)
+        .limit(30);
+
+    final items = <CatalogItem>[];
+    final seenIds = <String>{};
+
+    for (final row in ratingRows) {
+      final itemData = row['items'] as Map<String, dynamic>?;
+      if (itemData == null) continue;
+
+      final source = itemData['source']?.toString() ?? '';
+      final sourceId = itemData['source_id']?.toString() ?? '';
+      final localId = '$source:$sourceId';
+
+      if (seenIds.contains(localId)) continue;
+      seenIds.add(localId);
+
+      final tagsRaw = itemData['tags'] as List<dynamic>? ?? [];
+      final tags = tagsRaw.map((t) {
+        final m = t as Map<String, dynamic>;
+        return CatalogTag(
+          name: m['name']?.toString() ?? '',
+          source: m['source']?.toString() ?? 'genre',
+        );
+      }).toList();
+
+      items.add(CatalogItem(
+        id: localId,
+        kind: itemData['kind']?.toString() ?? 'track',
+        title: itemData['title']?.toString() ?? '',
+        primaryArtist: itemData['primary_artist']?.toString(),
+        imageUrl: itemData['image_url']?.toString(),
+        source: source,
+        sourceId: sourceId,
+        tags: tags,
+      ));
+    }
+
+    return items;
+  }
 }
 
 final friendsServiceProvider = Provider<FriendsService>((ref) => FriendsService());
@@ -525,4 +602,14 @@ final friendsServiceProvider = Provider<FriendsService>((ref) => FriendsService(
 /// Friend list provider
 final friendsProvider = FutureProvider<List<UserProfile>>((ref) async {
   return ref.watch(friendsServiceProvider).getFriends();
+});
+
+/// Followers list provider
+final followersProvider = FutureProvider<List<UserProfile>>((ref) async {
+  return ref.watch(friendsServiceProvider).getFollowers();
+});
+
+/// Friends' recent ratings provider
+final friendsRecentRatingsProvider = FutureProvider<List<CatalogItem>>((ref) async {
+  return ref.watch(friendsServiceProvider).getFriendsRecentRatings();
 });

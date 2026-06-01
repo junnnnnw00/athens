@@ -8,6 +8,7 @@ import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
 import '../catalog/catalog_service.dart';
+import '../friends/friends_service.dart';
 import '../../i18n.dart';
 import '../../widgets/update_banner.dart';
 import '../../widgets/initial_score_dialog.dart';
@@ -19,6 +20,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final recentAsync = ref.watch(recentlyPlayedProvider);
+    final friendsRecentAsync = ref.watch(friendsRecentRatingsProvider);
     final ratedItems = ref.watch(ratedItemsProvider);
     final ratedIds = ratedItems.map((e) => e.id).toSet();
     final ratedKeys = ratedItems.map((r) {
@@ -44,8 +46,12 @@ class HomeScreen extends ConsumerWidget {
             child: RefreshIndicator(
               onRefresh: () async {
                 ref.invalidate(recentlyPlayedProvider);
+                ref.invalidate(friendsRecentRatingsProvider);
                 try {
                   await ref.read(recentlyPlayedProvider.future);
+                } catch (_) {}
+                try {
+                  await ref.read(friendsRecentRatingsProvider.future);
                 } catch (_) {}
               },
               child: ListView(
@@ -57,6 +63,35 @@ class HomeScreen extends ConsumerWidget {
                       style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: AppSpacing.lg),
                   const _DuelCallout(onTap: null), // Tap behavior is embedded inside _DuelCallout or can be passed
+                  
+                  // Recommended Friend Ratings Section
+                  friendsRecentAsync.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                    data: (items) {
+                      final unrated = items.where((it) {
+                        final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
+                        return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
+                      }).toList();
+                      if (unrated.isEmpty) return const SizedBox.shrink();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: AppSpacing.xxl),
+                          const Text('친구들이 평가한 음악', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: AppSpacing.md),
+                          Column(
+                            children: unrated
+                                .take(5)
+                                .map((it) => _RecentCard(item: it))
+                                .toList(),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
                   const SizedBox(height: AppSpacing.xxl),
                   Text(context.t('home_recent', ref: ref),
                       style: Theme.of(context).textTheme.titleMedium),
