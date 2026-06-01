@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -128,113 +129,172 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             _PublicProfileCard(handle: profile.handle, isPublic: profile.isPublic),
             const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-              decoration: BoxDecoration(
-                color: p.surface2,
-                borderRadius: BorderRadius.circular(AppRadii.card),
-                border: Border.all(color: p.line),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.workspace_premium_rounded, size: 20, color: p.accentText),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      '체험용 프리미엄 계정',
-                      style: Theme.of(context).textTheme.titleSmall,
+            if (profile.isPremium)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [p.accentSoft.withValues(alpha: 0.1), p.accent.withValues(alpha: 0.15)],
+                  ),
+                  borderRadius: BorderRadius.circular(AppRadii.card),
+                  border: Border.all(color: p.accent.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.workspace_premium_rounded, color: p.accentText),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'Athens Premium 회원',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: p.accentText),
                     ),
+                  ],
+                ),
+              )
+            else
+              GestureDetector(
+                onTap: () => context.push('/premium-upgrade'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: p.surface2,
+                    borderRadius: BorderRadius.circular(AppRadii.card),
+                    border: Border.all(color: p.line),
                   ),
-                  Switch(
-                    activeThumbColor: p.accent,
-                    value: profile.isPremium,
-                    onChanged: (val) async {
-                      try {
-                        await ref.read(profileServiceProvider).togglePremium(val);
-                        ref.invalidate(myProfileProvider);
-                      } catch (_) {}
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: p.surface2,
-                borderRadius: BorderRadius.circular(AppRadii.card),
-                border: Border.all(color: p.line),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.query_stats_rounded, size: 20, color: p.accentText),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '개발용 데모 데이터 주입',
-                          style: Theme.of(context).textTheme.titleSmall,
+                  child: Row(
+                    children: [
+                      Icon(Icons.workspace_premium_rounded, color: p.muted),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Athens Premium 가입하기',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '상세 통계 및 곡 대조 리포트를 해제하세요',
+                              style: TextStyle(color: p.muted, fontSize: 11),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '18개 명반 평가 + 153개 듀얼 내역을 생성합니다.',
-                          style: TextStyle(color: p.muted, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: p.accent,
-                      foregroundColor: p.bg,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      minimumSize: const Size(60, 32),
-                    ),
-                    onPressed: () async {
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
-                      try {
-                        await forceReSeed(ref);
-                        if (context.mounted) {
-                          Navigator.pop(context); // Close loading dialog first
-                          
-                          // Defer Riverpod invalidations to the next frame to prevent navigator _debugLocked error
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            ref.invalidate(libraryControllerProvider);
-                            ref.invalidate(statsProvider);
-                            ref.invalidate(myProfileProvider);
-                          });
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('데모 데이터 주입 완료!')),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          Navigator.pop(context); // Close loading dialog
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('데이터 주입 실패: $e')),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text('주입', style: TextStyle(fontSize: 12)),
+                      Icon(Icons.chevron_right_rounded, color: p.muted),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            if (kDebugMode || kDevSeed) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                decoration: BoxDecoration(
+                  color: p.surface2,
+                  borderRadius: BorderRadius.circular(AppRadii.card),
+                  border: Border.all(color: p.line),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.workspace_premium_rounded, size: 20, color: p.accentText),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        '체험용 프리미엄 계정',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                    Switch(
+                      activeThumbColor: p.accent,
+                      value: profile.isPremium,
+                      onChanged: (val) async {
+                        try {
+                          await ref.read(profileServiceProvider).togglePremium(val);
+                          ref.invalidate(myProfileProvider);
+                        } catch (_) {}
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: p.surface2,
+                  borderRadius: BorderRadius.circular(AppRadii.card),
+                  border: Border.all(color: p.line),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.query_stats_rounded, size: 20, color: p.accentText),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '개발용 데모 데이터 주입',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '18개 명반 평가 + 153개 듀얼 내역을 생성합니다.',
+                            style: TextStyle(color: p.muted, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: p.accent,
+                        foregroundColor: p.bg,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        minimumSize: const Size(60, 32),
+                      ),
+                      onPressed: () async {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                        try {
+                          await forceReSeed(ref);
+                          if (context.mounted) {
+                            Navigator.pop(context); // Close loading dialog first
+                            
+                            // Defer Riverpod invalidations to the next frame to prevent navigator _debugLocked error
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              ref.invalidate(libraryControllerProvider);
+                              ref.invalidate(statsProvider);
+                              ref.invalidate(myProfileProvider);
+                            });
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('데모 데이터 주입 완료!')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            Navigator.pop(context); // Close loading dialog
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('데이터 주입 실패: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('주입', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
           if (stats != null && stats.topGenres.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
