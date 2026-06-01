@@ -1180,76 +1180,89 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5.0),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: p.surface2,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: p.line),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top row: art + title + scores
-            Row(
-              children: [
-                CoverArt(title: item.title, imageUrl: item.imageUrl, size: 44),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      Text(
-                        item.artist ?? '—',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: p.muted, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Score side-by-side
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _scoreChip('나', myScore, p, category == _kIPrefer || category == _kBothLove),
-                    const SizedBox(height: 3),
-                    _scoreChip('친구', theirScore, p, category == _kTheyPrefer || category == _kBothLove),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Score bar comparison
-            _buildScoreComparisonBar(myScore, theirScore, maxScore, accentColor, p),
-            // Diff label
-            if (diff >= 2.0) ...[
-              const SizedBox(height: 6),
+      child: InkWell(
+        onTap: () {
+          final catalogItem = CatalogItem(
+            id: item.id,
+            kind: 'track',
+            title: item.title,
+            primaryArtist: item.artist,
+            imageUrl: item.imageUrl,
+          );
+          context.push('/item/${item.id}', extra: catalogItem);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: p.surface2,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: p.line),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: art + title + scores
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(4),
+                  CoverArt(title: item.title, imageUrl: item.imageUrl, size: 44),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        Text(
+                          item.artist ?? '—',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: p.muted, fontSize: 10),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      '${diff.toStringAsFixed(1)}점 차이',
-                      style: TextStyle(color: accentColor, fontSize: 9, fontWeight: FontWeight.bold),
-                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Score side-by-side
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _scoreChip('나', myScore, p, category == _kIPrefer || category == _kBothLove),
+                      const SizedBox(height: 3),
+                      _scoreChip('친구', theirScore, p, category == _kTheyPrefer || category == _kBothLove),
+                    ],
                   ),
                 ],
               ),
+              const SizedBox(height: 10),
+              // Score bar comparison
+              _buildScoreComparisonBar(myScore, theirScore, maxScore, accentColor, p),
+              // Diff label
+              if (diff >= 2.0) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: accentColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${diff.toStringAsFixed(1)}점 차이',
+                        style: TextStyle(color: accentColor, fontSize: 9, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

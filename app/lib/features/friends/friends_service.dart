@@ -187,6 +187,7 @@ class FriendMatchResult {
 
 class MatchItemInfo {
   MatchItemInfo({
+    required this.id,
     required this.title,
     required this.artist,
     required this.imageUrl,
@@ -194,6 +195,7 @@ class MatchItemInfo {
     required this.theirScore,
   });
 
+  final String id;
   final String title;
   final String? artist;
   final String? imageUrl;
@@ -356,6 +358,7 @@ class FriendsService {
         totalDiff += diff;
 
         final info = MatchItemInfo(
+          id: myId,
           title: myItem.title,
           artist: myItem.primaryArtist,
           imageUrl: myItem.imageUrl,

@@ -373,50 +373,56 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
   @override
   Widget build(BuildContext context) {
     final added = widget.added;
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xl, vertical: AppSpacing.md),
-      child: Row(
-        children: [
-          CoverArt(
-              title: widget.item.title,
-              imageUrl: widget.item.imageUrl,
-              size: 48,
-              // Artists get a circular avatar, releases a rounded square.
-              radius: widget.item.kind == 'artist' ? 24 : AppRadii.cover),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall),
-                Text(
-                    widget.item.kind == 'artist'
-                        ? '아티스트'
-                        : '${_kindHeaders[widget.item.kind] ?? ''} · ${widget.item.primaryArtist ?? ''}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall),
-              ],
+    return InkWell(
+      onTap: () {
+        context.push('/item/${widget.item.id}', extra: widget.item);
+      },
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.xl, vertical: AppSpacing.md),
+        child: Row(
+          children: [
+            CoverArt(
+                title: widget.item.title,
+                imageUrl: widget.item.imageUrl,
+                size: 48,
+                // Artists get a circular avatar, releases a rounded square.
+                radius: widget.item.kind == 'artist' ? 24 : AppRadii.cover),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall),
+                  Text(
+                      widget.item.kind == 'artist'
+                          ? '아티스트'
+                          : '${_kindHeaders[widget.item.kind] ?? ''} · ${widget.item.primaryArtist ?? ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          if (added)
-            Icon(Icons.check_circle_rounded, color: context.palette.accent)
-          else
-            FilledButton(
-              onPressed: _busy ? null : _add,
-              child: _busy
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('추가'),
-            ),
-        ],
+            const SizedBox(width: AppSpacing.sm),
+            if (added)
+              Icon(Icons.check_circle_rounded, color: context.palette.accent)
+            else
+              FilledButton(
+                onPressed: _busy ? null : _add,
+                child: _busy
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('추가'),
+              ),
+          ],
+        ),
       ),
     );
   }

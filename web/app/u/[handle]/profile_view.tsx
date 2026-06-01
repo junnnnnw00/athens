@@ -29,10 +29,24 @@ export interface ProfileStats {
 }
 
 const MOOD_KEYWORDS = new Set([
+  // Original English Moods
   'melancholic', 'melancholy', 'dreamy', 'energetic', 'calm', 'dark', 'uplifting',
   'romantic', 'aggressive', 'peaceful', 'sad', 'happy', 'intense',
   'relaxing', 'atmospheric', 'emotional', 'powerful', 'mellow', 'epic',
-  'haunting', 'nostalgic', 'mysterious', 'cathartic'
+  'haunting', 'nostalgic', 'mysterious', 'cathartic',
+
+  // Expanded English Moods
+  'chill', 'chillout', 'relax', 'beautiful', 'sexy', 'smooth', 'sweet', 'fun',
+  'funky', 'groovy', 'trippy', 'warm', 'cozy', 'somber', 'gloomy', 'angry',
+  'hype', 'heavy', 'cheerful', 'moody', 'passionate', 'soothing', 'soothe',
+  'gentle', 'violent', 'brutal', 'lively', 'bright', 'dramatic', 'hopeful',
+  'soft', 'harsh', 'raw', 'sensual', 'spiritual', 'nostalgia', 'longing',
+  'sadness', 'joy', 'calming',
+
+  // Korean Moods
+  '우울', '우울한', '슬픈', '슬픔', '몽환', '몽환적인', '잔잔한', '차분한', '조용한',
+  '신나는', '신나', '감성', '감성적인', '위로', '평화로운', '행복한', '행복', '섹시한',
+  '어두운', '강렬한', '신선한', '달달한', '따뜻한', '시원한', '힙한', '사랑', '신남'
 ]);
 
 function isMoodTag(name: string): boolean {

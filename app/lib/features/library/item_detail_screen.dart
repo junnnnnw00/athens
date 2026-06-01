@@ -12,8 +12,9 @@ import '../../widgets/score_ring.dart';
 import '../../widgets/initial_score_dialog.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
-  const ItemDetailScreen({super.key, required this.itemId});
+  const ItemDetailScreen({super.key, required this.itemId, this.catalogItem});
   final String itemId;
+  final CatalogItem? catalogItem;
 
   @override
   ConsumerState<ItemDetailScreen> createState() => _ItemDetailScreenState();
@@ -24,6 +25,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   bool _editing = false;
   bool _loadedReview = false;
   bool _saving = false;
+  bool _busy = false;
 
   @override
   void dispose() {
@@ -105,54 +107,115 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     if (mounted) context.go('/library');
   }
 
+  Future<void> _addFromUnrated() async {
+    if (widget.catalogItem == null) return;
+    final item = widget.catalogItem!;
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    
+    final score = await showDialog<double>(
+      context: context,
+      builder: (c) => InitialScoreDialog(
+        title: item.kind == 'track'
+            ? '이 곡은 어땠나요?'
+            : item.kind == 'album'
+                ? '이 앨범은 어땠나요?'
+                : '이 아티스트는 어땠나요?',
+        itemTitle: item.title,
+        itemArtist: item.kind == 'artist' ? null : item.primaryArtist,
+        imageUrl: item.imageUrl,
+        initialValue: 5.0,
+        itemKind: item.kind,
+      ),
+    );
+    if (score == null) return;
+    final startingElo = eloFromScore(score);
+
+    if (!mounted) return;
+    setState(() => _busy = true);
+
+    final service = ref.read(catalogServiceProvider);
+    final controller = ref.read(libraryControllerProvider.notifier);
+    final hasOpponents = ref
+        .read(ratedItemsProvider)
+        .any((i) => i.kind == item.kind && i.id != item.id);
+
+    var enrichedItem = item;
+    try {
+      final tags = await service.enrichTags(item);
+      enrichedItem = item.copyWithTags(tags);
+    } catch (_) {
+      // Enrichment is best-effort
+    }
+    await controller.addItem(enrichedItem, startingElo: startingElo);
+
+    if (hasOpponents) {
+      router.go('/duel/${Uri.encodeComponent(enrichedItem.id)}');
+    } else {
+      if (mounted) setState(() => _busy = false);
+      messenger.showSnackBar(
+        SnackBar(content: Text('"${enrichedItem.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    if (!_loadedReview) {
-      _loadedReview = true;
-      _loadReview();
-    }
     final items = ref.watch(ratedItemsProvider);
     final item = items.where((i) => i.id == widget.itemId).firstOrNull;
 
-    if (item == null) {
+    final isUnrated = item == null;
+    if (isUnrated && widget.catalogItem == null) {
       return Scaffold(
         appBar: AppBar(),
         body: const Center(child: Text('항목을 찾을 수 없어요.')),
       );
     }
 
-    final score = scoreFromElo(item.elo);
+    if (!isUnrated && !_loadedReview) {
+      _loadedReview = true;
+      _loadReview();
+    }
+
+    final String title = item == null ? widget.catalogItem!.title : item.title;
+    final String? primaryArtist = item == null ? widget.catalogItem!.primaryArtist : item.primaryArtist;
+    final String? imageUrl = item == null ? widget.catalogItem!.imageUrl : item.imageUrl;
+    final String kind = item == null ? widget.catalogItem!.kind : item.kind;
+
+    final double score = item == null ? 0.0 : scoreFromElo(item.elo);
 
     return Scaffold(
       appBar: AppBar(
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded),
-            onSelected: (v) {
-              if (v == 'replace') _replace();
-              if (v == 'delete') _confirmDelete();
-            },
-            itemBuilder: (c) => [
-              const PopupMenuItem(
-                value: 'replace',
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.refresh_rounded),
-                  title: Text('재배치고사'),
+        actions: isUnrated
+            ? null
+            : [
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded),
+                  onSelected: (v) {
+                    if (v == 'replace') _replace();
+                    if (v == 'delete') _confirmDelete();
+                  },
+                  itemBuilder: (c) => [
+                    const PopupMenuItem(
+                      value: 'replace',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.refresh_rounded),
+                        title: Text('재배치고사'),
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.delete_outline_rounded),
+                        title: Text('삭제'),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.delete_outline_rounded),
-                  title: Text('삭제'),
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
@@ -160,10 +223,10 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         children: [
           Center(
             child: CoverArt(
-                title: item.title,
-                imageUrl: item.imageUrl,
+                title: title,
+                imageUrl: imageUrl,
                 size: 200,
-                radius: AppRadii.card),
+                radius: kind == 'artist' ? 100 : AppRadii.card),
           ),
           const SizedBox(height: AppSpacing.xl),
           Row(
@@ -173,29 +236,57 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title,
+                    Text(title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.headlineSmall),
-                    if (item.primaryArtist != null) ...[
-                      const SizedBox(height: 2),
-                      Text(item.primaryArtist!,
+                    if (primaryArtist != null) ...[
+                      const SizedBox(height: 4),
+                      Text(primaryArtist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodyMedium),
                     ],
                   ],
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
-              ScoreRing(score: score, size: 64),
+              if (!isUnrated)
+                ScoreRing(score: score, size: 64)
+              else
+                IconButton.filled(
+                  onPressed: _busy ? null : _addFromUnrated,
+                  icon: const Icon(Icons.add_rounded),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(64, 64),
+                    backgroundColor: p.accent,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
-          Row(
-            children: [
-              _Stat(label: '듀얼', value: '${item.comparisons}'),
-              const SizedBox(width: AppSpacing.xl),
-              _Stat(label: 'Elo', value: item.elo.toStringAsFixed(0)),
-            ],
-          ),
-          if (item.tags.isNotEmpty) ...[
+          if (!isUnrated)
+            Row(
+              children: [
+                _Stat(label: '듀얼', value: '${item.comparisons}'),
+                const SizedBox(width: AppSpacing.xl),
+                _Stat(label: 'Elo', value: item.elo.toStringAsFixed(0)),
+              ],
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: p.surface2,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+              ),
+              child: Text(
+                '아직 라이브러리에 추가되지 않은 항목입니다.',
+                style: TextStyle(color: p.muted, fontSize: 13),
+              ),
+            ),
+          if (!isUnrated && item.tags.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
             Text('태그', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: AppSpacing.sm),
@@ -205,76 +296,106 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               children: item.tags.map((t) => _TagChip(t.name)).toList(),
             ),
           ],
-          _InfoSection(item: item),
+          _InfoSection(
+            kind: kind,
+            artist: primaryArtist ?? '',
+            title: title,
+          ),
           const SizedBox(height: AppSpacing.xxl),
-          Text('리뷰', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: AppSpacing.sm),
-          if (_editing)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                TextField(
-                  controller: _reviewController,
-                  maxLines: 4,
-                  autofocus: true,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  decoration: InputDecoration(
-                    hintText: '이 음악에 대한 생각을 적어보세요…',
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.card),
-                      borderSide: BorderSide(color: p.line),
+          if (!isUnrated) ...[
+            Text('리뷰', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.sm),
+            if (_editing)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  TextField(
+                    controller: _reviewController,
+                    maxLines: 4,
+                    autofocus: true,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    decoration: InputDecoration(
+                      hintText: '이 음악에 대한 생각을 적어보세요…',
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.card),
+                        borderSide: BorderSide(color: p.line),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.card),
+                        borderSide: BorderSide(color: p.accent, width: 2),
+                      ),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.card),
-                      borderSide: BorderSide(color: p.accent, width: 2),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed:
+                            _saving ? null : () => setState(() => _editing = false),
+                        child: const Text('취소'),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      FilledButton(
+                        onPressed: _saving ? null : () => _saveReview(score),
+                        child: _saving
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2))
+                            : const Text('저장'),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            else
+              InkWell(
+                onTap: () => setState(() => _editing = true),
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: p.line),
+                    borderRadius: BorderRadius.circular(AppRadii.card),
+                  ),
+                  child: Text(
+                    _reviewController.text.isEmpty
+                        ? '탭해서 리뷰 작성…'
+                        : _reviewController.text,
+                    style: TextStyle(
+                      color: _reviewController.text.isEmpty ? p.faint : p.text,
                     ),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed:
-                          _saving ? null : () => setState(() => _editing = false),
-                      child: const Text('취소'),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    FilledButton(
-                      onPressed: _saving ? null : () => _saveReview(score),
-                      child: _saving
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('저장'),
-                    ),
-                  ],
-                ),
-              ],
-            )
-          else
-            InkWell(
-              onTap: () => setState(() => _editing = true),
-              borderRadius: BorderRadius.circular(AppRadii.card),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: BoxDecoration(
-                  border: Border.all(color: p.line),
-                  borderRadius: BorderRadius.circular(AppRadii.card),
-                ),
-                child: Text(
-                  _reviewController.text.isEmpty
-                      ? '탭해서 리뷰 작성…'
-                      : _reviewController.text,
-                  style: TextStyle(
-                    color: _reviewController.text.isEmpty ? p.faint : p.text,
+              ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: FilledButton.icon(
+                onPressed: _busy ? null : _addFromUnrated,
+                icon: _busy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.add_rounded),
+                label: const Text('라이브러리에 추가하여 평가하기',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: p.accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.card),
                   ),
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
@@ -320,16 +441,22 @@ class _TagChip extends StatelessWidget {
 }
 
 class _InfoSection extends ConsumerWidget {
-  const _InfoSection({required this.item});
-  final RatedCatalogItem item;
+  const _InfoSection({
+    required this.kind,
+    required this.artist,
+    required this.title,
+  });
+  final String kind;
+  final String artist;
+  final String title;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final infoAsync = ref.watch(itemInfoProvider((
-      kind: item.kind,
-      artist: item.primaryArtist ?? '',
-      title: item.title,
+      kind: kind,
+      artist: artist,
+      title: title,
     )));
 
     return infoAsync.when(
@@ -360,6 +487,18 @@ class _InfoSection extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Info genres (especially useful for unrated items without DB tags)
+            if (info.genres.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.xl),
+              Text('장르', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: info.genres.map((g) => _TagChip(g)).toList(),
+              ),
+            ],
+
             const SizedBox(height: AppSpacing.xl),
             
             // Facts row: year · album · duration
@@ -402,7 +541,7 @@ class _InfoSection extends ConsumerWidget {
             ],
 
             // Artist top tracks
-            if (item.kind == 'artist' && info.topTracks.isNotEmpty) ...[
+            if (kind == 'artist' && info.topTracks.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.xl),
               Text('인기 트랙', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: AppSpacing.sm),

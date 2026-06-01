@@ -14,6 +14,7 @@ import 'features/catalog/search_screen.dart';
 import 'features/spotify_connect/spotify_connect_screen.dart';
 import 'features/share/share_screen.dart';
 import 'features/library/item_detail_screen.dart';
+import 'features/catalog/catalog_service.dart';
 import 'features/friends/friend_list_screen.dart';
 import 'features/friends/friend_comparison_screen.dart';
 import 'features/premium/premium_upgrade_screen.dart';
@@ -72,8 +73,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/share', builder: (c, s) => const ShareScreen()),
           GoRoute(
             path: '/item/:id',
-            builder: (c, s) =>
-                ItemDetailScreen(itemId: s.pathParameters['id']!),
+            builder: (c, s) {
+              final catalogItem = s.extra is CatalogItem ? s.extra as CatalogItem : null;
+              return ItemDetailScreen(
+                itemId: s.pathParameters['id']!,
+                catalogItem: catalogItem,
+              );
+            },
           ),
           GoRoute(
             path: '/friends',

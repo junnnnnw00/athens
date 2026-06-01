@@ -250,44 +250,50 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final item = widget.item;
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        border: Border.all(color: p.line),
-      ),
-      child: Row(
-        children: [
-          CoverArt(title: item.title, imageUrl: item.imageUrl, size: 48),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall),
-                Text(item.primaryArtist ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall),
-              ],
+    return InkWell(
+      onTap: () {
+        context.push('/item/${item.id}', extra: item);
+      },
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          border: Border.all(color: p.line),
+        ),
+        child: Row(
+          children: [
+            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 48),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall),
+                  Text(item.primaryArtist ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          FilledButton(
-            onPressed: _busy ? null : _rate,
-            child: _busy
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(context.t('home_rate', ref: ref)),
-          ),
-        ],
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton(
+              onPressed: _busy ? null : _rate,
+              child: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(context.t('home_rate', ref: ref)),
+            ),
+          ],
+        ),
       ),
     );
   }

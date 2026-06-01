@@ -176,6 +176,7 @@ class StubFriendsService extends FriendsService {
         totalDiff += diff;
 
         final info = MatchItemInfo(
+          id: myId,
           title: myItem.title,
           artist: myItem.primaryArtist,
           imageUrl: myItem.imageUrl,
