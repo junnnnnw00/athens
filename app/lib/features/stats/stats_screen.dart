@@ -10,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../../i18n.dart';
 
 import '../../widgets/premium_lock_overlay.dart';
+import '../catalog/catalog_service.dart';
 import '../profile/profile_service.dart';
 
 final statsProvider = FutureProvider<LibraryStats>((ref) async {
@@ -78,6 +79,30 @@ class StatsScreen extends ConsumerWidget {
 
         final ratedItems = ref.watch(ratedItemsProvider);
         final totalComparisons = ratedItems.fold<int>(0, (sum, i) => sum + i.comparisons);
+        final mostComparedItem = ratedItems.isNotEmpty 
+            ? ratedItems.reduce((a, b) => a.comparisons > b.comparisons ? a : b) 
+            : null;
+
+        final topItemsWithMetadata = stats.topItems.map((item) {
+          final catalogItem = ratedItems.firstWhere(
+            (i) => i.id == item.id, 
+            orElse: () => RatedCatalogItem(
+              id: item.id,
+              kind: item.kind.name,
+              title: 'Unknown',
+              elo: item.elo,
+              comparisons: item.comparisons,
+              tags: const [],
+              updatedAt: item.updatedAt,
+            ),
+          );
+          return (
+            item: item,
+            title: catalogItem.title,
+            artist: catalogItem.primaryArtist,
+            imageUrl: catalogItem.imageUrl,
+          );
+        }).toList();
 
         return Scaffold(
           appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
@@ -103,14 +128,175 @@ class StatsScreen extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // 1. Insights Report Grid
+                      _SectionTitle(isKo ? '💡 나의 음악 취향 분석 리포트' : '💡 Music Taste Insights'),
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _InsightCard(
+                              title: isKo ? '평균 점수' : 'Average Score',
+                              value: '${stats.averageScore.toStringAsFixed(1)}점',
+                              icon: Icons.star_rounded,
+                              iconColor: Colors.amber,
+                              description: isKo ? '내 라이브러리 전체 평균' : 'Your library average',
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: _InsightCard(
+                              title: isKo ? '최다 듀얼 곡' : 'Most Dueling Item',
+                              value: mostComparedItem != null ? mostComparedItem.title : '-',
+                              icon: Icons.local_fire_department_rounded,
+                              iconColor: Colors.orange,
+                              description: mostComparedItem != null ? '${mostComparedItem.comparisons}회 격돌' : '-',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _InsightCard(
+                              title: isKo ? '원픽 장르' : 'Favorite Genre',
+                              value: stats.genrePreferences.isNotEmpty ? stats.genrePreferences.first.name : '-',
+                              icon: Icons.music_note_rounded,
+                              iconColor: Colors.purple,
+                              description: stats.genrePreferences.isNotEmpty 
+                                  ? '평균 ${stats.genrePreferences.first.averageScore.toStringAsFixed(1)}점' 
+                                  : '-',
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: _InsightCard(
+                              title: isKo ? '선호 분위기' : 'Favorite Mood',
+                              value: stats.moodPreferences.isNotEmpty ? stats.moodPreferences.first.name : '-',
+                              icon: Icons.wb_sunny_rounded,
+                              iconColor: Colors.teal,
+                              description: stats.moodPreferences.isNotEmpty 
+                                  ? '평균 ${stats.moodPreferences.first.averageScore.toStringAsFixed(1)}점' 
+                                  : '-',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xxl),
+
+                      // 2. Score Distribution Chart
                       _SectionTitle(context.t('stats_distribution', ref: ref)),
                       const SizedBox(height: AppSpacing.md),
                       SizedBox(
-                        height: 170,
+                        height: 180,
                         child: _ScoreDistributionChart(buckets: stats.scoreBuckets),
                       ),
-                      if (stats.topGenres.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xxl),
+
+                      // 3. Top Favorites List
+                      if (topItemsWithMetadata.isNotEmpty) ...[
+                        _SectionTitle(isKo ? '🏆 나의 원픽 음악 Top 5' : '🏆 My Top 5 Favorites'),
+                        const SizedBox(height: AppSpacing.md),
+                        ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: topItemsWithMetadata.take(5).length,
+                          separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
+                          itemBuilder: (context, index) {
+                            final data = topItemsWithMetadata[index];
+                            return Container(
+                              padding: const EdgeInsets.all(AppSpacing.md),
+                              decoration: BoxDecoration(
+                                color: p.surface2,
+                                borderRadius: BorderRadius.circular(AppRadii.card),
+                                border: Border.all(color: p.line),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: index == 0 ? p.accent : p.line,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: TextStyle(
+                                        color: index == 0 ? p.bg : p.text,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.md),
+                                  if (data.imageUrl != null)
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(AppRadii.cover),
+                                      child: Image.network(
+                                        data.imageUrl!,
+                                        width: 40,
+                                        height: 40,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  else
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: p.line,
+                                        borderRadius: BorderRadius.circular(AppRadii.cover),
+                                      ),
+                                      child: Icon(Icons.music_note_rounded, color: p.faint),
+                                    ),
+                                  const SizedBox(width: AppSpacing.md),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          data.title,
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (data.artist != null)
+                                          Text(
+                                            data.artist!,
+                                            style: TextStyle(color: p.muted, fontSize: 12),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${data.item.score.toStringAsFixed(1)}점',
+                                        style: TextStyle(
+                                          color: p.accentText,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${data.item.comparisons}회 대결',
+                                        style: TextStyle(color: p.muted, fontSize: 10),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                         const SizedBox(height: AppSpacing.xxl),
+                      ],
+
+                      // 4. Genres & Moods
+                      if (stats.topGenres.isNotEmpty) ...[
                         _SectionTitle(context.t('stats_genres', ref: ref)),
                         const SizedBox(height: AppSpacing.sm),
                         ...stats.topGenres.take(5).map((t) =>
@@ -156,7 +342,7 @@ class StatsScreen extends ConsumerWidget {
                         _SectionTitle(context.t('stats_activity', ref: ref)),
                         const SizedBox(height: AppSpacing.md),
                         SizedBox(
-                            height: 120,
+                            height: 150,
                             child: _ActivityChart(activity: stats.activityOverTime)),
                       ],
                     ],
@@ -222,6 +408,66 @@ class _SectionTitle extends StatelessWidget {
       Text(title, style: Theme.of(context).textTheme.titleMedium);
 }
 
+class _InsightCard extends StatelessWidget {
+  const _InsightCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.iconColor,
+    required this.description,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color iconColor;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      height: 110,
+      decoration: BoxDecoration(
+        color: p.surface2,
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        border: Border.all(color: p.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: TextStyle(color: p.muted, fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+              Icon(icon, color: iconColor, size: 18),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            description,
+            style: TextStyle(color: p.muted, fontSize: 10),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ScoreDistributionChart extends StatelessWidget {
   const _ScoreDistributionChart({required this.buckets});
   final List<ScoreBucket> buckets;
@@ -234,11 +480,46 @@ class _ScoreDistributionChart extends StatelessWidget {
     return BarChart(
       BarChartData(
         maxY: maxY == 0 ? 1 : maxY,
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipColor: (_) => p.surface2,
+            tooltipBorder: BorderSide(color: p.line),
+            tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            tooltipMargin: 8,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final bucket = buckets[groupIndex];
+              return BarTooltipItem(
+                '${bucket.label}점\n',
+                TextStyle(color: p.text, fontWeight: FontWeight.bold, fontSize: 11),
+                children: [
+                  TextSpan(
+                    text: '${bucket.count}곡',
+                    style: TextStyle(color: p.accentText, fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: maxY / 3 > 0 ? (maxY / 3).roundToDouble() : 1.0,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: p.line.withValues(alpha: 0.5),
+            strokeWidth: 0.8,
+            dashArray: [4, 4],
+          ),
+        ),
         barGroups: buckets.asMap().entries.map((e) {
           return BarChartGroupData(x: e.key, barRods: [
             BarChartRodData(
               toY: e.value.count.toDouble(),
-              color: p.accent,
+              gradient: LinearGradient(
+                colors: [p.accent, p.accent.withValues(alpha: 0.5)],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
               width: 14,
               borderRadius: BorderRadius.circular(3),
             ),
@@ -248,19 +529,43 @@ class _ScoreDistributionChart extends StatelessWidget {
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              getTitlesWidget: (v, _) => Text('${v.toInt()}',
-                  style: TextStyle(fontSize: 10, color: p.faint)),
+              getTitlesWidget: (v, _) {
+                final idx = v.toInt();
+                if (idx < 0 || idx >= buckets.length) return const SizedBox.shrink();
+                if (idx % 2 != 0) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    buckets[idx].label,
+                    style: TextStyle(fontSize: 10, color: p.muted, fontWeight: FontWeight.w500),
+                  ),
+                );
+              },
             ),
           ),
-          leftTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 22,
+              getTitlesWidget: (v, _) {
+                if (v == 0) return const SizedBox.shrink();
+                if (v % 1 != 0) return const SizedBox.shrink();
+                return Text(
+                  '${v.toInt()}',
+                  style: TextStyle(fontSize: 9, color: p.muted),
+                );
+              },
+            ),
+          ),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
-        borderData: FlBorderData(show: false),
-        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(
+          show: true,
+          border: Border(
+            bottom: BorderSide(color: p.line),
+          ),
+        ),
       ),
     );
   }
@@ -360,6 +665,38 @@ class _ActivityChart extends StatelessWidget {
     return LineChart(
       LineChartData(
         maxY: maxY == 0 ? 1 : maxY,
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (_) => p.surface2,
+            tooltipBorder: BorderSide(color: p.line),
+            tooltipPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                final date = activity[spot.x.toInt()].date;
+                return LineTooltipItem(
+                  '${date.month}월 ${date.day}일\n',
+                  TextStyle(color: p.text, fontWeight: FontWeight.bold, fontSize: 11),
+                  children: [
+                    TextSpan(
+                      text: '${spot.y.toInt()}회 비교',
+                      style: TextStyle(color: p.accentText, fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                  ],
+                );
+              }).toList();
+            },
+          ),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: maxY / 3 > 0 ? (maxY / 3).roundToDouble() : 1.0,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: p.line.withValues(alpha: 0.5),
+            strokeWidth: 0.8,
+            dashArray: [4, 4],
+          ),
+        ),
         lineBarsData: [
           LineChartBarData(
             spots: activity.length == 1
@@ -374,16 +711,73 @@ class _ActivityChart extends StatelessWidget {
                         FlSpot(e.key.toDouble(), e.value.comparisons.toDouble()))
                     .toList(),
             isCurved: true,
-            color: p.accent,
-            barWidth: 2.5,
-            dotData: const FlDotData(show: false),
+            gradient: LinearGradient(
+              colors: [p.accent, p.accent.withValues(alpha: 0.7)],
+            ),
+            barWidth: 3,
+            dotData: FlDotData(
+              show: true,
+              getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                radius: 3.5,
+                color: p.accent,
+                strokeWidth: 1.5,
+                strokeColor: p.bg,
+              ),
+            ),
             belowBarData: BarAreaData(
-                show: true, color: p.accent.withValues(alpha: 0.12)),
+                show: true,
+                gradient: LinearGradient(
+                  colors: [p.accent.withValues(alpha: 0.2), p.accent.withValues(alpha: 0.0)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+            ),
           ),
         ],
-        titlesData: const FlTitlesData(show: false),
-        borderData: FlBorderData(show: false),
-        gridData: const FlGridData(show: false),
+        titlesData: FlTitlesData(
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (v, _) {
+                final idx = v.toInt();
+                if (idx < 0 || idx >= activity.length) return const SizedBox.shrink();
+                if (activity.length > 5 && idx % (activity.length ~/ 3) != 0 && idx != activity.length - 1) {
+                  return const SizedBox.shrink();
+                }
+                final date = activity[idx].date;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    '${date.month}/${date.day}',
+                    style: TextStyle(fontSize: 9, color: p.muted),
+                  ),
+                );
+              },
+            ),
+          ),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 22,
+              getTitlesWidget: (v, _) {
+                if (v == 0) return const SizedBox.shrink();
+                if (v % 1 != 0) return const SizedBox.shrink();
+                return Text(
+                  '${v.toInt()}',
+                  style: TextStyle(fontSize: 9, color: p.muted),
+                );
+              },
+            ),
+          ),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        borderData: FlBorderData(
+          show: true,
+          border: Border(
+            bottom: BorderSide(color: p.line),
+          ),
+        ),
       ),
     );
   }

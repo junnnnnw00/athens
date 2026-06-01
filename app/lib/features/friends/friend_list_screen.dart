@@ -408,43 +408,6 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
   Widget _buildMatchBadge(String friendId, bool isPremium) {
     final p = context.palette;
 
-    if (!isPremium) {
-      return GestureDetector(
-        onTap: () {
-          // Show Premium activation trial pop up
-          showDialog(
-            context: context,
-            builder: (context) => const Dialog(
-              child: PremiumLockOverlay(
-                featureName: '친구별 취향 일치율 확인',
-                featureDescription: '등록된 친구들의 음악 취향 분석을 통한 매칭 일치율 및 상세 교집합 비교를 확인해 보세요!',
-              ),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-          decoration: BoxDecoration(
-            color: p.surface2,
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            border: Border.all(color: p.line),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.lock_rounded, size: 12, color: p.muted),
-              const SizedBox(width: 4),
-              Text(
-                '??% Match',
-                style: TextStyle(color: p.muted, fontSize: 11, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Unlocked Premium match rate calculation
     return Consumer(
       builder: (context, ref, _) {
         final myRatings = ref.watch(ratedItemsProvider);

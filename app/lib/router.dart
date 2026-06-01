@@ -16,6 +16,7 @@ import 'features/share/share_screen.dart';
 import 'features/library/item_detail_screen.dart';
 import 'features/friends/friend_list_screen.dart';
 import 'features/friends/friend_comparison_screen.dart';
+import 'features/premium/premium_upgrade_screen.dart';
 import 'widgets/floating_nav.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -41,6 +42,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/auth', builder: (c, s) => const AuthScreen()),
+      GoRoute(path: '/premium-upgrade', builder: (c, s) => const PremiumUpgradeScreen()),
       ShellRoute(
         builder: (context, state, child) =>
             _AppShell(location: state.matchedLocation, child: child),

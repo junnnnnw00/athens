@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../theme/tokens.dart';
 import '../theme/app_theme.dart';
 import '../features/profile/profile_service.dart';
@@ -73,8 +75,8 @@ class PremiumLockOverlay extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xl),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.flash_on_rounded),
-                  label: const Text('체험용 프리미엄 활성화'),
+                  icon: const Icon(Icons.workspace_premium_rounded),
+                  label: const Text('Premium 활성화하기'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: p.accent,
                     foregroundColor: p.bg,
@@ -83,22 +85,8 @@ class PremiumLockOverlay extends ConsumerWidget {
                       vertical: AppSpacing.md,
                     ),
                   ),
-                  onPressed: () async {
-                    try {
-                      await ref.read(profileServiceProvider).togglePremium(true);
-                      ref.invalidate(myProfileProvider);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('체험용 프리미엄이 활성화되었습니다!')),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('활성화 실패: $e')),
-                        );
-                      }
-                    }
+                  onPressed: () {
+                    context.push('/premium-upgrade');
                   },
                 ),
               ],

@@ -1,10 +1,13 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'api/supabase.dart';
 import 'data/local/app_database.dart';
 import 'data/repository/library_providers.dart';
+import 'domain/elo.dart';
 import 'features/catalog/catalog_service.dart';
 
 /// Dev-only seed flag. `false` in release builds. When enabled, real sample data
@@ -75,35 +78,93 @@ List<CatalogItem> devSeedItems() => [
           ['shoegaze', 'emo'], ['melancholic', 'intense']),
     ];
 
-/// Seeds the database and runs a handful of duels so ranking/stats have data.
-Future<void> seedDevData(ProviderContainer container) async {
-  await container.read(libraryControllerProvider.future);
-  final controller = container.read(libraryControllerProvider.notifier);
-  final items = devSeedItems();
-  for (final item in items) {
-    await controller.addItem(item);
-  }
-  // Deterministic duels: earlier items beat later ones, building a clear order.
+/// Clear local tables for this user, calculate rankings in memory, and insert in a single Drift transaction.
+Future<void> seedDatabaseHelper({
+  required AppDatabase db,
+  required String userId,
+  required List<CatalogItem> items,
+}) async {
+  await db.transaction(() async {
+    await (db.delete(db.localRatings)..where((t) => t.userId.equals(userId))).go();
+    await (db.delete(db.localComparisons)..where((t) => t.userId.equals(userId))).go();
+  });
+
+  final elos = {for (final item in items) item.id: Elo.startingEloGood};
+  final compsCount = {for (final item in items) item.id: 0};
+  final comparisonsToInsert = <LocalComparisonsCompanion>[];
+  int compIndex = 0;
+
   for (var i = 0; i < items.length - 1; i++) {
     for (var j = i + 1; j < items.length; j++) {
-      await controller.recordComparison(
-        winnerId: items[i].id,
-        loserId: items[j].id,
-      );
+      final winnerId = items[i].id;
+      final loserId = items[j].id;
+      
+      final winnerElo = elos[winnerId]!;
+      final loserElo = elos[loserId]!;
+      final (wElo, lElo) = Elo.update(winnerElo, loserElo);
+      elos[winnerId] = wElo;
+      elos[loserId] = lElo;
+      
+      compsCount[winnerId] = compsCount[winnerId]! + 1;
+      compsCount[loserId] = compsCount[loserId]! + 1;
+      
+      final offsetDays = (compIndex % 14);
+      final backdate = DateTime.now().subtract(Duration(days: offsetDays, hours: compIndex % 24, minutes: compIndex % 60));
+      final compId = '${userId}_${backdate.microsecondsSinceEpoch}_$compIndex';
+      
+      comparisonsToInsert.add(LocalComparisonsCompanion(
+        id: Value(compId),
+        userId: Value(userId),
+        winnerItemId: Value(winnerId),
+        loserItemId: Value(loserId),
+        createdAt: Value(backdate),
+      ));
+
+      compIndex++;
     }
   }
 
-  // Backdate comparisons to build a beautiful historical activity timeline chart
-  final db = container.read(appDatabaseProvider);
-  final comps = await db.select(db.localComparisons).get();
-  for (var i = 0; i < comps.length; i++) {
-    final offsetDays = (i % 14); // Distribute over the past 14 days
-    final backdate = DateTime.now().subtract(Duration(days: offsetDays, hours: i % 24, minutes: i % 60));
-    await (db.update(db.localComparisons)..where((t) => t.id.equals(comps[i].id)))
-        .write(LocalComparisonsCompanion(
-      createdAt: Value(backdate),
+  final ratingsToInsert = <LocalRatingsCompanion>[];
+  final now = DateTime.now();
+  for (final item in items) {
+    final ratingId = '${userId}_${item.id}';
+    ratingsToInsert.add(LocalRatingsCompanion(
+      id: Value(ratingId),
+      userId: Value(userId),
+      itemId: Value(item.id),
+      elo: Value(elos[item.id]!),
+      comparisons: Value(compsCount[item.id]!),
+      updatedAt: Value(now),
     ));
   }
+
+  await db.transaction(() async {
+    for (final item in items) {
+      await db.upsertItem(LocalItemsCompanion(
+        id: Value(item.id),
+        kind: Value(item.kind),
+        source: Value(item.source ?? 'unknown'),
+        sourceId: Value(item.sourceId ?? item.id),
+        title: Value(item.title),
+        primaryArtist: Value(item.primaryArtist),
+        imageUrl: Value(item.imageUrl),
+        tags: Value(jsonEncode(item.tags.map((t) => {'name': t.name, 'source': t.source}).toList())),
+      ));
+    }
+    for (final rating in ratingsToInsert) {
+      await db.upsertRating(rating);
+    }
+    for (final comp in comparisonsToInsert) {
+      await db.insertComparison(comp);
+    }
+  });
+}
+
+/// Seeds the database and runs a handful of duels so ranking/stats have data.
+Future<void> seedDevData(ProviderContainer container) async {
+  final db = container.read(appDatabaseProvider);
+  final items = devSeedItems();
+  await seedDatabaseHelper(db: db, userId: 'local-user', items: items);
 }
 
 /// Clears all existing data for the active user locally and remotely, then seeds a rich data set.
@@ -111,6 +172,7 @@ Future<void> forceReSeed(WidgetRef ref) async {
   final db = ref.read(appDatabaseProvider);
   final client = Supabase.instance.client;
   final userId = ref.read(currentUserIdProvider);
+  final items = devSeedItems();
 
   // 1. Clear remote ratings & comparisons in Supabase for this user (if signed in)
   if (isSupabaseInitialized && client.auth.currentUser != null) {
@@ -120,37 +182,82 @@ Future<void> forceReSeed(WidgetRef ref) async {
     } catch (_) {}
   }
 
-  // 2. Clear local Drift database for this user
-  await db.transaction(() async {
-    await (db.delete(db.localRatings)..where((t) => t.userId.equals(userId))).go();
-    await (db.delete(db.localComparisons)..where((t) => t.userId.equals(userId))).go();
-  });
+  // 2. Perform fast local seed
+  await seedDatabaseHelper(db: db, userId: userId, items: items);
 
-  // 3. Seed data
-  final controller = ref.read(libraryControllerProvider.notifier);
-  final items = devSeedItems();
-  for (final item in items) {
-    await controller.addItem(item);
-  }
+  // 3. Sync to Supabase in bulk
+  if (isSupabaseInitialized && client.auth.currentUser != null) {
+    try {
+      final elos = {for (final item in items) item.id: Elo.startingEloGood};
+      final compsCount = {for (final item in items) item.id: 0};
+      final localComps = await db.getComparisonsForUser(userId);
 
-  for (var i = 0; i < items.length - 1; i++) {
-    for (var j = i + 1; j < items.length; j++) {
-      await controller.recordComparison(
-        winnerId: items[i].id,
-        loserId: items[j].id,
-      );
+      for (var i = 0; i < items.length - 1; i++) {
+        for (var j = i + 1; j < items.length; j++) {
+          final wId = items[i].id;
+          final lId = items[j].id;
+          final (wElo, lElo) = Elo.update(elos[wId]!, elos[lId]!);
+          elos[wId] = wElo;
+          elos[lId] = lElo;
+          compsCount[wId] = compsCount[wId]! + 1;
+          compsCount[lId] = compsCount[lId]! + 1;
+        }
+      }
+
+      final itemRecords = items.map((item) => {
+        'kind': item.kind,
+        'source': item.source ?? 'unknown',
+        'source_id': item.sourceId ?? item.id,
+        'title': item.title,
+        'primary_artist': item.primaryArtist,
+        'image_url': item.imageUrl,
+        'tags': item.tags.map((t) => {'name': t.name, 'source': t.source}).toList(),
+      }).toList();
+
+      final response = await client
+          .from('items')
+          .upsert(itemRecords, onConflict: 'source,source_id')
+          .select('id, source_id');
+      
+      final uuidMap = <String, String>{};
+      for (final row in response) {
+        final sourceId = row['source_id'] as String;
+        final id = row['id'] as String;
+        uuidMap['seed:$sourceId'] = id;
+      }
+
+      final now = DateTime.now();
+      final supabaseRatings = items.map((item) {
+        final uuid = uuidMap[item.id];
+        return {
+          'user_id': userId,
+          'item_id': uuid,
+          'elo': elos[item.id],
+          'comparisons': compsCount[item.id],
+          'updated_at': now.toIso8601String(),
+        };
+      }).where((r) => r['item_id'] != null).toList();
+
+      final supabaseComparisons = localComps.map((comp) {
+        final wUuid = uuidMap[comp.winnerItemId];
+        final lUuid = uuidMap[comp.loserItemId];
+        return {
+          'user_id': userId,
+          'winner_item_id': wUuid,
+          'loser_item_id': lUuid,
+          'created_at': comp.createdAt.toIso8601String(),
+        };
+      }).where((c) => c['winner_item_id'] != null && c['loser_item_id'] != null).toList();
+
+      if (supabaseRatings.isNotEmpty) {
+        await client.from('ratings').upsert(supabaseRatings, onConflict: 'user_id,item_id');
+      }
+      if (supabaseComparisons.isNotEmpty) {
+        await client.from('comparisons').insert(supabaseComparisons);
+      }
+    } catch (e) {
+      debugPrint('Supabase batch seed error: $e');
     }
-  }
-
-  // 4. Backdate comparisons in SQLite to populate the history chart
-  final comps = await db.select(db.localComparisons).get();
-  for (var i = 0; i < comps.length; i++) {
-    final offsetDays = (i % 14);
-    final backdate = DateTime.now().subtract(Duration(days: offsetDays, hours: i % 24, minutes: i % 60));
-    await (db.update(db.localComparisons)..where((t) => t.id.equals(comps[i].id)))
-        .write(LocalComparisonsCompanion(
-      createdAt: Value(backdate),
-    ));
   }
 }
 

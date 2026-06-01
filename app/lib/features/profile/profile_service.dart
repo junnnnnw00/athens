@@ -122,6 +122,18 @@ class ProfileService {
     await _client.from('profiles').update({'is_premium': premium}).eq('id', user.id);
   }
 
+  /// Redeems a promo code to unlock premium. Returns true if successful, false otherwise.
+  Future<bool> redeemPromoCode(String code) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('로그인이 필요합니다.');
+    
+    final response = await _client.rpc(
+      'redeem_promo_code',
+      params: {'input_code': code},
+    );
+    return response as bool? ?? false;
+  }
+
   /// Updates the editable profile fields. Throws [HandleTakenException] if the
   /// handle collides with another user (unique constraint 23505).
   Future<void> updateProfile({

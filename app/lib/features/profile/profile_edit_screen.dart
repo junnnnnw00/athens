@@ -166,7 +166,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           _hydrate(profile);
           return ListView(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 40),
+                AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, 110),
             children: [
               Center(
                 child: Column(

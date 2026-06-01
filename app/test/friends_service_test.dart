@@ -215,6 +215,7 @@ class StubFriendsService extends FriendsService {
       commonCount: commonCount,
       sharedFavorites: sharedFavorites,
       tasteDifferences: tasteDifferences,
+      commonItems: const [],
       sharedGenres: intersection.toList(),
     );
   }
