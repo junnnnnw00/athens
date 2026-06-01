@@ -21,3 +21,12 @@ VALUES
     '[{"name":"shoegaze","source":"lastfm"},{"name":"alternative rock","source":"lastfm"}]'
 )
 ON CONFLICT (source, source_id) DO NOTHING;
+
+-- Seed promo codes for testing
+INSERT INTO public.promo_codes (code, is_used)
+VALUES
+('HEREISYOURCOFFEESIR', false),
+('ATHENS_VIP_PASS', false),
+('BACKER_LIFETIME_100', false),
+('TUMBLBUG_THANK_YOU', false)
+ON CONFLICT (code) DO NOTHING;

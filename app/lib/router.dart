@@ -14,6 +14,9 @@ import 'features/catalog/search_screen.dart';
 import 'features/spotify_connect/spotify_connect_screen.dart';
 import 'features/share/share_screen.dart';
 import 'features/library/item_detail_screen.dart';
+import 'features/friends/friend_list_screen.dart';
+import 'features/friends/friend_comparison_screen.dart';
+import 'features/premium/premium_upgrade_screen.dart';
 import 'widgets/floating_nav.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -39,6 +42,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/auth', builder: (c, s) => const AuthScreen()),
+      GoRoute(path: '/premium-upgrade', builder: (c, s) => const PremiumUpgradeScreen()),
       ShellRoute(
         builder: (context, state, child) =>
             _AppShell(location: state.matchedLocation, child: child),
@@ -71,6 +75,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (c, s) =>
                 ItemDetailScreen(itemId: s.pathParameters['id']!),
           ),
+          GoRoute(
+            path: '/friends',
+            builder: (c, s) => const FriendListScreen(),
+          ),
+          GoRoute(
+            path: '/friends/compare/:id',
+            builder: (c, s) => FriendComparisonScreen(friendId: s.pathParameters['id']!),
+          ),
         ],
       ),
     ],
@@ -86,7 +98,8 @@ class _AppShell extends StatelessWidget {
   int get _navIndex {
     if (location.startsWith('/library') ||
         location.startsWith('/profile') ||
-        location.startsWith('/stats')) {
+        location.startsWith('/stats') ||
+        location.startsWith('/friends')) {
       return 1;
     }
     return 0;

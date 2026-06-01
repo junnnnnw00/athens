@@ -1,5 +1,6 @@
 {
   "SUPABASE_URL": "https://hgehnwruprjoeewrhbgg.supabase.co/",
   "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnZWhud3J1cHJqb2Vld3JoYmdnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODk1NDAsImV4cCI6MjA5NTU2NTU0MH0.QZtlyvGAfTsG5r3us1gkdoHGZRLuTtbBDqalLACguuI",
-  "SPOTIFY_CLIENT_ID": "fa42c012e91349908fa86e26b7fdb0d8"
+  "SPOTIFY_CLIENT_ID": "fa42c012e91349908fa86e26b7fdb0d8",
+  "AUTH_REDIRECT_URL": "https://athens.vercel.app/app/"
 }

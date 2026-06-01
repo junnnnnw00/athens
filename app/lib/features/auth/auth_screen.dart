@@ -69,6 +69,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       final res = await Supabase.instance.client.auth.signUp(
         email: email,
         password: password,
+        emailRedirectTo: supabaseAuthRedirectUrl,
       );
       if (!mounted) return;
       if (res.session != null) {

@@ -34,8 +34,8 @@ What you should see:
 - **Share** — Top 5 / Taste Snapshot cards rendered from live data; share exports
   a 1080×1920 PNG.
 
-## 2. Run against the real (hosted) backend
-The app talks to the **hosted** Supabase project (`hgehnwruprjoeewrhbgg`) — you do
+## 2. Run against the real (hosted) production backend
+The app talks to the **hosted** production Supabase project (`hgehnwruprjoeewrhbgg`) — you do
 **not** need a local Supabase running. Public client config is committed at
 `app/config/app_config.json`, so just:
 
@@ -49,6 +49,16 @@ make run          # = flutter run --dart-define-from-file=config/app_config.json
 2. Spotify connect (allow-listed users only): Me → Spotify 연결 → PKCE flow →
    recently-played tracks surface on Home as unrated "rate this" cards.
    Requires `profiles.spotify_enabled = true` for that user (set in Supabase).
+
+## 2b. Run against the development backend (athens-dev)
+To develop locally without affecting production data or public users, use the separate `athens-dev` Supabase project config in `app/config/app_config_dev.json`:
+
+```bash
+make run-dev       # = flutter run --dart-define-from-file=config/app_config_dev.json
+# or:  make run-dev-seed  (also seeds sample data on the development backend)
+```
+
+> ⚠️ **Is it safe from production?** Yes. Running with the `run-dev` commands ensures the client binds entirely to the development database, preventing any test users or data from leaking into the production/public app.
 
 > **Local Supabase?** Only for testing migrations (`make db-reset-local`). Stop it
 > anytime with `make sb-stop`; the app is unaffected (it uses the hosted project).

@@ -117,6 +117,22 @@ Spotify Dev Mode caps at 5 authorized users. To add a user:
 2. Add their Spotify email
 3. In Supabase, set `UPDATE profiles SET spotify_enabled = true WHERE spotify_user_id = '...'`
 
+## 9. Development Environment (athens-dev)
+
+For local development and staging testing of new features (e.g. Premium/Backer features), we use a separate environment to avoid polluting production data:
+
+1. **Git Branch:** Always check out and work on the `dev` branch.
+2. **Database:** Put your development database configuration in `app/config/app_config_dev.json`.
+3. **Running the client:** Use `make run-dev` or `make run-dev-seed` to start the Flutter app using development configurations.
+4. **Deploying edge functions to dev:**
+   ```bash
+   cd supabase
+   supabase link --project-ref <your-athens-dev-project-ref>
+   supabase functions deploy spotify-app-token --no-verify-jwt
+   supabase functions deploy lastfm-proxy
+   ```
+5. **Staging Web Deploy:** Use `make web-deploy-dev` to push a preview build of the web profile app to Vercel without affecting the production `athens.vercel.app` alias.
+
 ## Troubleshooting
 
 - **`flutter analyze` errors**: run `flutter pub get` first

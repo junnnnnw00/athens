@@ -179,3 +179,49 @@ reversible, overrides dashboard drift), and keep `NEXT_PUBLIC_SUPABASE_URL` +
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` (the **publishable** key — public, safe in the
 browser) set on the Vercel project for prod+preview+dev. These are config, not
 secrets, so they stay out of the repo but must exist on the project.
+
+## Proposal: Environment Separation for Public & Development Channels (2026-06-01)
+
+### 1. Git Branching & Deployments
+* **`main` Branch (Production):** Keeps public stable version. Connected to production database, deployed to `https://athens.vercel.app`.
+* **`dev` Branch (Development/Staging):** Sandbox for new features (Premium, backer activation). Connected to development database, deployed to Vercel preview environments.
+
+### 2. Database/Backend (Supabase)
+* **Production Project:** The current hosted project (`hgehnwruprjoeewrhbgg`).
+* **Development Project:** 
+  * Local Docker stack (`supabase start`) for local testing.
+  * *Optionally:* A separate hosted Supabase project (e.g., `athens-dev`) for Vercel preview deployments and TestFlight builds.
+
+### 3. Flutter Configuration Separation
+* Rename/add configurations:
+  * Production config: `app/config/app_config_prod.json` (or keep `app_config.json` as default).
+  * Development config: `app/config/app_config_dev.json`.
+* Update `Makefile` to allow running or building with specific environment files (e.g., `make run` runs prod config, `make run-dev` runs dev config).
+
+### 4. Spotify Developer App Integration
+* Register a separate Spotify Developer App for development.
+  * Development Redirect URI: `athens-dev://spotify-callback` and `http://127.0.0.1:8888/callback`.
+  * Allows keeping production users and dev testing accounts completely isolated.
+
+
+---
+
+## Admin / Developer Dashboard (web `/admin/<secret>`)
+
+* **What:** server-rendered Next.js page showing aggregate stats
+  (유저/성장 + 참여도). No per-user PII beyond handles already public via
+  `public_profiles`.
+* **Hidden URL:** route is `app/admin/[gate]`. Real entrance is
+  `/admin/<ADMIN_PATH_SECRET>`; bare `/admin` and any wrong segment return a real
+  404 (no page exists / `notFound()`) so it isn't discoverable by guessing
+  `/admin`. Defense-in-depth on top of the password.
+* **Data access:** Supabase `service_role` key, read **server-only**
+  (`web/app/admin/stats.ts`, guarded by `import 'server-only'`). Bypasses RLS to
+  count all rows. Key is NOT exposed to the browser and NOT bundled in Flutter.
+* **Auth gate:** single shared password `ADMIN_DASHBOARD_PASSWORD`. Cookie stores
+  `sha256(password)` (httpOnly, secure, sameSite=lax, path=/admin, 12h). Plaintext
+  never leaves the server. Fail-closed if the env var is unset.
+* **Reversible:** delete `web/app/admin/` + the two env vars. No schema/RLS change.
+* **Required env (set in Vercel project + `web/.env.local`, never commit):**
+  `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_DASHBOARD_PASSWORD`, `ADMIN_PATH_SECRET`
+  (long random slug — the hidden path).

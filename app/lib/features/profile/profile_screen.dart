@@ -12,6 +12,7 @@ import '../../theme/app_theme.dart';
 import 'profile_service.dart';
 import '../../i18n.dart';
 import '../stats/stats_screen.dart';
+import '../../dev_seed.dart';
 
 /// Base URL of the public web profile site (override at build time).
 const _webBase = String.fromEnvironment('WEB_PROFILE_BASE',
@@ -126,6 +127,114 @@ class ProfileScreen extends ConsumerWidget {
           if (profile != null) ...[
             const SizedBox(height: AppSpacing.lg),
             _PublicProfileCard(handle: profile.handle, isPublic: profile.isPublic),
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+              decoration: BoxDecoration(
+                color: p.surface2,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                border: Border.all(color: p.line),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.workspace_premium_rounded, size: 20, color: p.accentText),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      '체험용 프리미엄 계정',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  Switch(
+                    activeThumbColor: p.accent,
+                    value: profile.isPremium,
+                    onChanged: (val) async {
+                      try {
+                        await ref.read(profileServiceProvider).togglePremium(val);
+                        ref.invalidate(myProfileProvider);
+                      } catch (_) {}
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: p.surface2,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                border: Border.all(color: p.line),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.query_stats_rounded, size: 20, color: p.accentText),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '개발용 데모 데이터 주입',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '18개 명반 평가 + 153개 듀얼 내역을 생성합니다.',
+                          style: TextStyle(color: p.muted, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: p.accent,
+                      foregroundColor: p.bg,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      minimumSize: const Size(60, 32),
+                    ),
+                    onPressed: () async {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                      try {
+                        await forceReSeed(ref);
+                        if (context.mounted) {
+                          Navigator.pop(context); // Close loading dialog first
+                          
+                          // Defer Riverpod invalidations to the next frame to prevent navigator _debugLocked error
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            ref.invalidate(libraryControllerProvider);
+                            ref.invalidate(statsProvider);
+                            ref.invalidate(myProfileProvider);
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('데모 데이터 주입 완료!')),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          Navigator.pop(context); // Close loading dialog
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('데이터 주입 실패: $e')),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('주입', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
           ],
           if (stats != null && stats.topGenres.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
@@ -159,6 +268,12 @@ class ProfileScreen extends ConsumerWidget {
                 title: context.t('profile_edit', ref: ref),
                 subtitle: context.t('edit_public_desc', ref: ref),
                 onTap: () => context.go('/profile/edit')),
+          if (isLoggedIn)
+            _Tile(
+                icon: Icons.people_rounded,
+                title: '친구 목록 및 검색',
+                subtitle: '친구들의 음악 취향과 나의 매칭률 확인',
+                onTap: () => context.go('/friends')),
           _Tile(
               icon: Icons.library_music_rounded,
               title: context.t('profile_library', ref: ref),

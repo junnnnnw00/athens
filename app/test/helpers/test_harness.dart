@@ -1,6 +1,7 @@
 import 'package:athens/data/local/app_database.dart';
 import 'package:athens/data/repository/library_providers.dart';
 import 'package:athens/features/catalog/catalog_service.dart';
+import 'package:athens/features/profile/profile_service.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,6 +15,16 @@ class TestHarness {
     overrides = [
       appDatabaseProvider.overrideWithValue(db),
       currentUserIdProvider.overrideWithValue('test-user'),
+      myProfileProvider.overrideWith((ref) => Future.value(
+            const UserProfile(
+              id: 'test-user',
+              handle: 'test_user',
+              displayName: 'Test User',
+              isPublic: true,
+              spotifyEnabled: false,
+              isPremium: true,
+            ),
+          )),
       spotifyApiProvider
           .overrideWithValue(FakeSpotifyApi(recentlyPlayed: recentlyPlayed)),
       itunesApiProvider.overrideWithValue(FakeItunesApi()),

@@ -15,6 +15,7 @@ class UserProfile {
     this.avatarUrl,
     required this.isPublic,
     required this.spotifyEnabled,
+    required this.isPremium,
   });
 
   final String id;
@@ -24,6 +25,7 @@ class UserProfile {
   final String? avatarUrl;
   final bool isPublic;
   final bool spotifyEnabled;
+  final bool isPremium;
 
   factory UserProfile.fromMap(Map<String, dynamic> m) => UserProfile(
         id: m['id'] as String,
@@ -33,6 +35,7 @@ class UserProfile {
         avatarUrl: m['avatar_url'] as String?,
         isPublic: m['is_public'] as bool? ?? false,
         spotifyEnabled: m['spotify_enabled'] as bool? ?? false,
+        isPremium: m['is_premium'] as bool? ?? false,
       );
 }
 
@@ -51,12 +54,54 @@ class ProfileService {
   Future<UserProfile?> getMyProfile() async {
     final user = _client.auth.currentUser;
     if (user == null) return null;
-    final row = await _client
+    var row = await _client
         .from('profiles')
-        .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled')
+        .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
         .eq('id', user.id)
         .maybeSingle();
-    return row == null ? null : UserProfile.fromMap(row);
+
+    if (row == null) {
+      // Profile is missing (e.g. user was created before migration triggers were established).
+      // Auto-create a default profile row to satisfy foreign key constraints.
+      final email = user.email ?? '';
+      final emailPart = email.split('@').first;
+      var handle = emailPart.toLowerCase().replaceAll('.', '_');
+      handle = handle.replaceAll(RegExp(r'[^a-z0-9_]'), '');
+      if (handle.length < 3) handle = '${handle}123';
+      if (handle.length > 20) handle = handle.substring(0, 20);
+
+      final displayName = emailPart;
+      
+      try {
+        final newRow = await _client
+            .from('profiles')
+            .upsert({
+              'id': user.id,
+              'handle': handle,
+              'display_name': displayName,
+              'is_public': true, // Make public by default so friends can find them
+            })
+            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
+            .single();
+        row = newRow;
+      } catch (e) {
+        // Suffix with millisecond value if the first handle was already taken
+        final randomHandle = '${handle}_${DateTime.now().millisecondsSinceEpoch % 1000}';
+        final newRow = await _client
+            .from('profiles')
+            .upsert({
+              'id': user.id,
+              'handle': randomHandle,
+              'display_name': displayName,
+              'is_public': true,
+            })
+            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
+            .single();
+        row = newRow;
+      }
+    }
+
+    return UserProfile.fromMap(row);
   }
 
   /// Validates a handle: 3–20 chars, lowercase letters/digits/underscore.
@@ -68,6 +113,25 @@ class ProfileService {
       return '소문자, 숫자, 밑줄(_)만 쓸 수 있어요';
     }
     return null;
+  }
+
+  /// Toggles the user's premium status in the database (for development/testing).
+  Future<void> togglePremium(bool premium) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('Not signed in');
+    await _client.from('profiles').update({'is_premium': premium}).eq('id', user.id);
+  }
+
+  /// Redeems a promo code to unlock premium. Returns true if successful, false otherwise.
+  Future<bool> redeemPromoCode(String code) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('로그인이 필요합니다.');
+    
+    final response = await _client.rpc(
+      'redeem_promo_code',
+      params: {'input_code': code},
+    );
+    return response as bool? ?? false;
   }
 
   /// Updates the editable profile fields. Throws [HandleTakenException] if the

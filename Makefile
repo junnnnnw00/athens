@@ -5,6 +5,7 @@
 APP        := app
 WEB        := web
 DEFINE     := --dart-define-from-file=config/app_config.json
+DEFINE_DEV := --dart-define-from-file=config/app_config_dev.json
 SEED       := --dart-define=DEV_SEED=true
 
 .PHONY: help
@@ -13,11 +14,15 @@ help:
 	  awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n",$$1,$$2}'
 
 # ---- Flutter app (talks to the HOSTED Supabase; no local stack needed) ----
-.PHONY: run run-seed analyze test itest goldens
-run: ## Run the app on the default device against hosted backend
+.PHONY: run run-seed run-dev run-dev-seed analyze test itest goldens
+run: ## Run the app on the default device against hosted production backend
 	cd $(APP) && flutter run $(DEFINE)
-run-seed: ## Run with sample data seeded into the local Drift cache
+run-seed: ## Run with sample data seeded into the local Drift cache (production config)
 	cd $(APP) && flutter run $(DEFINE) $(SEED)
+run-dev: ## Run the app against development backend (app_config_dev.json)
+	cd $(APP) && flutter run $(DEFINE_DEV)
+run-dev-seed: ## Run with sample data seeded against development backend
+	cd $(APP) && flutter run $(DEFINE_DEV) $(SEED)
 analyze: ## flutter analyze
 	cd $(APP) && flutter analyze
 test: ## Unit + widget + golden tests
@@ -26,6 +31,7 @@ itest: ## Integration core-loop test (needs a device/display)
 	cd $(APP) && flutter test integration_test
 goldens: ## Regenerate committed golden screens
 	cd $(APP) && flutter test --update-goldens test/golden/golden_test.dart
+
 
 # ---- Builds ----
 .PHONY: build-apk build-web
@@ -54,7 +60,7 @@ android-logs: ## Stream logcat from connected device (filter by athens)
 # ---- Unified web app (Next.js host: / landing, /u/[handle] profile, /app Flutter) ----
 # Deploy pipeline: flutter build web → copy → vercel deploy --prod → re-pin aliases.
 # Always use `make web-deploy` — never run `vercel deploy` directly (aliases won't update).
-.PHONY: web-dev web-flutter web-build web-deploy
+.PHONY: web-dev web-flutter web-flutter-dev web-build web-deploy web-deploy-dev
 web-dev: ## Run the host site locally (needs `make web-flutter` first for /app)
 	cd $(WEB) && npm run dev
 web-flutter: ## Build the Flutter web app into web/public/app (base-href /app/)
@@ -62,10 +68,18 @@ web-flutter: ## Build the Flutter web app into web/public/app (base-href /app/)
 	rm -rf $(WEB)/public/app
 	mkdir -p $(WEB)/public/app
 	cp -R $(APP)/build/web/. $(WEB)/public/app/
+web-flutter-dev: ## Build the Flutter web app with dev config into web/public/app
+	cd $(APP) && flutter build web --base-href /app/ $(DEFINE_DEV)
+	rm -rf $(WEB)/public/app
+	mkdir -p $(WEB)/public/app
+	cp -R $(APP)/build/web/. $(WEB)/public/app/
 web-build: web-flutter ## Full production build: Flutter bundle + Next.js (local verify)
 	cd $(WEB) && npm ci && npm run build
 web-deploy: ## Build Flutter bundle + deploy to Vercel + re-pin athens.vercel.app alias
 	@bash scripts/deploy-web.sh
+web-deploy-dev: ## Build Flutter bundle (dev config) + deploy to Vercel (Preview build)
+	@bash scripts/deploy-web-dev.sh
+
 
 # ---- Supabase (LOCAL is only for testing migrations; app uses hosted) ----
 .PHONY: db-reset-local sb-stop deploy-functions

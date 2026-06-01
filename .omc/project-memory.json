@@ -1,0 +1,438 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1780288668480,
+  "projectRoot": "/Users/junwoo/athens",
+  "techStack": {
+    "languages": [
+      {
+        "name": "C/C++",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "Makefile"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "make build",
+    "testCommand": "make test",
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "app",
+      "docs",
+      "scripts"
+    ],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "app": {
+      "path": "app",
+      "purpose": "Application code",
+      "fileCount": 8,
+      "lastAccessed": 1780288668439,
+      "keyFiles": [
+        "README.md",
+        "analysis_options.yaml",
+        "dart_test.yaml",
+        "pubspec.lock",
+        "pubspec.yaml"
+      ]
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 4,
+      "lastAccessed": 1780288668441,
+      "keyFiles": [
+        "ARCHITECTURE.md",
+        "SETUP.md",
+        "SPOTIFY.md",
+        "TAGS.md"
+      ]
+    },
+    "scripts": {
+      "path": "scripts",
+      "purpose": "Build/utility scripts",
+      "fileCount": 1,
+      "lastAccessed": 1780288668441,
+      "keyFiles": [
+        "deploy-web.sh"
+      ]
+    },
+    "supabase": {
+      "path": "supabase",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1780288668442,
+      "keyFiles": [
+        "config.toml",
+        "seed.sql"
+      ]
+    },
+    "web": {
+      "path": "web",
+      "purpose": null,
+      "fileCount": 17,
+      "lastAccessed": 1780288668442,
+      "keyFiles": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "README.md",
+        "next-env.d.ts",
+        "next.config.ts"
+      ]
+    },
+    "app/assets": {
+      "path": "app/assets",
+      "purpose": "Static assets",
+      "fileCount": 0,
+      "lastAccessed": 1780288668444,
+      "keyFiles": []
+    },
+    "app/build": {
+      "path": "app/build",
+      "purpose": "Build output",
+      "fileCount": 3,
+      "lastAccessed": 1780288668448,
+      "keyFiles": [
+        "89a6598c8854ed031dfc25d83c80860e.cache.dill.track.dill",
+        "9766f7cf6d67cf7ae7525131be4473fe.cache.dill.track.dill",
+        "e78f0ccc435443c211f814b610f6379a.cache.dill.track.dill"
+      ]
+    },
+    "supabase/migrations": {
+      "path": "supabase/migrations",
+      "purpose": "Database migrations",
+      "fileCount": 9,
+      "lastAccessed": 1780288668450,
+      "keyFiles": [
+        "0001_initial_schema.sql",
+        "0002_public_view.sql",
+        "0003_update_view.sql"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "app/lib/features/rank/duel_screen.dart",
+      "accessCount": 23,
+      "lastAccessed": 1780173185119,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/catalog/catalog_service.dart",
+      "accessCount": 23,
+      "lastAccessed": 1780190286566,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/catalog/search_screen.dart",
+      "accessCount": 20,
+      "lastAccessed": 1780189941178,
+      "type": "file"
+    },
+    {
+      "path": "PROGRESS.md",
+      "accessCount": 14,
+      "lastAccessed": 1780191294796,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/api/spotify_api.dart",
+      "accessCount": 13,
+      "lastAccessed": 1780190235393,
+      "type": "file"
+    },
+    {
+      "path": "BLOCKERS.md",
+      "accessCount": 13,
+      "lastAccessed": 1780191456517,
+      "type": "file"
+    },
+    {
+      "path": "app/test/catalog/catalog_service_test.dart",
+      "accessCount": 11,
+      "lastAccessed": 1780190358501,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/spotify_connect/spotify_connect_screen.dart",
+      "accessCount": 11,
+      "lastAccessed": 1780191983617,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/library/item_detail_screen.dart",
+      "accessCount": 10,
+      "lastAccessed": 1780174043666,
+      "type": "file"
+    },
+    {
+      "path": "app/test/fakes/fakes.dart",
+      "accessCount": 10,
+      "lastAccessed": 1780190305996,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/home/home_screen.dart",
+      "accessCount": 7,
+      "lastAccessed": 1780173208155,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/data/remote/supabase_gateway.dart",
+      "accessCount": 7,
+      "lastAccessed": 1780173255124,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/data/repository/library_repository.dart",
+      "accessCount": 7,
+      "lastAccessed": 1780173944812,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/api/itunes_api.dart",
+      "accessCount": 7,
+      "lastAccessed": 1780189942183,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/api/lastfm_api.dart",
+      "accessCount": 7,
+      "lastAccessed": 1780189976187,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/library/library_screen.dart",
+      "accessCount": 6,
+      "lastAccessed": 1780172592128,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/data/repository/library_providers.dart",
+      "accessCount": 6,
+      "lastAccessed": 1780173277573,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/router.dart",
+      "accessCount": 6,
+      "lastAccessed": 1780189878821,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/main.dart",
+      "accessCount": 6,
+      "lastAccessed": 1780192027892,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/auth/auth_screen.dart",
+      "accessCount": 5,
+      "lastAccessed": 1780131218019,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/profile/profile_screen.dart",
+      "accessCount": 5,
+      "lastAccessed": 1780131533769,
+      "type": "file"
+    },
+    {
+      "path": "app/pubspec.yaml",
+      "accessCount": 5,
+      "lastAccessed": 1780192262711,
+      "type": "file"
+    },
+    {
+      "path": "supabase/migrations/0001_initial_schema.sql",
+      "accessCount": 5,
+      "lastAccessed": 1780292218477,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/api/spotify_pkce_service.dart",
+      "accessCount": 4,
+      "lastAccessed": 1780172041039,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/api/musicbrainz_api.dart",
+      "accessCount": 4,
+      "lastAccessed": 1780173739438,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/share/share_screen.dart",
+      "accessCount": 3,
+      "lastAccessed": 1780085402614,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/domain/pair_selector.dart",
+      "accessCount": 3,
+      "lastAccessed": 1780152951288,
+      "type": "file"
+    },
+    {
+      "path": "web/app/u/[handle]/page.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1780170037316,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/data/local/app_database.dart",
+      "accessCount": 3,
+      "lastAccessed": 1780173244640,
+      "type": "file"
+    },
+    {
+      "path": "PROMPT.md",
+      "accessCount": 3,
+      "lastAccessed": 1780189867583,
+      "type": "file"
+    },
+    {
+      "path": "ACCEPTANCE.md",
+      "accessCount": 3,
+      "lastAccessed": 1780189873379,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/widgets/cover_art.dart",
+      "accessCount": 3,
+      "lastAccessed": 1780189975888,
+      "type": "file"
+    },
+    {
+      "path": "supabase/functions/spotify-app-token/index.ts",
+      "accessCount": 3,
+      "lastAccessed": 1780190197372,
+      "type": "file"
+    },
+    {
+      "path": "app/test/sync/sync_service_test.dart",
+      "accessCount": 2,
+      "lastAccessed": 1780084972476,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/stats/stats_screen.dart",
+      "accessCount": 2,
+      "lastAccessed": 1780085264794,
+      "type": "file"
+    },
+    {
+      "path": "app/test/widget_test.dart",
+      "accessCount": 2,
+      "lastAccessed": 1780085438470,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/theme/app_theme.dart",
+      "accessCount": 2,
+      "lastAccessed": 1780086226927,
+      "type": "file"
+    },
+    {
+      "path": "supabase/migrations/0002_public_view.sql",
+      "accessCount": 2,
+      "lastAccessed": 1780086620230,
+      "type": "file"
+    },
+    {
+      "path": "DESIGN.md",
+      "accessCount": 2,
+      "lastAccessed": 1780189872570,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/data/sync/sync_service.dart",
+      "accessCount": 1,
+      "lastAccessed": 1780084437093,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/domain/elo.dart",
+      "accessCount": 1,
+      "lastAccessed": 1780084446758,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/domain/score.dart",
+      "accessCount": 1,
+      "lastAccessed": 1780084447282,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/domain/stats_engine.dart",
+      "accessCount": 1,
+      "lastAccessed": 1780084448703,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/reviews/reviews_service.dart",
+      "accessCount": 1,
+      "lastAccessed": 1780084449571,
+      "type": "file"
+    },
+    {
+      "path": "Athens-prototype.jsx",
+      "accessCount": 1,
+      "lastAccessed": 1780084597352,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/theme/tokens.dart",
+      "accessCount": 1,
+      "lastAccessed": 1780084670486,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/widgets/score_ring.dart",
+      "accessCount": 1,
+      "lastAccessed": 1780084720688,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/widgets/floating_nav.dart",
+      "accessCount": 1,
+      "lastAccessed": 1780084761156,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/widgets/filter_chips.dart",
+      "accessCount": 1,
+      "lastAccessed": 1780084783345,
+      "type": "file"
+    },
+    {
+      "path": "supabase/functions/lastfm-proxy/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780084831993,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
