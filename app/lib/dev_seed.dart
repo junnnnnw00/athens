@@ -6,8 +6,6 @@ import 'api/supabase.dart';
 import 'data/local/app_database.dart';
 import 'data/repository/library_providers.dart';
 import 'features/catalog/catalog_service.dart';
-import 'features/profile/profile_service.dart';
-import 'features/stats/stats_screen.dart';
 
 /// Dev-only seed flag. `false` in release builds. When enabled, real sample data
 /// is written into the actual Drift layer and flows through the same providers
@@ -154,10 +152,5 @@ Future<void> forceReSeed(WidgetRef ref) async {
       createdAt: Value(backdate),
     ));
   }
-
-  // 5. Invalidate providers to force UI refresh
-  ref.invalidate(libraryControllerProvider);
-  ref.invalidate(statsProvider);
-  ref.invalidate(myProfileProvider);
 }
 

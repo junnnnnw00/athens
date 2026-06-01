@@ -208,7 +208,15 @@ class ProfileScreen extends ConsumerWidget {
                       try {
                         await forceReSeed(ref);
                         if (context.mounted) {
-                          Navigator.pop(context); // Close loading dialog
+                          Navigator.pop(context); // Close loading dialog first
+                          
+                          // Defer Riverpod invalidations to the next frame to prevent navigator _debugLocked error
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            ref.invalidate(libraryControllerProvider);
+                            ref.invalidate(statsProvider);
+                            ref.invalidate(myProfileProvider);
+                          });
+
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('데모 데이터 주입 완료!')),
                           );
