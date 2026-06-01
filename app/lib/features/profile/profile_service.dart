@@ -54,11 +54,53 @@ class ProfileService {
   Future<UserProfile?> getMyProfile() async {
     final user = _client.auth.currentUser;
     if (user == null) return null;
-    final row = await _client
+    var row = await _client
         .from('profiles')
         .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
         .eq('id', user.id)
         .maybeSingle();
+
+    if (row == null) {
+      // Profile is missing (e.g. user was created before migration triggers were established).
+      // Auto-create a default profile row to satisfy foreign key constraints.
+      final email = user.email ?? '';
+      final emailPart = email.split('@').first;
+      var handle = emailPart.toLowerCase().replaceAll('.', '_');
+      handle = handle.replaceAll(RegExp(r'[^a-z0-9_]'), '');
+      if (handle.length < 3) handle = '${handle}123';
+      if (handle.length > 20) handle = handle.substring(0, 20);
+
+      final displayName = emailPart;
+      
+      try {
+        final newRow = await _client
+            .from('profiles')
+            .upsert({
+              'id': user.id,
+              'handle': handle,
+              'display_name': displayName,
+              'is_public': true, // Make public by default so friends can find them
+            })
+            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
+            .single();
+        row = newRow;
+      } catch (e) {
+        // Suffix with millisecond value if the first handle was already taken
+        final randomHandle = '${handle}_${DateTime.now().millisecondsSinceEpoch % 1000}';
+        final newRow = await _client
+            .from('profiles')
+            .upsert({
+              'id': user.id,
+              'handle': randomHandle,
+              'display_name': displayName,
+              'is_public': true,
+            })
+            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
+            .single();
+        row = newRow;
+      }
+    }
+
     return row == null ? null : UserProfile.fromMap(row);
   }
 
