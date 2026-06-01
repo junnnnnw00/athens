@@ -1,5 +1,7 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'data/local/app_database.dart';
 import 'data/repository/library_providers.dart';
 import 'features/catalog/catalog_service.dart';
 
@@ -48,6 +50,27 @@ List<CatalogItem> devSeedItems() => [
           ['synth-pop', 'indie pop'], ['dreamy', 'uplifting']),
       _item('inrainbows', 'album', 'In Rainbows', 'Radiohead',
           ['art rock', 'alternative'], ['melancholic', 'atmospheric']),
+      // New Items for rich stats
+      _item('okcomputer', 'album', 'OK Computer', 'Radiohead',
+          ['alternative rock', 'art rock'], ['melancholic', 'intense']),
+      _item('dummy', 'album', 'Dummy', 'Portishead',
+          ['trip hop', 'electronic'], ['dark', 'melancholic']),
+      _item('blond', 'album', 'Blonde', 'Frank Ocean',
+          ['rnb', 'avant-garde'], ['melancholic', 'warm']),
+      _item('vespertine', 'album', 'Vespertine', 'Björk',
+          ['art pop', 'electronic'], ['dreamy', 'atmospheric']),
+      _item('madvillainy', 'album', 'Madvillainy', 'Madvillain',
+          ['hip hop', 'experimental'], ['energetic', 'dark']),
+      _item('pinkmoon', 'album', 'Pink Moon', 'Nick Drake',
+          ['folk', 'acoustic'], ['calm', 'melancholic']),
+      _item('velocity', 'album', 'Velocity : Design : Comfort', 'Sweet Trip',
+          ['glitch pop', 'shoegaze'], ['dreamy', 'energetic']),
+      _item('glowpt2', 'album', 'The Glow Pt. 2', 'The Microphones',
+          ['indie folk', 'lo-fi'], ['raw', 'melancholic']),
+      _item('hollow', 'album', '201', 'The Black Skirts',
+          ['indie pop', 'synth-pop'], ['nostalgic', 'calm']),
+      _item('parannoul', 'album', 'To See the Next Part of the Dream', 'Parannoul',
+          ['shoegaze', 'emo'], ['melancholic', 'intense']),
     ];
 
 /// Seeds the database and runs a handful of duels so ranking/stats have data.
@@ -66,5 +89,17 @@ Future<void> seedDevData(ProviderContainer container) async {
         loserId: items[j].id,
       );
     }
+  }
+
+  // Backdate comparisons to build a beautiful historical activity timeline chart
+  final db = container.read(appDatabaseProvider);
+  final comps = await db.select(db.localComparisons).get();
+  for (var i = 0; i < comps.length; i++) {
+    final offsetDays = (i % 14); // Distribute over the past 14 days
+    final backdate = DateTime.now().subtract(Duration(days: offsetDays, hours: i % 24, minutes: i % 60));
+    await (db.update(db.localComparisons)..where((t) => t.id.equals(comps[i].id)))
+        .write(LocalComparisonsCompanion(
+      createdAt: Value(backdate),
+    ));
   }
 }

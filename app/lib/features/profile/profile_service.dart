@@ -101,7 +101,7 @@ class ProfileService {
       }
     }
 
-    return row == null ? null : UserProfile.fromMap(row);
+    return UserProfile.fromMap(row);
   }
 
   /// Validates a handle: 3–20 chars, lowercase letters/digits/underscore.

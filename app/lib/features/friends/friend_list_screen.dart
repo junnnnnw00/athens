@@ -148,23 +148,106 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
         final isFollowed = followedIds.contains(user.id);
 
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildAvatar(user),
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: _buildAvatar(user),
+              ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      user.displayName ?? user.handle,
-                      style: Theme.of(context).textTheme.titleSmall,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            user.displayName ?? user.handle,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '@${user.handle}',
+                          style: TextStyle(color: p.muted, fontSize: 11),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '@${user.handle}',
-                      style: TextStyle(color: p.muted, fontSize: 12),
+                    if (user.bio != null && user.bio!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        user.bio!,
+                        style: TextStyle(color: p.muted, fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    // Taste Compatibility / Match Rate
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final myRatings = ref.watch(ratedItemsProvider);
+                        if (myRatings.isEmpty) {
+                          return Text(
+                            '평가한 곡이 없습니다. 먼저 평가해 보세요!',
+                            style: TextStyle(color: p.faint, fontSize: 11),
+                          );
+                        }
+
+                        return FutureBuilder<FriendMatchResult>(
+                          future: ref.read(friendsServiceProvider).calculateMatch(user.id, myRatings),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: SizedBox(
+                                  width: 10,
+                                  height: 10,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    color: p.accent,
+                                  ),
+                                ),
+                              );
+                            }
+                            if (snapshot.hasError || !snapshot.hasData) {
+                              return const SizedBox.shrink();
+                            }
+                            final match = snapshot.data!;
+                            return Row(
+                              children: [
+                                Icon(Icons.bolt_rounded, size: 13, color: p.accentText),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '일치율 ${match.matchPercentage.toStringAsFixed(0)}%',
+                                  style: TextStyle(
+                                    color: p.accentText,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '•  공통 ${match.commonCount}곡',
+                                  style: TextStyle(
+                                    color: p.faint,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -180,10 +263,11 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppRadii.pill),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  minimumSize: const Size(60, 32),
                 ),
                 onPressed: () => _toggleFollow(user.id, isFollowed),
-                child: Text(isFollowed ? '삭제' : '추가'),
+                child: Text(isFollowed ? '삭제' : '추가', style: const TextStyle(fontSize: 12)),
               ),
             ],
           ),
