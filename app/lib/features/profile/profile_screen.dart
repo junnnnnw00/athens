@@ -126,6 +126,37 @@ class ProfileScreen extends ConsumerWidget {
           if (profile != null) ...[
             const SizedBox(height: AppSpacing.lg),
             _PublicProfileCard(handle: profile.handle, isPublic: profile.isPublic),
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+              decoration: BoxDecoration(
+                color: p.surface2,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                border: Border.all(color: p.line),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.workspace_premium_rounded, size: 20, color: p.accentText),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      '체험용 프리미엄 계정',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                  Switch(
+                    activeThumbColor: p.accent,
+                    value: profile.isPremium,
+                    onChanged: (val) async {
+                      try {
+                        await ref.read(profileServiceProvider).togglePremium(val);
+                        ref.invalidate(myProfileProvider);
+                      } catch (_) {}
+                    },
+                  ),
+                ],
+              ),
+            ),
           ],
           if (stats != null && stats.topGenres.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xxl),
@@ -159,6 +190,12 @@ class ProfileScreen extends ConsumerWidget {
                 title: context.t('profile_edit', ref: ref),
                 subtitle: context.t('edit_public_desc', ref: ref),
                 onTap: () => context.go('/profile/edit')),
+          if (isLoggedIn)
+            _Tile(
+                icon: Icons.people_rounded,
+                title: '친구 목록 및 검색',
+                subtitle: '친구들의 음악 취향과 나의 매칭률 확인',
+                onTap: () => context.go('/friends')),
           _Tile(
               icon: Icons.library_music_rounded,
               title: context.t('profile_library', ref: ref),

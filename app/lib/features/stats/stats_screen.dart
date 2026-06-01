@@ -9,6 +9,9 @@ import '../../theme/app_theme.dart';
 
 import '../../i18n.dart';
 
+import '../../widgets/premium_lock_overlay.dart';
+import '../profile/profile_service.dart';
+
 final statsProvider = FutureProvider<LibraryStats>((ref) async {
   final items = ref.watch(ratedItemsProvider);
   final repo = ref.watch(libraryRepositoryProvider);
@@ -41,6 +44,8 @@ class StatsScreen extends ConsumerWidget {
     final p = context.palette;
     final statsAsync = ref.watch(statsProvider);
     final isKo = ref.watch(localeProvider) == AppLanguage.ko;
+    final profileAsync = ref.watch(myProfileProvider);
+    final isPremium = profileAsync.valueOrNull?.isPremium ?? false;
 
     return statsAsync.when(
       data: (stats) {
@@ -59,7 +64,7 @@ class StatsScreen extends ConsumerWidget {
                     Icon(Icons.insights_rounded, size: 56, color: p.faint),
                     const SizedBox(height: AppSpacing.lg),
                     Text(context.t('stats_empty_title', ref: ref),
-                        style: Theme.of(context).textTheme.titleMedium),
+                         style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: AppSpacing.sm),
                     Text(context.t('stats_empty_desc', ref: ref),
                         textAlign: TextAlign.center,
@@ -91,62 +96,80 @@ class StatsScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.xxl),
-              _SectionTitle(context.t('stats_distribution', ref: ref)),
-              const SizedBox(height: AppSpacing.md),
-              SizedBox(
-                height: 170,
-                child: _ScoreDistributionChart(buckets: stats.scoreBuckets),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Actual charts content
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SectionTitle(context.t('stats_distribution', ref: ref)),
+                      const SizedBox(height: AppSpacing.md),
+                      SizedBox(
+                        height: 170,
+                        child: _ScoreDistributionChart(buckets: stats.scoreBuckets),
+                      ),
+                      if (stats.topGenres.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xxl),
+                        _SectionTitle(context.t('stats_genres', ref: ref)),
+                        const SizedBox(height: AppSpacing.sm),
+                        ...stats.topGenres.take(5).map((t) =>
+                            _TagBar(tag: t, max: stats.topGenres.first.count, isKo: isKo)),
+                      ],
+                      const SizedBox(height: AppSpacing.xxl),
+                      _SectionTitle(context.t('stats_genre_preference', ref: ref)),
+                      const SizedBox(height: AppSpacing.sm),
+                      if (stats.genrePreferences.isNotEmpty)
+                        ...stats.genrePreferences.take(5).map((p) =>
+                            _PreferenceBar(pref: p, isKo: isKo))
+                      else
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
+                          child: Text(
+                            context.t('stats_preference_not_enough', ref: ref),
+                            style: TextStyle(color: p.muted, fontSize: 14),
+                          ),
+                        ),
+                      if (stats.topMoods.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xxl),
+                        _SectionTitle(context.t('stats_moods', ref: ref)),
+                        const SizedBox(height: AppSpacing.sm),
+                        ...stats.topMoods.take(5).map((t) =>
+                            _TagBar(tag: t, max: stats.topMoods.first.count, isKo: isKo)),
+                      ],
+                      const SizedBox(height: AppSpacing.xxl),
+                      _SectionTitle(context.t('stats_mood_preference', ref: ref)),
+                      const SizedBox(height: AppSpacing.sm),
+                      if (stats.moodPreferences.isNotEmpty)
+                        ...stats.moodPreferences.take(5).map((p) =>
+                            _PreferenceBar(pref: p, isKo: isKo))
+                      else
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
+                          child: Text(
+                            context.t('stats_preference_not_enough', ref: ref),
+                            style: TextStyle(color: p.muted, fontSize: 14),
+                          ),
+                        ),
+                      if (stats.activityOverTime.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xxl),
+                        _SectionTitle(context.t('stats_activity', ref: ref)),
+                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(
+                            height: 120,
+                            child: _ActivityChart(activity: stats.activityOverTime)),
+                      ],
+                    ],
+                  ),
+                  if (!isPremium)
+                    const Positioned.fill(
+                      child: PremiumLockOverlay(
+                        featureName: '상세 취향 통계 분석',
+                        featureDescription: '장르/무드 선호도 차트 및 활동 로그 등 깊이 있는 취향 분석 보고서를 잠금 해제하세요.',
+                      ),
+                    ),
+                ],
               ),
-              if (stats.topGenres.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.xxl),
-                _SectionTitle(context.t('stats_genres', ref: ref)),
-                const SizedBox(height: AppSpacing.sm),
-                ...stats.topGenres.take(5).map((t) =>
-                    _TagBar(tag: t, max: stats.topGenres.first.count, isKo: isKo)),
-              ],
-              const SizedBox(height: AppSpacing.xxl),
-              _SectionTitle(context.t('stats_genre_preference', ref: ref)),
-              const SizedBox(height: AppSpacing.sm),
-              if (stats.genrePreferences.isNotEmpty)
-                ...stats.genrePreferences.take(5).map((p) =>
-                    _PreferenceBar(pref: p, isKo: isKo))
-              else
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.xs),
-                  child: Text(
-                    context.t('stats_preference_not_enough', ref: ref),
-                    style: TextStyle(color: p.muted, fontSize: 14),
-                  ),
-                ),
-              if (stats.topMoods.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.xxl),
-                _SectionTitle(context.t('stats_moods', ref: ref)),
-                const SizedBox(height: AppSpacing.sm),
-                ...stats.topMoods.take(5).map((t) =>
-                    _TagBar(tag: t, max: stats.topMoods.first.count, isKo: isKo)),
-              ],
-              const SizedBox(height: AppSpacing.xxl),
-              _SectionTitle(context.t('stats_mood_preference', ref: ref)),
-              const SizedBox(height: AppSpacing.sm),
-              if (stats.moodPreferences.isNotEmpty)
-                ...stats.moodPreferences.take(5).map((p) =>
-                    _PreferenceBar(pref: p, isKo: isKo))
-              else
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.xs),
-                  child: Text(
-                    context.t('stats_preference_not_enough', ref: ref),
-                    style: TextStyle(color: p.muted, fontSize: 14),
-                  ),
-                ),
-              if (stats.activityOverTime.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.xxl),
-                _SectionTitle(context.t('stats_activity', ref: ref)),
-                const SizedBox(height: AppSpacing.md),
-                SizedBox(
-                    height: 120,
-                    child: _ActivityChart(activity: stats.activityOverTime)),
-              ],
             ],
           ),
         );

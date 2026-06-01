@@ -15,6 +15,7 @@ class UserProfile {
     this.avatarUrl,
     required this.isPublic,
     required this.spotifyEnabled,
+    required this.isPremium,
   });
 
   final String id;
@@ -24,6 +25,7 @@ class UserProfile {
   final String? avatarUrl;
   final bool isPublic;
   final bool spotifyEnabled;
+  final bool isPremium;
 
   factory UserProfile.fromMap(Map<String, dynamic> m) => UserProfile(
         id: m['id'] as String,
@@ -33,6 +35,7 @@ class UserProfile {
         avatarUrl: m['avatar_url'] as String?,
         isPublic: m['is_public'] as bool? ?? false,
         spotifyEnabled: m['spotify_enabled'] as bool? ?? false,
+        isPremium: m['is_premium'] as bool? ?? false,
       );
 }
 
@@ -53,7 +56,7 @@ class ProfileService {
     if (user == null) return null;
     final row = await _client
         .from('profiles')
-        .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled')
+        .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
         .eq('id', user.id)
         .maybeSingle();
     return row == null ? null : UserProfile.fromMap(row);
@@ -68,6 +71,13 @@ class ProfileService {
       return '소문자, 숫자, 밑줄(_)만 쓸 수 있어요';
     }
     return null;
+  }
+
+  /// Toggles the user's premium status in the database (for development/testing).
+  Future<void> togglePremium(bool premium) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('Not signed in');
+    await _client.from('profiles').update({'is_premium': premium}).eq('id', user.id);
   }
 
   /// Updates the editable profile fields. Throws [HandleTakenException] if the
