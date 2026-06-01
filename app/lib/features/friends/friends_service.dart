@@ -600,16 +600,16 @@ class FriendsService {
 final friendsServiceProvider = Provider<FriendsService>((ref) => FriendsService());
 
 /// Friend list provider
-final friendsProvider = FutureProvider<List<UserProfile>>((ref) async {
+final friendsProvider = FutureProvider.autoDispose<List<UserProfile>>((ref) async {
   return ref.watch(friendsServiceProvider).getFriends();
 });
 
 /// Followers list provider
-final followersProvider = FutureProvider<List<UserProfile>>((ref) async {
+final followersProvider = FutureProvider.autoDispose<List<UserProfile>>((ref) async {
   return ref.watch(friendsServiceProvider).getFollowers();
 });
 
 /// Friends' recent ratings provider
-final friendsRecentRatingsProvider = FutureProvider<List<CatalogItem>>((ref) async {
+final friendsRecentRatingsProvider = FutureProvider.autoDispose<List<CatalogItem>>((ref) async {
   return ref.watch(friendsServiceProvider).getFriendsRecentRatings();
 });

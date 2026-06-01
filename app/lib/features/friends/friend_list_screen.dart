@@ -286,10 +286,29 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
   ) {
     final p = context.palette;
 
-    return friendsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('에러 발생: $err', style: TextStyle(color: p.text))),
-      data: (friends) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(friendsProvider);
+        ref.invalidate(followersProvider);
+        try {
+          await ref.read(friendsProvider.future);
+          await ref.read(followersProvider.future);
+        } catch (_) {}
+      },
+      child: friendsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(
+          child: ListView(
+            shrinkWrap: true,
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              Center(
+                child: Text('에러 발생: $err', style: TextStyle(color: p.text)),
+              ),
+            ],
+          ),
+        ),
+        data: (friends) {
         final followers = followersAsync.valueOrNull ?? [];
         final followBackRecommendations = followers.where((f) => !followedIds.contains(f.id)).toList();
 
@@ -355,6 +374,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
 
         if (friends.isEmpty) {
           return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             children: [
               ...recommendationsWidget,
@@ -385,6 +405,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
         }
 
         return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
           children: [
             ...recommendationsWidget,
@@ -490,6 +511,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
           ],
         );
       },
+    ),
     );
   }
 
