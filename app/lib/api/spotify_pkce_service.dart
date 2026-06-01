@@ -39,6 +39,14 @@ class SpotifyPkceService {
   }
 
   static Future<void> launchAuth() async {
+    // Clear any existing potentially corrupted verification or token states before starting a new flow.
+    await Future.wait([
+      PlatformStorage.delete(key: _kVerifier),
+      PlatformStorage.delete(key: _kAccessToken),
+      PlatformStorage.delete(key: _kRefreshToken),
+      PlatformStorage.delete(key: _kExpiry),
+    ]);
+
     final v = _verifier();
     await PlatformStorage.write(key: _kVerifier, value: v);
     final uri = Uri.https('accounts.spotify.com', '/authorize', {
@@ -48,6 +56,7 @@ class SpotifyPkceService {
       'code_challenge_method': 'S256',
       'code_challenge': _challenge(v),
       'scope': _scopes,
+      'show_dialog': 'true', // Force show approval/account dialog to prevent auto-login with cached wrong account
     });
     if (kIsWeb) {
       // Redirect the SAME tab so Spotify returns to /app/?code in this window
@@ -83,7 +92,16 @@ class SpotifyPkceService {
         'code_verifier': verifier,
       },
     );
-    if (res.statusCode != 200) return false;
+    if (res.statusCode != 200) {
+      // Clear out verification data and any corrupted tokens if the authorization code exchange failed.
+      await Future.wait([
+        PlatformStorage.delete(key: _kVerifier),
+        PlatformStorage.delete(key: _kAccessToken),
+        PlatformStorage.delete(key: _kRefreshToken),
+        PlatformStorage.delete(key: _kExpiry),
+      ]);
+      return false;
+    }
 
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     final expiry = DateTime.now()
