@@ -1,7 +1,13 @@
 import { notFound } from 'next/navigation';
 import { isAdminAuthed } from '../auth';
 import { logout } from '../actions';
-import { getDashboardStats, type DashboardStats } from '../stats';
+import {
+  getDashboardStats,
+  getUserDetail,
+  type DashboardStats,
+  type UserDetail,
+  type ChartPoint,
+} from '../stats';
 import LoginForm from '../LoginForm';
 
 export const dynamic = 'force-dynamic';
@@ -87,7 +93,261 @@ const grid: React.CSSProperties = {
   gap: 14,
 };
 
-function Dashboard({ stats }: { stats: DashboardStats }) {
+// 의존성 없는 CSS 막대 차트.
+function BarChart({
+  data,
+  height = 140,
+  color = 'var(--accent)',
+}: {
+  data: ChartPoint[];
+  height?: number;
+  color?: string;
+}) {
+  const max = Math.max(1, ...data.map((d) => d.value));
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height }}>
+      {data.map((d, i) => (
+        <div
+          key={i}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 6,
+            height: '100%',
+          }}
+          title={`${d.label || i}: ${d.value}`}
+        >
+          <div
+            style={{
+              width: '100%',
+              height: `${(d.value / max) * 100}%`,
+              minHeight: d.value > 0 ? 3 : 0,
+              background: color,
+              borderRadius: '4px 4px 0 0',
+              transition: 'height 0.2s',
+            }}
+          />
+          <span
+            style={{
+              fontSize: 9.5,
+              color: 'var(--faint)',
+              whiteSpace: 'nowrap',
+              height: 12,
+            }}
+          >
+            {d.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChartCard({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
+        borderRadius: 16,
+        padding: '20px 22px 16px',
+        boxShadow: '0 2px 12px var(--shadow)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 8,
+          marginBottom: 16,
+        }}
+      >
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+          {title}
+        </span>
+        {hint && <span style={{ fontSize: 12, color: 'var(--faint)' }}>{hint}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function UserDetailPanel({
+  user,
+  backHref,
+}: {
+  user: UserDetail;
+  backHref: string;
+}) {
+  const meta: { label: string; value: string }[] = [
+    { label: '평가 수', value: fmt(user.ratingCount) },
+    { label: '평균 점수', value: fmt1(user.avgScore) },
+    { label: '평균 Elo', value: fmt(Math.round(user.avgElo)) },
+    { label: 'duel', value: fmt(user.comparisonCount) },
+    { label: '리뷰', value: fmt(user.reviewCount) },
+  ];
+  return (
+    <section
+      style={{
+        marginTop: 40,
+        background: 'var(--surface)',
+        border: '1px solid var(--line)',
+        borderRadius: 18,
+        padding: '24px 24px 28px',
+        boxShadow: '0 4px 20px var(--shadow)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 24,
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              color: 'var(--text)',
+            }}
+          >
+            {user.display_name || user.handle}
+          </div>
+          <div style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 2 }}>
+            @{user.handle} · 가입{' '}
+            {new Date(user.created_at).toLocaleDateString('ko-KR')}
+            {user.is_public ? ' · 공개' : ' · 비공개'}
+            {user.spotify_enabled ? ' · Spotify' : ''}
+          </div>
+        </div>
+        <a
+          href={backHref}
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: 'var(--accent-text)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ← 전체로
+        </a>
+      </div>
+
+      {user.bio && (
+        <p style={{ marginTop: 14, fontSize: 14, color: 'var(--muted)', lineHeight: 1.6 }}>
+          {user.bio}
+        </p>
+      )}
+
+      <div style={{ ...grid, marginTop: 20 }}>
+        {meta.map((m) => (
+          <StatCard key={m.label} label={m.label} value={m.value} />
+        ))}
+      </div>
+
+      <h3
+        style={{
+          margin: '28px 0 12px',
+          fontSize: 12.5,
+          fontWeight: 700,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: 'var(--accent-text)',
+        }}
+      >
+        Top 랭킹 (Elo 순)
+      </h3>
+      {user.topItems.length === 0 ? (
+        <div style={{ fontSize: 14, color: 'var(--faint)' }}>아직 평가가 없습니다.</div>
+      ) : (
+        <div
+          style={{
+            border: '1px solid var(--line)',
+            borderRadius: 12,
+            overflow: 'hidden',
+          }}
+        >
+          {user.topItems.map((it, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '11px 16px',
+                borderTop: i === 0 ? 'none' : '1px solid var(--line)',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: 'var(--faint)',
+                  width: 22,
+                }}
+              >
+                {i + 1}
+              </span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: 14.5,
+                    fontWeight: 600,
+                    color: 'var(--text)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {it.title}
+                </div>
+                <div style={{ fontSize: 12.5, color: 'var(--faint)' }}>
+                  {it.artist || '—'} · {it.kind}
+                </div>
+              </div>
+              <span
+                style={{
+                  fontSize: 15,
+                  fontWeight: 800,
+                  color: 'var(--accent-text)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fmt1(it.score)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Dashboard({
+  stats,
+  basePath,
+  userDetail,
+}: {
+  stats: DashboardStats;
+  basePath: string;
+  userDetail: UserDetail | null;
+}) {
   return (
     <main
       style={{
@@ -154,6 +414,8 @@ function Dashboard({ stats }: { stats: DashboardStats }) {
         </form>
       </div>
 
+      {userDetail && <UserDetailPanel user={userDetail} backHref={basePath} />}
+
       {/* 유저 / 성장 */}
       <SectionTitle>유저 · 성장</SectionTitle>
       <div style={grid}>
@@ -204,8 +466,31 @@ function Dashboard({ stats }: { stats: DashboardStats }) {
         <StatCard label="카탈로그 아이템" value={fmt(stats.totalItems)} />
       </div>
 
-      {/* 최근 가입자 */}
-      <SectionTitle>최근 가입자</SectionTitle>
+      {/* 차트 */}
+      <SectionTitle>추이 · 분포</SectionTitle>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: 14,
+        }}
+      >
+        <ChartCard title="일별 가입" hint="최근 30일">
+          <BarChart data={stats.signupsDaily} />
+        </ChartCard>
+        <ChartCard title="일별 평가 활동" hint="최근 30일 · 갱신 기준">
+          <BarChart data={stats.activityDaily} color="var(--accent-text)" />
+        </ChartCard>
+        <ChartCard title="점수 분포" hint="0–10">
+          <BarChart data={stats.scoreDist} />
+        </ChartCard>
+        <ChartCard title="카탈로그 종류" hint={`총 ${fmt(stats.totalItems)}`}>
+          <BarChart data={stats.itemsByKind} color="var(--accent-text)" />
+        </ChartCard>
+      </div>
+
+      {/* 유저 목록 — 행 클릭 시 상세 */}
+      <SectionTitle>유저 ({fmt(stats.users.length)}) · 클릭하면 상세</SectionTitle>
       <div
         style={{
           background: 'var(--surface)',
@@ -214,14 +499,15 @@ function Dashboard({ stats }: { stats: DashboardStats }) {
           overflow: 'hidden',
         }}
       >
-        {stats.recentUsers.length === 0 ? (
+        {stats.users.length === 0 ? (
           <div style={{ padding: '24px 22px', color: 'var(--faint)', fontSize: 14 }}>
             아직 가입자가 없습니다.
           </div>
         ) : (
-          stats.recentUsers.map((u, i) => (
-            <div
-              key={u.handle}
+          stats.users.map((u, i) => (
+            <a
+              key={u.id}
+              href={`${basePath}?user=${u.id}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -229,6 +515,7 @@ function Dashboard({ stats }: { stats: DashboardStats }) {
                 gap: 12,
                 padding: '14px 22px',
                 borderTop: i === 0 ? 'none' : '1px solid var(--line)',
+                color: 'inherit',
               }}
             >
               <div style={{ minWidth: 0 }}>
@@ -246,7 +533,10 @@ function Dashboard({ stats }: { stats: DashboardStats }) {
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--faint)' }}>@{u.handle}</div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 13, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                  평가 {fmt(u.ratingCount)}
+                </span>
                 {u.is_public && (
                   <span
                     style={{
@@ -261,15 +551,16 @@ function Dashboard({ stats }: { stats: DashboardStats }) {
                     PUBLIC
                   </span>
                 )}
-                <span style={{ fontSize: 13, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 13, color: 'var(--faint)', whiteSpace: 'nowrap' }}>
                   {new Date(u.created_at).toLocaleDateString('ko-KR', {
                     year: '2-digit',
                     month: '2-digit',
                     day: '2-digit',
                   })}
                 </span>
+                <span style={{ color: 'var(--faint)' }}>›</span>
               </div>
-            </div>
+            </a>
           ))
         )}
       </div>
@@ -312,8 +603,10 @@ function ErrorState({ message }: { message: string }) {
 // so the dashboard is not discoverable by guessing /admin.
 export default async function AdminGatePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ gate: string }>;
+  searchParams: Promise<{ user?: string }>;
 }) {
   const { gate } = await params;
   const secret = process.env.ADMIN_PATH_SECRET ?? '';
@@ -328,10 +621,16 @@ export default async function AdminGatePage({
     );
   }
 
+  const { user: userId } = await searchParams;
+
   let stats: DashboardStats | null = null;
+  let userDetail: UserDetail | null = null;
   let error: string | null = null;
   try {
-    stats = await getDashboardStats();
+    [stats, userDetail] = await Promise.all([
+      getDashboardStats(),
+      userId ? getUserDetail(userId) : Promise.resolve(null),
+    ]);
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }
@@ -339,7 +638,15 @@ export default async function AdminGatePage({
   return (
     <>
       <div className="bg-glow" />
-      {stats ? <Dashboard stats={stats} /> : <ErrorState message={error ?? '알 수 없는 오류'} />}
+      {stats ? (
+        <Dashboard
+          stats={stats}
+          basePath={`/admin/${gate}`}
+          userDetail={userDetail}
+        />
+      ) : (
+        <ErrorState message={error ?? '알 수 없는 오류'} />
+      )}
     </>
   );
 }

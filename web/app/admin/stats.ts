@@ -55,11 +55,19 @@ async function tryCount(
   }
 }
 
-export interface RecentUser {
+export interface UserRow {
+  id: string;
   handle: string;
   display_name: string | null;
   created_at: string;
   is_public: boolean;
+  spotify_enabled: boolean;
+  ratingCount: number;
+}
+
+export interface ChartPoint {
+  label: string;
+  value: number;
 }
 
 export interface DashboardStats {
@@ -71,7 +79,7 @@ export interface DashboardStats {
   premiumUsers: number | null; // null = is_premium 컬럼 미적용(0010)
   publicProfiles: number;
   spotifyConnected: number;
-  recentUsers: RecentUser[];
+  users: UserRow[];
   // 참여도
   totalRatings: number;
   totalComparisons: number;
@@ -81,7 +89,50 @@ export interface DashboardStats {
   activeUsers7d: number;
   duels7d: number;
   ratings7d: number;
+  // 차트
+  signupsDaily: ChartPoint[]; // 최근 30일 일별 가입
+  activityDaily: ChartPoint[]; // 최근 30일 일별 평가 활동
+  scoreDist: ChartPoint[]; // 점수 분포 0–10
+  itemsByKind: ChartPoint[]; // 카탈로그 종류별
   generatedAt: string;
+}
+
+// 최근 `days`일을 0으로 채운 일별 시리즈. 라벨은 매월 1일/5일 간격만 표시(나머지 공백).
+function dailySeries(isoDates: string[], days: number): ChartPoint[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const keys: string[] = [];
+  const buckets = new Map<string, number>();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const k = d.toISOString().slice(0, 10);
+    keys.push(k);
+    buckets.set(k, 0);
+  }
+  for (const iso of isoDates) {
+    const k = iso.slice(0, 10);
+    if (buckets.has(k)) buckets.set(k, (buckets.get(k) ?? 0) + 1);
+  }
+  return keys.map((k, i) => ({
+    // 5칸마다 + 마지막 칸에 day-of-month 라벨, 나머지는 공백
+    label: i % 5 === 0 || i === keys.length - 1 ? k.slice(8, 10) : '',
+    value: buckets.get(k) ?? 0,
+  }));
+}
+
+function scoreDistribution(scores: number[]): ChartPoint[] {
+  const b: ChartPoint[] = Array.from({ length: 10 }, (_, i) => ({
+    label: String(i),
+    value: 0,
+  }));
+  for (const s of scores) {
+    let idx = Math.floor(s);
+    if (idx < 0) idx = 0;
+    if (idx > 9) idx = 9;
+    b[idx].value++;
+  }
+  return b;
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -130,12 +181,53 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   if (compErr) throw new Error(`active users 조회 실패: ${compErr.message}`);
   const activeUsers7d = new Set((recentComps ?? []).map((r) => r.user_id)).size;
 
-  const { data: recentUsers, error: usersErr } = await sb
+  // Full data pulls for the user table + charts (small dataset → fetch & aggregate in JS).
+  const { data: usersRaw, error: usersErr } = await sb
     .from('profiles')
-    .select('handle, display_name, created_at, is_public')
-    .order('created_at', { ascending: false })
-    .limit(10);
-  if (usersErr) throw new Error(`최근 가입자 조회 실패: ${usersErr.message}`);
+    .select('id, handle, display_name, created_at, is_public, spotify_enabled')
+    .order('created_at', { ascending: false });
+  if (usersErr) throw new Error(`유저 목록 조회 실패: ${usersErr.message}`);
+
+  const { data: ratingRows, error: rErr } = await sb
+    .from('ratings')
+    .select('user_id, score, updated_at');
+  if (rErr) throw new Error(`평가 조회 실패: ${rErr.message}`);
+
+  const { data: itemRows, error: iErr } = await sb.from('items').select('kind');
+  if (iErr) throw new Error(`아이템 조회 실패: ${iErr.message}`);
+
+  const ratings = ratingRows ?? [];
+  const ratingCountByUser = new Map<string, number>();
+  for (const r of ratings) {
+    ratingCountByUser.set(r.user_id, (ratingCountByUser.get(r.user_id) ?? 0) + 1);
+  }
+  const users: UserRow[] = (usersRaw ?? []).map((u) => ({
+    id: u.id,
+    handle: u.handle,
+    display_name: u.display_name,
+    created_at: u.created_at,
+    is_public: u.is_public,
+    spotify_enabled: u.spotify_enabled,
+    ratingCount: ratingCountByUser.get(u.id) ?? 0,
+  }));
+
+  const signupsDaily = dailySeries(
+    (usersRaw ?? []).map((u) => u.created_at as string),
+    30,
+  );
+  const activityDaily = dailySeries(
+    ratings.map((r) => r.updated_at as string),
+    30,
+  );
+  const scoreDist = scoreDistribution(ratings.map((r) => Number(r.score)));
+
+  const kindCounts = new Map<string, number>();
+  for (const it of itemRows ?? []) {
+    kindCounts.set(it.kind, (kindCounts.get(it.kind) ?? 0) + 1);
+  }
+  const itemsByKind: ChartPoint[] = (
+    ['track', 'album', 'artist'] as const
+  ).map((k) => ({ label: k, value: kindCounts.get(k) ?? 0 }));
 
   return {
     totalUsers,
@@ -145,7 +237,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     premiumUsers,
     publicProfiles,
     spotifyConnected,
-    recentUsers: (recentUsers ?? []) as RecentUser[],
+    users,
     totalRatings,
     totalComparisons,
     totalReviews,
@@ -154,6 +246,103 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     activeUsers7d,
     duels7d,
     ratings7d,
+    signupsDaily,
+    activityDaily,
+    scoreDist,
+    itemsByKind,
     generatedAt: new Date().toISOString(),
+  };
+}
+
+export interface TopItem {
+  title: string;
+  artist: string | null;
+  kind: string;
+  score: number;
+  elo: number;
+}
+
+export interface UserDetail {
+  id: string;
+  handle: string;
+  display_name: string | null;
+  bio: string | null;
+  created_at: string;
+  is_public: boolean;
+  spotify_enabled: boolean;
+  spotify_user_id: string | null;
+  ratingCount: number;
+  avgElo: number;
+  avgScore: number;
+  reviewCount: number;
+  comparisonCount: number;
+  topItems: TopItem[];
+}
+
+export async function getUserDetail(userId: string): Promise<UserDetail | null> {
+  const sb = adminClient();
+
+  const { data: p, error: pErr } = await sb
+    .from('profiles')
+    .select(
+      'id, handle, display_name, bio, created_at, is_public, spotify_enabled, spotify_user_id',
+    )
+    .eq('id', userId)
+    .maybeSingle();
+  if (pErr) throw new Error(`유저 조회 실패: ${pErr.message}`);
+  if (!p) return null;
+
+  const { data: ratingRows, error: rErr } = await sb
+    .from('ratings')
+    .select('elo, score')
+    .eq('user_id', userId);
+  if (rErr) throw new Error(`유저 평가 조회 실패: ${rErr.message}`);
+  const rr = ratingRows ?? [];
+  const ratingCount = rr.length;
+  const avgElo = ratingCount
+    ? rr.reduce((a, r) => a + Number(r.elo), 0) / ratingCount
+    : 0;
+  const avgScore = ratingCount
+    ? rr.reduce((a, r) => a + Number(r.score), 0) / ratingCount
+    : 0;
+
+  const [reviewCount, comparisonCount] = await Promise.all([
+    count(sb, 'reviews', (q) => q.eq('user_id', userId)),
+    count(sb, 'comparisons', (q) => q.eq('user_id', userId)),
+  ]);
+
+  const { data: topRaw, error: tErr } = await sb
+    .from('ratings')
+    .select('elo, score, items(title, primary_artist, kind)')
+    .eq('user_id', userId)
+    .order('elo', { ascending: false })
+    .limit(12);
+  if (tErr) throw new Error(`유저 랭킹 조회 실패: ${tErr.message}`);
+
+  // items() join returns a related object; type loosely to avoid TS depth issues.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const topItems: TopItem[] = (topRaw ?? []).map((r: any) => ({
+    title: r.items?.title ?? '(알 수 없음)',
+    artist: r.items?.primary_artist ?? null,
+    kind: r.items?.kind ?? '',
+    score: Number(r.score),
+    elo: Number(r.elo),
+  }));
+
+  return {
+    id: p.id,
+    handle: p.handle,
+    display_name: p.display_name,
+    bio: p.bio,
+    created_at: p.created_at,
+    is_public: p.is_public,
+    spotify_enabled: p.spotify_enabled,
+    spotify_user_id: p.spotify_user_id,
+    ratingCount,
+    avgElo,
+    avgScore,
+    reviewCount,
+    comparisonCount,
+    topItems,
   };
 }
