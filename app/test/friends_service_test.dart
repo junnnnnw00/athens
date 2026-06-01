@@ -169,10 +169,6 @@ class StubFriendsService extends FriendsService {
         commonCount++;
         final myItem = myRatingsMap[myId]!;
         final otherItem = otherRatingsMap[myId]!;
-        
-        final myScore = (10.0 / (1.0 + (myItem.elo - 1000.0 == 0 ? 1 : 2.71828))); // simulate score conversion
-        // Let's use the actual score convert for simplicity:
-        final double score = 10.0 / (1.0 + (1.0 / (1.0 + (myItem.elo - 1000.0) / 200.0))); // simplified or directly mock
         final double actualScore = myItem.elo >= 1400.0 ? 9.0 : 5.0; // stub simplified
 
         final theirScore = otherItem['score'] as double;
