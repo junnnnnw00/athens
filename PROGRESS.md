@@ -1,6 +1,6 @@
 # Athens — Build Progress
 
-## Current State (2026-05-30)
+## Current State (2026-06-02)
 
 Rebuilt from "compiles-but-mockup" into working software per ACCEPTANCE.md + DESIGN.md.
 The runtime now renders only real data through Riverpod → repository → Drift/APIs.
@@ -57,6 +57,14 @@ The runtime now renders only real data through Riverpod → repository → Drift
 - Tests: theme, repository persistence, API parsers, search/home widgets,
   integration core loop, golden screens. `.sqlfluff` config; migrations reformatted clean.
 - Docs: README design section + RUN.md; DECISIONS/BLOCKERS/MORNING/IDEAS updated.
+- Last.fm recent-tracks root cause fixed: the API already returns newest-first,
+   so the home screen now preserves upstream ordering instead of re-sorting and
+   accidentally pushing the current track out of position.
+- Search genre recommendations now keep the selected genre state stable across
+   rebuilds and fall back through available genre candidates before showing an
+   empty section.
+- Home recent-played cards now carry Last.fm timestamps through the data layer
+   so ordering is auditable end-to-end.
 
 ## Milestone history (tags)
 

@@ -27,6 +27,16 @@ function which returns a short-lived token for catalog search.
 4. Store merged tag array in `items.tags` (jsonb)
 5. Tags are cached — only re-fetch if stale (>7 days)
 
+### Last.fm recent tracks ordering
+
+- `user.getRecentTracks` is treated as the source of truth for recency ordering.
+- The home feed must preserve the upstream order from Last.fm rather than
+  re-sorting items in the UI, because `nowplaying` entries can lack `date.uts`
+  and custom re-sorting can move the current track behind older scrobbles.
+- Keep the timestamp on the catalog item for auditing and future debugging, but
+  do not use it to override the upstream order in the home feed unless Last.fm
+  changes its response shape.
+
 ### Elo Score Mapping
 `scoreFromElo(elo)` uses a logistic function: `10 / (1 + exp(-(elo - 1000) / 200))`
 - elo 1000 → 5.0 (midpoint)

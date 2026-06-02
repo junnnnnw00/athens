@@ -22,13 +22,18 @@ const _kindLabels = {
 };
 const _kindHeaders = {'track': '곡', 'album': '앨범', 'artist': '아티스트'};
 
-final selectedGenreProvider = StateProvider.autoDispose<String?>((ref) => null);
+final selectedGenreProvider = StateProvider<String?>((ref) => null);
 
 final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, List<CatalogItem> items})>((ref) async {
   final statsAsync = await ref.watch(statsProvider.future);
   final selectedGenre = ref.watch(selectedGenreProvider);
   final defaultGenre = statsAsync.genrePreferences.firstOrNull?.name ?? 'Indie';
-  final genre = selectedGenre ?? defaultGenre;
+  final candidateGenres = <String>{
+    if (selectedGenre != null && selectedGenre.trim().isNotEmpty) selectedGenre.trim(),
+    if (defaultGenre.trim().isNotEmpty) defaultGenre.trim(),
+    ...statsAsync.genrePreferences.map((pref) => pref.name.trim()).where((name) => name.isNotEmpty),
+    'Indie',
+  }.toList();
   
   final service = ref.watch(catalogServiceProvider);
   
@@ -40,16 +45,29 @@ final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, 
     return '${r.kind}_${title}_$artist';
   }).toSet();
 
-  // Search a larger pool (e.g. 30 items) to guarantee we have enough unrated recommendations
-  final candidates = await service.search(genre, kind: 'track', limit: 30);
-  
-  // Filter out already rated items
+  List<CatalogItem> candidates = const [];
+  var genre = candidateGenres.first;
+  for (final candidateGenre in candidateGenres) {
+    final results = await service.search(candidateGenre, kind: 'track', limit: 30);
+    if (results.isNotEmpty) {
+      candidates = results;
+      genre = candidateGenre;
+      break;
+    }
+  }
+
+  if (candidates.isEmpty) {
+    return (genre: genre, items: const <CatalogItem>[]);
+  }
+
+  // Filter out already rated items, but fall back to the raw candidate list if
+  // everything in the current genre has already been rated.
   final unrated = candidates.where((it) {
     final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
     return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
   }).toList();
 
-  return (genre: genre, items: unrated.take(5).toList());
+  return (genre: genre, items: (unrated.isNotEmpty ? unrated : candidates).take(5).toList());
 });
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -523,6 +541,7 @@ class _SearchRecommendations extends ConsumerWidget {
     final recsAsync = ref.watch(genreRecommendationsProvider);
     final addedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
     final statsAsync = ref.watch(statsProvider);
+    final selectedGenre = ref.watch(selectedGenreProvider);
 
     return ListView(
       padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: 130),
@@ -597,7 +616,7 @@ class _SearchRecommendations extends ConsumerWidget {
               }
 
               // Has ratings and preferences
-              final activeGenre = recsAsync.valueOrNull?.genre ?? 'Indie';
+              final activeGenre = selectedGenre ?? recsAsync.valueOrNull?.genre ?? stats.genrePreferences.firstOrNull?.name ?? 'Indie';
               return Card(
                 color: p.surface2,
                 elevation: 0,
@@ -720,9 +739,10 @@ class _SearchRecommendations extends ConsumerWidget {
             if (data.items.isEmpty) return const SizedBox.shrink();
             
             final isDefault = ref.read(statsProvider).valueOrNull?.genrePreferences.isEmpty ?? true;
+            final activeGenre = ref.watch(selectedGenreProvider) ?? data.genre;
             final title = isDefault 
                 ? '지금 가장 핫한 #${data.genre} 추천 트랙'
-                : '자주 듣는 #${data.genre} 취향 저격 곡';
+                : '자주 듣는 #$activeGenre 취향 저격 곡';
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,

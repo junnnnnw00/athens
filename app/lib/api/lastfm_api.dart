@@ -31,11 +31,15 @@ class LastfmRecentTrack {
     required this.artist,
     this.imageUrl,
     this.mbid,
+    this.playedAtUts,
+    this.isNowPlaying = false,
   });
   final String title;
   final String artist;
   final String? imageUrl;
   final String? mbid;
+  final int? playedAtUts;
+  final bool isNowPlaying;
 }
 
 abstract class LastfmApi {
@@ -194,18 +198,24 @@ class LastfmApiHttp implements LastfmApi {
     final json = data is String ? jsonDecode(data) : data;
     if (json is! Map) return [];
     final recent = json['recenttracks'];
-    final list = recent is Map ? recent['track'] : null;
-    if (list is! List) return [];
-    
+    final tracks = recent is Map ? recent['track'] : null;
+    if (tracks == null) return [];
+
+    final list = tracks is List
+        ? tracks
+        : tracks is Map
+            ? [tracks]
+            : const [];
+
     final items = <LastfmRecentTrack>[];
     for (final t in list) {
       if (t is! Map) continue;
+
       final name = t['name'] as String? ?? '';
       final artistMap = t['artist'];
       final artistName = artistMap is Map ? artistMap['#text'] as String? ?? '' : '';
-      
       if (name.isEmpty || artistName.isEmpty) continue;
-      
+
       String? imageUrl;
       final images = t['image'];
       if (images is List) {
@@ -221,15 +231,31 @@ class LastfmApiHttp implements LastfmApi {
           if (imageUrl?.isEmpty ?? true) imageUrl = null;
         }
       }
-      
+
       final mbid = t['mbid'] as String? ?? '';
+      final attr = t['@attr'];
+      final isNowPlaying = attr is Map && attr['nowplaying']?.toString() == 'true';
+      final date = t['date'];
+      final playedAtUts = date is Map ? int.tryParse(date['uts']?.toString() ?? '') : null;
+
       items.add(LastfmRecentTrack(
         title: name,
         artist: artistName,
         imageUrl: imageUrl,
         mbid: mbid.isNotEmpty ? mbid : null,
+        playedAtUts: playedAtUts,
+        isNowPlaying: isNowPlaying,
       ));
     }
+
+    items.sort((a, b) {
+      if (a.isNowPlaying != b.isNowPlaying) {
+        return a.isNowPlaying ? -1 : 1;
+      }
+      final aUts = a.playedAtUts ?? -1;
+      final bUts = b.playedAtUts ?? -1;
+      return bUts.compareTo(aUts);
+    });
     return items;
   }
 }

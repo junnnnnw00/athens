@@ -21,6 +21,7 @@ class CatalogItem {
     this.sourceId,
     this.source,
     this.tags = const [],
+    this.playedAtUts,
   });
 
   final String id;
@@ -31,6 +32,7 @@ class CatalogItem {
   final String? sourceId;
   final String? source;
   final List<CatalogTag> tags;
+  final int? playedAtUts;
 
   CatalogItem copyWithTags(List<CatalogTag> tags) => CatalogItem(
         id: id,
@@ -41,6 +43,7 @@ class CatalogItem {
         sourceId: sourceId,
         source: source,
         tags: tags,
+        playedAtUts: playedAtUts,
       );
 }
 
@@ -412,6 +415,7 @@ final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
         imageUrl: t.imageUrl,
         source: 'lastfm',
         sourceId: mbid ?? '${artist}_$title',
+        playedAtUts: t.playedAtUts,
       );
     }).toList();
   } catch (_) {

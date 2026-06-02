@@ -19,6 +19,21 @@ CatalogItem _track(String id, String title) => CatalogItem(
     );
 
 void main() {
+  testWidgets('home shows genre recommendations', (tester) async {
+    final harness = TestHarness();
+    addTearDown(harness.dispose);
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: harness.overrides,
+      child: MaterialApp(theme: AppTheme.dark(), home: const HomeScreen()),
+    ));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('추천 트랙'), findsOneWidget);
+    expect(find.textContaining('iTunes Fallback'), findsOneWidget);
+  });
+
   testWidgets('home surfaces only unrated recently-played tracks',
       (tester) async {
     final harness = TestHarness(

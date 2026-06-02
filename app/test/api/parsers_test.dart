@@ -143,6 +143,95 @@ void main() {
     });
   });
 
+  group('LastfmApiHttp.parseRecentTracks', () {
+    test('parses a list of recent tracks', () {
+      const body = '''
+      {
+        "recenttracks": {
+          "track": [
+            {
+              "name": "Only Shallow",
+              "artist": {"#text": "My Bloody Valentine"},
+              "mbid": "mbid-1",
+              "image": [{"size": "large", "#text": "https://img/1.jpg"}]
+            },
+            {
+              "name": "Alison",
+              "artist": {"#text": "Slowdive"},
+              "mbid": "",
+              "image": []
+            }
+          ]
+        }
+      }''';
+      final tracks = LastfmApiHttp.parseRecentTracks(body);
+      expect(tracks.length, 2);
+      expect(tracks[0].title, 'Only Shallow');
+      expect(tracks[0].artist, 'My Bloody Valentine');
+      expect(tracks[0].mbid, 'mbid-1');
+      expect(tracks[0].imageUrl, 'https://img/1.jpg');
+    });
+
+    test('sorts now-playing first and then newest played first', () {
+      const body = '''
+      {
+        "recenttracks": {
+          "track": [
+            {
+              "name": "Old Track",
+              "artist": {"#text": "Old Artist"},
+              "date": {"uts": "1717000000"},
+              "image": []
+            },
+            {
+              "name": "Now Playing",
+              "artist": {"#text": "Current Artist"},
+              "@attr": {"nowplaying": "true"},
+              "image": []
+            },
+            {
+              "name": "New Track",
+              "artist": {"#text": "New Artist"},
+              "date": {"uts": "1718000000"},
+              "image": []
+            }
+          ]
+        }
+      }''';
+      final tracks = LastfmApiHttp.parseRecentTracks(body);
+      expect(tracks.map((t) => t.title).toList(), [
+        'Now Playing',
+        'New Track',
+        'Old Track',
+      ]);
+      expect(tracks.first.isNowPlaying, isTrue);
+      expect(tracks[1].playedAtUts, 1718000000);
+      expect(tracks[2].playedAtUts, 1717000000);
+    });
+
+    test('parses a single recent track object', () {
+      const body = '''
+      {
+        "recenttracks": {
+          "track": {
+            "name": "Alison",
+            "artist": {"#text": "Slowdive"},
+            "mbid": "",
+            "image": []
+          }
+        }
+      }''';
+      final tracks = LastfmApiHttp.parseRecentTracks(body);
+      expect(tracks.length, 1);
+      expect(tracks.first.title, 'Alison');
+      expect(tracks.first.artist, 'Slowdive');
+    });
+
+    test('returns empty for invalid structure', () {
+      expect(LastfmApiHttp.parseRecentTracks('{}'), isEmpty);
+    });
+  });
+
   group('MusicBrainzApiHttp.parseRecording (extended)', () {
     test('parses first-release-date to extract year', () {
       const body = '''

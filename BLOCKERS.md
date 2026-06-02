@@ -64,6 +64,13 @@ any Spotify gap.
 
 ## Resolved
 
+- **Last.fm recent tracks looked out of order (2026-06-02):** the deployed
+  `user.getRecentTracks` payload for `junnnw00` was already newest-first with
+  `nowplaying=true` at the top. The home screen had an extra re-sort that could
+  move the current track behind dated rows. Fixed by preserving upstream order
+  in the home feed and carrying the Last.fm timestamp through the data layer for
+  auditability.
+
 - **Search capped / artist photos missing (2026-05-31):** Spotify dev-mode
   `/search` rejects `limit>10` → every search 400'd → iTunes fallback (capped,
   no artist art). Fixed by `kSearchPageSize=10` + offset paging + token caching

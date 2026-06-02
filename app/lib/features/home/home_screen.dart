@@ -112,6 +112,33 @@ class HomeScreen extends ConsumerWidget {
                     },
                   ),
 
+                  const SizedBox(height: AppSpacing.xxl),
+                  Text(context.t('home_recent', ref: ref),
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: AppSpacing.md),
+                  recentAsync.when(
+                    loading: () => _skeletonList(p),
+                    error: (e, _) => _RecentEmpty(
+                      message: context.t('home_recent_error', ref: ref),
+                      lastfmEnabled: lastfmEnabled,
+                    ),
+                    data: (items) {
+                      // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
+                      final unrated = items.where((it) {
+                        final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
+                        return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
+                      }).toList();
+                      return unrated.isEmpty
+                          ? _RecentEmpty(lastfmEnabled: lastfmEnabled)
+                          : Column(
+                              children: unrated
+                                  .take(10)
+                                  .map((it) => _RecentCard(item: it))
+                                  .toList(),
+                            );
+                    },
+                  ),
+
                   // 2. Recommended Friend Ratings Section (친구 평가 음악)
                   friendsRecentAsync.when(
                     loading: () => const SizedBox.shrink(),
@@ -137,33 +164,6 @@ class HomeScreen extends ConsumerWidget {
                           ),
                         ],
                       );
-                    },
-                  ),
-
-                  const SizedBox(height: AppSpacing.xxl),
-                  Text(context.t('home_recent', ref: ref),
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: AppSpacing.md),
-                  recentAsync.when(
-                    loading: () => _skeletonList(p),
-                    error: (e, _) => _RecentEmpty(
-                      message: context.t('home_recent_error', ref: ref),
-                      lastfmEnabled: lastfmEnabled,
-                    ),
-                    data: (items) {
-                      // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
-                      final unrated = items.where((it) {
-                        final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
-                        return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
-                      }).toList();
-                      return unrated.isEmpty
-                          ? _RecentEmpty(lastfmEnabled: lastfmEnabled)
-                          : Column(
-                              children: unrated
-                                  .take(10)
-                                  .map((it) => _RecentCard(item: it))
-                                  .toList(),
-                            );
                     },
                   ),
                 ],
