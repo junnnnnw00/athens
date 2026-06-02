@@ -22,9 +22,14 @@ const _kindLabels = {
 };
 const _kindHeaders = {'track': '곡', 'album': '앨범', 'artist': '아티스트'};
 
+final selectedGenreProvider = StateProvider.autoDispose<String?>((ref) => null);
+
 final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, List<CatalogItem> items})>((ref) async {
   final statsAsync = await ref.watch(statsProvider.future);
-  final genre = statsAsync.genrePreferences.firstOrNull?.name ?? 'Indie';
+  final selectedGenre = ref.watch(selectedGenreProvider);
+  final defaultGenre = statsAsync.genrePreferences.firstOrNull?.name ?? 'Indie';
+  final genre = selectedGenre ?? defaultGenre;
+  
   final service = ref.watch(catalogServiceProvider);
   
   final ratedItems = ref.watch(ratedItemsProvider);
@@ -656,40 +661,46 @@ class _SearchRecommendations extends ConsumerWidget {
                         runSpacing: AppSpacing.xs,
                         children: stats.genrePreferences.take(3).map((pref) {
                           final isTop = pref.name == activeGenre;
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: isTop ? p.accent.withValues(alpha: 0.12) : p.chip,
-                              border: Border.all(
-                                color: isTop ? p.accent : p.line,
-                                width: 1,
+                          return InkWell(
+                            onTap: () {
+                              ref.read(selectedGenreProvider.notifier).state = pref.name;
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isTop ? p.accent.withValues(alpha: 0.12) : p.chip,
+                                border: Border.all(
+                                  color: isTop ? p.accent : p.line,
+                                  width: 1,
+                                ),
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isTop) ...[
-                                  Icon(Icons.check_circle_rounded, color: p.accent, size: 12),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isTop) ...[
+                                    Icon(Icons.check_circle_rounded, color: p.accent, size: 12),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  Text(
+                                    '#${pref.name}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isTop ? FontWeight.bold : FontWeight.normal,
+                                      color: isTop ? p.accentText : p.text,
+                                    ),
+                                  ),
                                   const SizedBox(width: 4),
+                                  Text(
+                                    '${pref.averageScore.toStringAsFixed(1)}★',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isTop ? p.accentText.withValues(alpha: 0.8) : p.muted,
+                                    ),
+                                  ),
                                 ],
-                                Text(
-                                  '#${pref.name}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isTop ? FontWeight.bold : FontWeight.normal,
-                                    color: isTop ? p.accentText : p.text,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${pref.averageScore.toStringAsFixed(1)}★',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isTop ? p.accentText.withValues(alpha: 0.8) : p.muted,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           );
                         }).toList(),
