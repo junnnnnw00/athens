@@ -21,10 +21,13 @@ CatalogItem _track(String id, String title) => CatalogItem(
 void main() {
   testWidgets('home surfaces only unrated recently-played tracks',
       (tester) async {
-    final harness = TestHarness(recentlyPlayed: [
-      _track('spotify:rated', 'Already Rated'),
-      _track('spotify:fresh', 'Fresh Track'),
-    ]);
+    final harness = TestHarness(
+      recentlyPlayed: [
+        _track('spotify:rated', 'Already Rated'),
+        _track('spotify:fresh', 'Fresh Track'),
+      ],
+      spotifyEnabled: true,
+    );
     harness.overrides.add(
       genreRecommendationsProvider.overrideWith((ref) => (genre: 'Indie', items: <CatalogItem>[])),
     );

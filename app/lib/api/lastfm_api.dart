@@ -25,6 +25,19 @@ class LastfmArtistInfo {
   final String? summary;
 }
 
+class LastfmRecentTrack {
+  const LastfmRecentTrack({
+    required this.title,
+    required this.artist,
+    this.imageUrl,
+    this.mbid,
+  });
+  final String title;
+  final String artist;
+  final String? imageUrl;
+  final String? mbid;
+}
+
 abstract class LastfmApi {
   Future<List<String>> getTopTags({
     required String artist,
@@ -37,6 +50,10 @@ abstract class LastfmApi {
   });
   Future<LastfmArtistInfo?> getArtistInfo({required String artist});
   Future<List<String>> getArtistTopTracks({required String artist});
+  Future<List<LastfmRecentTrack>> getRecentTracks({
+    required String username,
+    int limit = 10,
+  });
 }
 
 class LastfmApiHttp implements LastfmApi {
@@ -92,6 +109,19 @@ class LastfmApiHttp implements LastfmApi {
   Future<List<String>> getArtistTopTracks({required String artist}) async =>
       parseTopTracks(
           await _raw({'method': 'artist.getTopTracks', 'artist': artist}));
+
+  @override
+  Future<List<LastfmRecentTrack>> getRecentTracks({
+    required String username,
+    int limit = 10,
+  }) async {
+    final data = await _raw({
+      'method': 'user.getRecentTracks',
+      'user': username,
+      'limit': limit.toString(),
+    });
+    return parseRecentTracks(data);
+  }
 
   static int? _toInt(dynamic v) =>
       v == null ? null : int.tryParse(v.toString());
@@ -158,5 +188,48 @@ class LastfmApiHttp implements LastfmApi {
         .whereType<String>()
         .where((s) => s.isNotEmpty)
         .toList();
+  }
+
+  static List<LastfmRecentTrack> parseRecentTracks(dynamic data) {
+    final json = data is String ? jsonDecode(data) : data;
+    if (json is! Map) return [];
+    final recent = json['recenttracks'];
+    final list = recent is Map ? recent['track'] : null;
+    if (list is! List) return [];
+    
+    final items = <LastfmRecentTrack>[];
+    for (final t in list) {
+      if (t is! Map) continue;
+      final name = t['name'] as String? ?? '';
+      final artistMap = t['artist'];
+      final artistName = artistMap is Map ? artistMap['#text'] as String? ?? '' : '';
+      
+      if (name.isEmpty || artistName.isEmpty) continue;
+      
+      String? imageUrl;
+      final images = t['image'];
+      if (images is List) {
+        final largeImg = images.firstWhere(
+          (img) => img is Map && img['size'] == 'large',
+          orElse: () => images.firstWhere(
+            (img) => img is Map && img['size'] == 'medium',
+            orElse: () => images.firstOrNull,
+          ),
+        );
+        if (largeImg is Map) {
+          imageUrl = largeImg['#text'] as String?;
+          if (imageUrl?.isEmpty ?? true) imageUrl = null;
+        }
+      }
+      
+      final mbid = t['mbid'] as String? ?? '';
+      items.add(LastfmRecentTrack(
+        title: name,
+        artist: artistName,
+        imageUrl: imageUrl,
+        mbid: mbid.isNotEmpty ? mbid : null,
+      ));
+    }
+    return items;
   }
 }

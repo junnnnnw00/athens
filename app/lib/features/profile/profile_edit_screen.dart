@@ -18,6 +18,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   final _handle = TextEditingController();
   final _displayName = TextEditingController();
   final _bio = TextEditingController();
+  final _lastfmUsername = TextEditingController();
   bool _isPublic = false;
   bool _loaded = false;
   bool _saving = false;
@@ -30,6 +31,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     _handle.dispose();
     _displayName.dispose();
     _bio.dispose();
+    _lastfmUsername.dispose();
     super.dispose();
   }
 
@@ -39,6 +41,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     _handle.text = p.handle;
     _displayName.text = p.displayName ?? '';
     _bio.text = p.bio ?? '';
+    _lastfmUsername.text = p.lastfmUsername ?? '';
     _isPublic = p.isPublic;
     _avatarUrl = p.avatarUrl;
   }
@@ -134,6 +137,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         bio: _bio.text,
         avatarUrl: _avatarUrl,
         isPublic: _isPublic,
+        lastfmUsername: _lastfmUsername.text,
       );
       container.invalidate(myProfileProvider);
       messenger.showSnackBar(
@@ -264,6 +268,17 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 maxLines: 3,
                 maxLength: 160,
                 decoration: const InputDecoration(hintText: '한 줄 소개'),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              _Label('Last.fm 사용자명 (청취 기록 연동)'),
+              TextField(
+                controller: _lastfmUsername,
+                decoration: const InputDecoration(
+                  hintText: 'Last.fm 아이디를 입력하세요',
+                  helperText: 'Spotify, YouTube Music 등을 연동한 Last.fm 아이디',
+                ),
+                autocorrect: false,
+                enableSuggestions: false,
               ),
               const SizedBox(height: AppSpacing.sm),
               Container(

@@ -389,6 +389,13 @@ class ProfileScreen extends ConsumerWidget {
               subtitle: context.t('profile_spotify_sub', ref: ref),
               onTap: () => context.go('/spotify-connect')),
           _Tile(
+              icon: Icons.music_note_rounded,
+              title: 'Last.fm 연동',
+              subtitle: profile?.lastfmUsername != null && profile!.lastfmUsername!.trim().isNotEmpty
+                  ? '연동 완료 (@${profile.lastfmUsername})'
+                  : 'Last.fm 계정 연동하여 재생 기록 가져오기',
+              onTap: () => context.go('/profile/edit')),
+          _Tile(
               icon: Icons.language_rounded,
               title: context.t('profile_language', ref: ref),
               subtitle: currentLang.label,

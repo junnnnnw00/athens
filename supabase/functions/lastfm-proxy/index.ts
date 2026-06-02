@@ -22,8 +22,6 @@ serve(async (req) => {
 
   const url = new URL(req.url);
   const method = url.searchParams.get("method");
-  const artist = url.searchParams.get("artist") ?? "";
-  const track = url.searchParams.get("track") ?? "";
 
   if (!method) {
     return new Response(
@@ -33,13 +31,17 @@ serve(async (req) => {
   }
 
   const lfmUrl = new URL(BASE_URL);
-  lfmUrl.searchParams.set("method", method);
-  lfmUrl.searchParams.set("artist", artist);
-  if (track) lfmUrl.searchParams.set("track", track);
+  for (const [key, value] of url.searchParams.entries()) {
+    lfmUrl.searchParams.set(key, value);
+  }
   lfmUrl.searchParams.set("api_key", apiKey);
   lfmUrl.searchParams.set("format", "json");
-  lfmUrl.searchParams.set("limit", "10");
-  lfmUrl.searchParams.set("autocorrect", "1");
+  if (!lfmUrl.searchParams.has("limit")) {
+    lfmUrl.searchParams.set("limit", "10");
+  }
+  if (!lfmUrl.searchParams.has("autocorrect")) {
+    lfmUrl.searchParams.set("autocorrect", "1");
+  }
 
   const response = await fetch(lfmUrl.toString(), {
     headers: { "User-Agent": "Athens/0.1" },

@@ -16,6 +16,7 @@ class UserProfile {
     required this.isPublic,
     required this.spotifyEnabled,
     required this.isPremium,
+    this.lastfmUsername,
   });
 
   final String id;
@@ -26,6 +27,7 @@ class UserProfile {
   final bool isPublic;
   final bool spotifyEnabled;
   final bool isPremium;
+  final String? lastfmUsername;
 
   factory UserProfile.fromMap(Map<String, dynamic> m) => UserProfile(
         id: m['id'] as String,
@@ -36,6 +38,7 @@ class UserProfile {
         isPublic: m['is_public'] as bool? ?? false,
         spotifyEnabled: m['spotify_enabled'] as bool? ?? false,
         isPremium: m['is_premium'] as bool? ?? false,
+        lastfmUsername: m['lastfm_username'] as String?,
       );
 }
 
@@ -56,7 +59,7 @@ class ProfileService {
     if (user == null) return null;
     var row = await _client
         .from('profiles')
-        .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
+        .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium, lastfm_username')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -81,7 +84,7 @@ class ProfileService {
               'display_name': displayName,
               'is_public': true, // Make public by default so friends can find them
             })
-            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
+            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium, lastfm_username')
             .single();
         row = newRow;
       } catch (e) {
@@ -95,7 +98,7 @@ class ProfileService {
               'display_name': displayName,
               'is_public': true,
             })
-            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
+            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium, lastfm_username')
             .single();
         row = newRow;
       }
@@ -142,6 +145,7 @@ class ProfileService {
     String? bio,
     String? avatarUrl,
     required bool isPublic,
+    String? lastfmUsername,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) throw StateError('Not signed in');
@@ -154,6 +158,9 @@ class ProfileService {
         'bio': (bio?.trim().isEmpty ?? true) ? null : bio!.trim(),
         'avatar_url': avatarUrl,
         'is_public': isPublic,
+        'lastfm_username': (lastfmUsername?.trim().isEmpty ?? true)
+            ? null
+            : lastfmUsername!.trim(),
       }).eq('id', user.id);
     } on PostgrestException catch (e) {
       if (e.code == '23505') throw const HandleTakenException();

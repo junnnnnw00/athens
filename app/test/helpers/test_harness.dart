@@ -9,20 +9,24 @@ import '../fakes/fakes.dart';
 
 /// A self-contained test environment: in-memory Drift + fake network boundary.
 class TestHarness {
-  TestHarness({List<CatalogItem> recentlyPlayed = const []})
-      : db = AppDatabase.forTesting(NativeDatabase.memory()),
+  TestHarness({
+    List<CatalogItem> recentlyPlayed = const [],
+    bool spotifyEnabled = false,
+    String? lastfmUsername,
+  })  : db = AppDatabase.forTesting(NativeDatabase.memory()),
         gateway = FakeSupabaseGateway() {
     overrides = [
       appDatabaseProvider.overrideWithValue(db),
       currentUserIdProvider.overrideWithValue('test-user'),
       myProfileProvider.overrideWith((ref) => Future.value(
-            const UserProfile(
+            UserProfile(
               id: 'test-user',
               handle: 'test_user',
               displayName: 'Test User',
               isPublic: true,
-              spotifyEnabled: false,
+              spotifyEnabled: spotifyEnabled,
               isPremium: true,
+              lastfmUsername: lastfmUsername,
             ),
           )),
       spotifyApiProvider

@@ -4,6 +4,7 @@ import '../../api/spotify_api.dart';
 import '../../api/itunes_api.dart';
 import '../../api/lastfm_api.dart';
 import '../../api/musicbrainz_api.dart';
+import '../profile/profile_service.dart';
 
 class CatalogTag {
   const CatalogTag({required this.name, required this.source});
@@ -411,12 +412,44 @@ final recommendationsProvider =
   }
 });
 
-// Recently played (Spotify-enabled users only).
+// Recently played (Spotify-enabled or Last.fm-enabled users).
 final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
-  final spotify = ref.watch(spotifyApiProvider);
-  try {
-    return await spotify.getRecentlyPlayed();
-  } catch (_) {
-    return [];
+  final profile = ref.watch(myProfileProvider).valueOrNull;
+  if (profile == null) return [];
+  
+  if (profile.lastfmUsername != null && profile.lastfmUsername!.trim().isNotEmpty) {
+    final lastfm = ref.watch(lastfmApiProvider);
+    try {
+      final tracks = await lastfm.getRecentTracks(username: profile.lastfmUsername!.trim());
+      return tracks.map((t) {
+        final artist = t.artist;
+        final title = t.title;
+        final mbid = t.mbid;
+        final id = mbid ?? 'lastfm_${artist.replaceAll(' ', '_')}_${title.replaceAll(' ', '_')}';
+        
+        return CatalogItem(
+          id: id,
+          kind: 'track',
+          title: title,
+          primaryArtist: artist,
+          imageUrl: t.imageUrl,
+          source: 'lastfm',
+          sourceId: mbid ?? '${artist}_$title',
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
   }
+
+  if (profile.spotifyEnabled) {
+    final spotify = ref.watch(spotifyApiProvider);
+    try {
+      return await spotify.getRecentlyPlayed();
+    } catch (_) {
+      return [];
+    }
+  }
+  
+  return [];
 });

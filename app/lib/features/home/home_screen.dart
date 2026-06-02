@@ -25,7 +25,9 @@ class HomeScreen extends ConsumerWidget {
     final recsAsync = ref.watch(genreRecommendationsProvider);
     final recentAsync = ref.watch(recentlyPlayedProvider);
     final profileAsync = ref.watch(myProfileProvider);
-    final spotifyEnabled = profileAsync.valueOrNull?.spotifyEnabled ?? false;
+    final profile = profileAsync.valueOrNull;
+    final spotifyEnabled = profile?.spotifyEnabled ?? false;
+    final lastfmEnabled = profile?.lastfmUsername != null && profile!.lastfmUsername!.trim().isNotEmpty;
     final friendsRecentAsync = ref.watch(friendsRecentRatingsProvider);
     final ratedItems = ref.watch(ratedItemsProvider);
     final ratedIds = ratedItems.map((e) => e.id).toSet();
@@ -148,6 +150,7 @@ class HomeScreen extends ConsumerWidget {
                     error: (e, _) => _RecentEmpty(
                       message: context.t('home_recent_error', ref: ref),
                       spotifyEnabled: spotifyEnabled,
+                      lastfmEnabled: lastfmEnabled,
                     ),
                     data: (items) {
                       // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
@@ -156,7 +159,7 @@ class HomeScreen extends ConsumerWidget {
                         return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
                       }).toList();
                       return unrated.isEmpty
-                          ? _RecentEmpty(spotifyEnabled: spotifyEnabled)
+                          ? _RecentEmpty(spotifyEnabled: spotifyEnabled, lastfmEnabled: lastfmEnabled)
                           : Column(
                               children: unrated
                                   .take(10)
@@ -350,13 +353,15 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
 }
 
 class _RecentEmpty extends ConsumerWidget {
-  const _RecentEmpty({this.message, this.spotifyEnabled = false});
+  const _RecentEmpty({this.message, this.spotifyEnabled = false, this.lastfmEnabled = false});
   final String? message;
   final bool spotifyEnabled;
+  final bool lastfmEnabled;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
+    final hasConnection = spotifyEnabled || lastfmEnabled;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -368,23 +373,34 @@ class _RecentEmpty extends ConsumerWidget {
       child: Column(
         children: [
           Icon(
-            spotifyEnabled ? Icons.check_circle_outline_rounded : Icons.headphones_rounded,
+            hasConnection ? Icons.check_circle_outline_rounded : Icons.headphones_rounded,
             size: 40,
-            color: spotifyEnabled ? p.accent : p.faint,
+            color: hasConnection ? p.accent : p.faint,
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
-            spotifyEnabled
-                ? '최근 들은 음악을 모두 평가했습니다! 🎉\n스포티파이에서 새 음악을 들으면 여기에 나타납니다.'
-                : (message ?? context.t('home_spotify_connect_desc', ref: ref)),
+            hasConnection
+                ? '최근 들은 음악을 모두 평가했습니다! 🎉\n음악을 들으면 여기에 나타납니다.'
+                : (message ?? '최근 재생 기록 연동이 꺼져 있습니다.\n스포티파이나 Last.fm을 연동해 보세요.'),
             textAlign: TextAlign.center,
             style: TextStyle(color: p.muted, height: 1.4),
           ),
-          if (!spotifyEnabled) ...[
+          if (!hasConnection) ...[
             const SizedBox(height: AppSpacing.lg),
-            OutlinedButton(
-              onPressed: () => context.go('/spotify-connect'),
-              child: Text(context.t('home_spotify_connect', ref: ref)),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                OutlinedButton(
+                  onPressed: () => context.go('/spotify-connect'),
+                  child: Text(context.t('home_spotify_connect', ref: ref)),
+                ),
+                OutlinedButton(
+                  onPressed: () => context.go('/profile/edit'),
+                  child: const Text('Last.fm 연동'),
+                ),
+              ],
             ),
           ],
         ],
