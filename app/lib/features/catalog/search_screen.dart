@@ -644,7 +644,7 @@ class _SearchRecommendations extends ConsumerWidget {
                           return Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
-                              color: isTop ? p.accent.withOpacity(0.12) : p.chip,
+                              color: isTop ? p.accent.withValues(alpha: 0.12) : p.chip,
                               border: Border.all(
                                 color: isTop ? p.accent : p.line,
                                 width: 1,
@@ -671,7 +671,7 @@ class _SearchRecommendations extends ConsumerWidget {
                                   '${pref.averageScore.toStringAsFixed(1)}★',
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: isTop ? p.accentText.withOpacity(0.8) : p.muted,
+                                    color: isTop ? p.accentText.withValues(alpha: 0.8) : p.muted,
                                   ),
                                 ),
                               ],
