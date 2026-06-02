@@ -209,7 +209,7 @@ class FriendsService {
   final SupabaseClient? _providedClient;
   SupabaseClient get _client => _providedClient ?? Supabase.instance.client;
 
-  /// Search public profiles by handle or display name.
+  /// Search profiles by handle or display name.
   Future<List<UserProfile>> searchUsers(String query) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
@@ -218,7 +218,6 @@ class FriendsService {
     final rows = await _client
         .from('profiles')
         .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
-        .eq('is_public', true)
         .neq('id', user.id)
         .or('handle.ilike.%$query%,display_name.ilike.%$query%')
         .limit(20);
