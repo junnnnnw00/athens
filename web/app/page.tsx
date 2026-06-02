@@ -65,9 +65,9 @@ export default function Home() {
               color: "var(--text)",
             }}
           >
-            진짜 내 음악 취향의
+            취향을 쌓다.
             <br />
-            서열을 정리하다.
+            기록을 쌓다.
           </h1>
           <p
             style={{
@@ -78,9 +78,7 @@ export default function Home() {
               color: "var(--muted)",
             }}
           >
-            별점 매기기는 그만. 두 곡 중 더 좋은 곡을 고르는 간단한
-            듀얼(Pairwise Rating)을 통해, 내 최애 트랙·앨범·아티스트의 정밀한
-            랭킹을 산출합니다.
+            둘 중 하나를 고르는 간단한 게임으로 언제 어디서든 취향을 쌓으세요
           </p>
 
           <div
