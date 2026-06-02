@@ -14,6 +14,7 @@ import '../../widgets/update_banner.dart';
 import '../../widgets/initial_score_dialog.dart';
 import '../catalog/search_screen.dart';
 import '../stats/stats_screen.dart';
+import '../profile/profile_service.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -23,6 +24,8 @@ class HomeScreen extends ConsumerWidget {
     final p = context.palette;
     final recsAsync = ref.watch(genreRecommendationsProvider);
     final recentAsync = ref.watch(recentlyPlayedProvider);
+    final profileAsync = ref.watch(myProfileProvider);
+    final spotifyEnabled = profileAsync.valueOrNull?.spotifyEnabled ?? false;
     final friendsRecentAsync = ref.watch(friendsRecentRatingsProvider);
     final ratedItems = ref.watch(ratedItemsProvider);
     final ratedIds = ratedItems.map((e) => e.id).toSet();
@@ -151,7 +154,10 @@ class HomeScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.md),
                   recentAsync.when(
                     loading: () => _skeletonList(p),
-                    error: (e, _) => _RecentEmpty(message: context.t('home_recent_error', ref: ref)),
+                    error: (e, _) => _RecentEmpty(
+                      message: context.t('home_recent_error', ref: ref),
+                      spotifyEnabled: spotifyEnabled,
+                    ),
                     data: (items) {
                       // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
                       final unrated = items.where((it) {
@@ -159,7 +165,7 @@ class HomeScreen extends ConsumerWidget {
                         return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
                       }).toList();
                       return unrated.isEmpty
-                          ? const _RecentEmpty()
+                          ? _RecentEmpty(spotifyEnabled: spotifyEnabled)
                           : Column(
                               children: unrated
                                   .take(10)
@@ -353,8 +359,9 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
 }
 
 class _RecentEmpty extends ConsumerWidget {
-  const _RecentEmpty({this.message});
+  const _RecentEmpty({this.message, this.spotifyEnabled = false});
   final String? message;
+  final bool spotifyEnabled;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -369,16 +376,26 @@ class _RecentEmpty extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          Icon(Icons.headphones_rounded, size: 40, color: p.faint),
-          const SizedBox(height: AppSpacing.md),
-          Text(message ?? context.t('home_spotify_connect_desc', ref: ref),
-              textAlign: TextAlign.center,
-              style: TextStyle(color: p.muted)),
-          const SizedBox(height: AppSpacing.lg),
-          OutlinedButton(
-            onPressed: () => context.go('/spotify-connect'),
-            child: Text(context.t('home_spotify_connect', ref: ref)),
+          Icon(
+            spotifyEnabled ? Icons.check_circle_outline_rounded : Icons.headphones_rounded,
+            size: 40,
+            color: spotifyEnabled ? p.accent : p.faint,
           ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            spotifyEnabled
+                ? '최근 들은 음악을 모두 평가했습니다! 🎉\n스포티파이에서 새 음악을 들으면 여기에 나타납니다.'
+                : (message ?? context.t('home_spotify_connect_desc', ref: ref)),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: p.muted, height: 1.4),
+          ),
+          if (!spotifyEnabled) ...[
+            const SizedBox(height: AppSpacing.lg),
+            OutlinedButton(
+              onPressed: () => context.go('/spotify-connect'),
+              child: Text(context.t('home_spotify_connect', ref: ref)),
+            ),
+          ],
         ],
       ),
     );
