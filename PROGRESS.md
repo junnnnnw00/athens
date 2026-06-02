@@ -9,8 +9,8 @@ The runtime now renders only real data through Riverpod → repository → Drift
 
 | Check | Status | Evidence |
 |-------|--------|----------|
-| 1. `flutter analyze` | ✅ 0 issues | "No issues found! (ran in 2.4s)" |
-| 2. `flutter test` | ✅ 83 pass | unit + widget + golden; full run green |
+| 1. `flutter analyze` | ✅ 0 issues | "No issues found! (ran in 4.9s)" |
+| 2. `flutter test` | ✅ 128 pass | full suite green after the final cleanup |
 | 2. rank-domain coverage ≥90% | ✅ 98.9% | 91/92 lines (elo/score/pair_selector/stats_engine) |
 | 3. `flutter build apk --debug` | ✅ exit 0 | "✓ Built build/app/outputs/flutter-apk/app-debug.apk" (openjdk@17 + Android SDK 35, 290s) |
 | 4. `flutter build web` | ✅ exit 0 | background build completed |
@@ -65,6 +65,9 @@ The runtime now renders only real data through Riverpod → repository → Drift
    empty section.
 - Home recent-played cards now carry Last.fm timestamps through the data layer
    so ordering is auditable end-to-end.
+- Final deployment completed on 2026-06-02 via `make web-deploy`.
+   Production alias pinned to `https://athens.vercel.app` and `https://athens-sand.vercel.app`.
+   Build finished cleanly after the unused import warning in `app/lib/main.dart` was removed.
 
 ## Milestone history (tags)
 
