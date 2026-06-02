@@ -59,7 +59,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     try {
       final row = await client
           .from('profiles')
-          .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
+          .select('id, handle, display_name, bio, avatar_url, is_public,  is_premium')
           .eq('id', widget.friendId)
           .single();
       setState(() {

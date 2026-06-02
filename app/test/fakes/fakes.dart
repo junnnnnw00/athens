@@ -1,4 +1,3 @@
-import 'package:athens/api/spotify_api.dart';
 import 'package:athens/api/itunes_api.dart';
 import 'package:athens/api/lastfm_api.dart';
 import 'package:athens/api/musicbrainz_api.dart';
@@ -7,41 +6,6 @@ import 'package:athens/features/catalog/catalog_service.dart';
 
 /// Test doubles for the network boundary. These live ONLY under test/ and are
 /// never imported by lib/ runtime code (ACCEPTANCE A4).
-
-class FakeSpotifyApi implements SpotifyApi {
-  FakeSpotifyApi({this.recentlyPlayed = const []});
-
-  final List<CatalogItem> recentlyPlayed;
-
-  @override
-  Future<List<CatalogItem>> search(String query,
-      {String types = 'track,album,artist', int offset = 0, int limit = 20}) async {
-    if (query.trim().isEmpty) return [];
-    return [
-      CatalogItem(
-        id: 'spotify:loveless',
-        kind: 'album',
-        title: 'Loveless',
-        primaryArtist: 'My Bloody Valentine',
-        imageUrl: 'https://example.test/loveless.jpg',
-        source: 'spotify',
-        sourceId: 'loveless',
-      ),
-      CatalogItem(
-        id: 'spotify:souvlaki',
-        kind: 'album',
-        title: 'Souvlaki',
-        primaryArtist: 'Slowdive',
-        imageUrl: 'https://example.test/souvlaki.jpg',
-        source: 'spotify',
-        sourceId: 'souvlaki',
-      ),
-    ];
-  }
-
-  @override
-  Future<List<CatalogItem>> getRecentlyPlayed() async => recentlyPlayed;
-}
 
 class FakeItunesApi implements ItunesApi {
   @override
@@ -63,6 +27,8 @@ class FakeItunesApi implements ItunesApi {
 }
 
 class FakeLastfmApi implements LastfmApi {
+  FakeLastfmApi({this.recentlyPlayed = const []});
+  final List<CatalogItem> recentlyPlayed;
   @override
   Future<List<String>> getTopTags({
     required String artist,
@@ -99,18 +65,29 @@ class FakeLastfmApi implements LastfmApi {
   Future<List<LastfmRecentTrack>> getRecentTracks({
     required String username,
     int limit = 10,
-  }) async =>
-      [
-        const LastfmRecentTrack(
-          title: 'Fake Recent Track 1',
-          artist: 'Fake Artist',
-          imageUrl: 'https://placekitten.com/200/200',
-        ),
-        const LastfmRecentTrack(
-          title: 'Fake Recent Track 2',
-          artist: 'Fake Artist',
-        ),
-      ];
+  }) async {
+    if (recentlyPlayed.isNotEmpty) {
+      return recentlyPlayed
+          .map((item) => LastfmRecentTrack(
+                title: item.title,
+                artist: item.primaryArtist ?? '',
+                imageUrl: item.imageUrl,
+                mbid: item.sourceId,
+              ))
+          .toList();
+    }
+    return [
+      const LastfmRecentTrack(
+        title: 'Fake Recent Track 1',
+        artist: 'Fake Artist',
+        imageUrl: 'https://placekitten.com/200/200',
+      ),
+      const LastfmRecentTrack(
+        title: 'Fake Recent Track 2',
+        artist: 'Fake Artist',
+      ),
+    ];
+  }
 }
 
 class FakeMusicBrainzApi implements MusicBrainzApi {

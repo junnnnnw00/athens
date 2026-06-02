@@ -11,7 +11,6 @@ void main() {
         'handle': 'vip_user',
         'display_name': 'VIP',
         'is_public': true,
-        'spotify_enabled': true,
         'is_premium': true,
       });
 

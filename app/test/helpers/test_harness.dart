@@ -11,7 +11,6 @@ import '../fakes/fakes.dart';
 class TestHarness {
   TestHarness({
     List<CatalogItem> recentlyPlayed = const [],
-    bool spotifyEnabled = false,
     String? lastfmUsername,
   })  : db = AppDatabase.forTesting(NativeDatabase.memory()),
         gateway = FakeSupabaseGateway() {
@@ -24,15 +23,12 @@ class TestHarness {
               handle: 'test_user',
               displayName: 'Test User',
               isPublic: true,
-              spotifyEnabled: spotifyEnabled,
               isPremium: true,
               lastfmUsername: lastfmUsername,
             ),
           )),
-      spotifyApiProvider
-          .overrideWithValue(FakeSpotifyApi(recentlyPlayed: recentlyPlayed)),
       itunesApiProvider.overrideWithValue(FakeItunesApi()),
-      lastfmApiProvider.overrideWithValue(FakeLastfmApi()),
+      lastfmApiProvider.overrideWithValue(FakeLastfmApi(recentlyPlayed: recentlyPlayed)),
       musicBrainzApiProvider.overrideWithValue(FakeMusicBrainzApi()),
       supabaseGatewayProvider.overrideWithValue(gateway),
     ];

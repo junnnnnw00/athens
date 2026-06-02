@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../api/spotify_api.dart';
 import '../../api/itunes_api.dart';
 import '../../api/lastfm_api.dart';
 import '../../api/musicbrainz_api.dart';
@@ -121,16 +120,13 @@ class ItemInfo {
 
 class CatalogService {
   CatalogService({
-    required SpotifyApi spotifyApi,
     required ItunesApi itunesApi,
     required LastfmApi lastfmApi,
     required MusicBrainzApi musicBrainzApi,
-  })  : _spotifyApi = spotifyApi,
-        _itunesApi = itunesApi,
+  })  : _itunesApi = itunesApi,
         _lastfmApi = lastfmApi,
         _musicBrainzApi = musicBrainzApi;
 
-  final SpotifyApi _spotifyApi;
   final ItunesApi _itunesApi;
   final LastfmApi _lastfmApi;
   final MusicBrainzApi _musicBrainzApi;
@@ -140,26 +136,15 @@ class CatalogService {
   /// crowded out by albums/artists.
   Future<List<CatalogItem>> search(String query,
       {String kind = 'all', int offset = 0, int limit = kSearchPageSize}) async {
-    final (spotifyTypes, itunesEntity) = _kindToFilters(kind);
-    // 'all' mode asks Spotify for all three types in ONE request (not three
-    // parallel calls) — Spotify's `/search` accepts a combined `type` filter,
-    // and a single call costs 1/3 of the rate-limit budget. Artist images come
-    // straight from the search payload, so no follow-up enrichment call.
-    try {
-      final results = await _spotifyApi.search(query,
-          types: spotifyTypes, offset: offset, limit: limit);
-      if (results.isNotEmpty) return results;
-    } catch (_) {
-      // Rate-limited or unavailable → fall through to iTunes.
-    }
-    return _itunesApi.search(query, entity: itunesEntity, limit: limit);
+    final itunesEntity = _kindToItunesEntity(kind);
+    return _itunesApi.search(query, entity: itunesEntity, offset: offset, limit: limit);
   }
 
-  static (String, String) _kindToFilters(String kind) => switch (kind) {
-        'track' => ('track', 'song'),
-        'album' => ('album', 'album'),
-        'artist' => ('artist', 'musicArtist'),
-        _ => ('track,album,artist', 'song,album,musicArtist'),
+  static String _kindToItunesEntity(String kind) => switch (kind) {
+        'track' => 'song',
+        'album' => 'album',
+        'artist' => 'musicArtist',
+        _ => 'song,album,musicArtist',
       };
 
   /// Rich, on-demand detail info (not persisted) for the item detail screen:
@@ -246,7 +231,6 @@ class CatalogService {
 
 // Providers — wire the real network implementations. Tests override these with
 // test doubles (see test/fakes/); runtime code never imports one.
-final spotifyApiProvider = Provider<SpotifyApi>((ref) => SpotifyApiHttp());
 final itunesApiProvider = Provider<ItunesApi>((ref) => ItunesApiHttp());
 final lastfmApiProvider = Provider<LastfmApi>((ref) => LastfmApiHttp());
 final musicBrainzApiProvider =
@@ -254,7 +238,6 @@ final musicBrainzApiProvider =
 
 final catalogServiceProvider = Provider<CatalogService>((ref) {
   return CatalogService(
-    spotifyApi: ref.watch(spotifyApiProvider),
     itunesApi: ref.watch(itunesApiProvider),
     lastfmApi: ref.watch(lastfmApiProvider),
     musicBrainzApi: ref.watch(musicBrainzApiProvider),
@@ -274,11 +257,7 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 /// Active search-kind filter: 'all' | 'track' | 'album' | 'artist'.
 final searchKindProvider = StateProvider<String>((ref) => 'all');
 
-/// Page size per search request. **Hard-capped at 10**: this Spotify app runs in
-/// dev mode, whose `/search` endpoint rejects `limit > 10` with HTTP 400
-/// ("Invalid limit"). Anything above 10 made every Spotify search fail and fall
-/// back to iTunes (poorer coverage, no artist artwork). More results are fetched
-/// by paging through `offset` (the offset cap is 1000), not a bigger limit.
+/// Page size per search request.
 const int kSearchPageSize = 10;
 
 /// Aliases kept for call sites/tests; all equal [kSearchPageSize].
@@ -351,11 +330,8 @@ class SearchController extends Notifier<SearchState> {
       if (gen != _generation) return; // a newer query/kind superseded this
       final fresh = page.where((i) => _seen.add(i.id)).toList();
       _offset += pageLimit;
-      // More pages exist when the results came from Spotify (iTunes has no
-      // reliable pagination) and a full page worth came back.
-      final hasMore = page.isNotEmpty &&
-          page.first.source != 'itunes' &&
-          page.length >= pageLimit;
+      // More pages exist when a full page came back.
+      final hasMore = page.isNotEmpty && page.length >= pageLimit;
       state = state.copyWith(
         items: first ? fresh : [...state.items, ...fresh],
         loading: false,
@@ -412,44 +388,33 @@ final recommendationsProvider =
   }
 });
 
-// Recently played (Spotify-enabled or Last.fm-enabled users).
+// Recently played via Last.fm.
 final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
   final profile = ref.watch(myProfileProvider).valueOrNull;
   if (profile == null) return [];
-  
-  if (profile.lastfmUsername != null && profile.lastfmUsername!.trim().isNotEmpty) {
-    final lastfm = ref.watch(lastfmApiProvider);
-    try {
-      final tracks = await lastfm.getRecentTracks(username: profile.lastfmUsername!.trim());
-      return tracks.map((t) {
-        final artist = t.artist;
-        final title = t.title;
-        final mbid = t.mbid;
-        final id = mbid ?? 'lastfm_${artist.replaceAll(' ', '_')}_${title.replaceAll(' ', '_')}';
-        
-        return CatalogItem(
-          id: id,
-          kind: 'track',
-          title: title,
-          primaryArtist: artist,
-          imageUrl: t.imageUrl,
-          source: 'lastfm',
-          sourceId: mbid ?? '${artist}_$title',
-        );
-      }).toList();
-    } catch (_) {
-      return [];
-    }
-  }
 
-  if (profile.spotifyEnabled) {
-    final spotify = ref.watch(spotifyApiProvider);
-    try {
-      return await spotify.getRecentlyPlayed();
-    } catch (_) {
-      return [];
-    }
+  final username = profile.lastfmUsername?.trim();
+  if (username == null || username.isEmpty) return [];
+
+  final lastfm = ref.watch(lastfmApiProvider);
+  try {
+    final tracks = await lastfm.getRecentTracks(username: username);
+    return tracks.map((t) {
+      final artist = t.artist;
+      final title = t.title;
+      final mbid = t.mbid;
+      final id = mbid ?? 'lastfm_${artist.replaceAll(' ', '_')}_${title.replaceAll(' ', '_')}';
+      return CatalogItem(
+        id: id,
+        kind: 'track',
+        title: title,
+        primaryArtist: artist,
+        imageUrl: t.imageUrl,
+        source: 'lastfm',
+        sourceId: mbid ?? '${artist}_$title',
+      );
+    }).toList();
+  } catch (_) {
+    return [];
   }
-  
-  return [];
 });

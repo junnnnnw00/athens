@@ -11,7 +11,6 @@ import 'features/stats/stats_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/profile_edit_screen.dart';
 import 'features/catalog/search_screen.dart';
-import 'features/spotify_connect/spotify_connect_screen.dart';
 import 'features/share/share_screen.dart';
 import 'features/library/item_detail_screen.dart';
 import 'features/catalog/catalog_service.dart';
@@ -72,12 +71,6 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: '/search',
               builder: (c, s) => const SearchScreen(
                   debounceDuration: Duration(milliseconds: 400))),
-          GoRoute(
-              path: '/spotify-connect',
-              builder: (c, s) => const SpotifyConnectScreen()),
-          GoRoute(
-              path: '/spotify-callback',
-              builder: (c, s) => const SpotifyConnectScreen()),
           GoRoute(path: '/share', builder: (c, s) => const ShareScreen()),
           GoRoute(
             path: '/item/:id',

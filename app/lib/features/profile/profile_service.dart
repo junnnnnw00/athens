@@ -14,7 +14,6 @@ class UserProfile {
     this.bio,
     this.avatarUrl,
     required this.isPublic,
-    required this.spotifyEnabled,
     required this.isPremium,
     this.lastfmUsername,
   });
@@ -25,7 +24,6 @@ class UserProfile {
   final String? bio;
   final String? avatarUrl;
   final bool isPublic;
-  final bool spotifyEnabled;
   final bool isPremium;
   final String? lastfmUsername;
 
@@ -36,7 +34,6 @@ class UserProfile {
         bio: m['bio'] as String?,
         avatarUrl: m['avatar_url'] as String?,
         isPublic: m['is_public'] as bool? ?? false,
-        spotifyEnabled: m['spotify_enabled'] as bool? ?? false,
         isPremium: m['is_premium'] as bool? ?? false,
         lastfmUsername: m['lastfm_username'] as String?,
       );
@@ -59,7 +56,7 @@ class ProfileService {
     if (user == null) return null;
     var row = await _client
         .from('profiles')
-        .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium, lastfm_username')
+        .select('id, handle, display_name, bio, avatar_url, is_public, is_premium, lastfm_username')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -84,7 +81,7 @@ class ProfileService {
               'display_name': displayName,
               'is_public': true, // Make public by default so friends can find them
             })
-            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium, lastfm_username')
+            .select('id, handle, display_name, bio, avatar_url, is_public, is_premium, lastfm_username')
             .single();
         row = newRow;
       } catch (e) {
@@ -98,7 +95,7 @@ class ProfileService {
               'display_name': displayName,
               'is_public': true,
             })
-            .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium, lastfm_username')
+            .select('id, handle, display_name, bio, avatar_url, is_public, is_premium, lastfm_username')
             .single();
         row = newRow;
       }

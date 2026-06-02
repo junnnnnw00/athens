@@ -217,7 +217,7 @@ class FriendsService {
 
     final rows = await _client
         .from('profiles')
-        .select('id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium')
+        .select('id, handle, display_name, bio, avatar_url, is_public,  is_premium')
         .neq('id', user.id)
         .or('handle.ilike.%$query%,display_name.ilike.%$query%')
         .limit(20);
@@ -253,7 +253,7 @@ class FriendsService {
 
     final rows = await _client
         .from('follows')
-        .select('following:profiles!follows_following_id_fkey(id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium)')
+        .select('following:profiles!follows_following_id_fkey(id, handle, display_name, bio, avatar_url, is_public,  is_premium)')
         .eq('follower_id', user.id);
 
     return rows
@@ -528,7 +528,7 @@ class FriendsService {
 
     final rows = await _client
         .from('follows')
-        .select('follower:profiles!follows_follower_id_fkey(id, handle, display_name, bio, avatar_url, is_public, spotify_enabled, is_premium)')
+        .select('follower:profiles!follows_follower_id_fkey(id, handle, display_name, bio, avatar_url, is_public,  is_premium)')
         .eq('following_id', user.id);
 
     return rows

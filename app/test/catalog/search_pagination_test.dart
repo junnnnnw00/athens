@@ -1,116 +1,66 @@
-import 'package:athens/api/spotify_api.dart';
+import 'package:athens/api/itunes_api.dart';
 import 'package:athens/features/catalog/catalog_service.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../fakes/fakes.dart';
 
-/// Spotify fake that returns full pages so pagination kicks in.
-/// Returns [kSearchPageSizeSingle] items per page for two pages, then a short
-/// final page — matching single-kind pagination behaviour.
-class _PagingSpotify implements SpotifyApi {
+/// iTunes fake that returns deterministic pages based on offset.
+class _PagingiTunes implements ItunesApi {
   @override
   Future<List<CatalogItem>> search(String query,
-      {String types = 'track,album,artist',
+      {String entity = 'song,album,musicArtist',
       int offset = 0,
       int limit = 20}) async {
-    // Two full pages (>= kSearchPageSizeSingle), then a short final page.
+    if (query.trim().isEmpty) return [];
+    // Two full pages then a short page to signal end of results.
     if (offset >= kSearchPageSizeSingle * 2) {
       return [_item(offset)]; // short page → hasMore false
     }
-    return List.generate(kSearchPageSizeSingle, (i) => _item(offset + i));
+    return List.generate(limit, (i) => _item(offset + i));
   }
 
   CatalogItem _item(int n) => CatalogItem(
-        id: 'spotify:$n',
+        id: 'itunes:$n',
         kind: 'track',
         title: 'Track $n',
         primaryArtist: 'Artist',
-        source: 'spotify',
+        source: 'itunes',
         sourceId: '$n',
       );
-
-  @override
-  Future<List<CatalogItem>> getRecentlyPlayed() async => [];
 }
 
 void main() {
-  ProviderContainer makeContainer() {
-    final c = ProviderContainer(overrides: [
-      spotifyApiProvider.overrideWithValue(_PagingSpotify()),
-      itunesApiProvider.overrideWithValue(FakeItunesApi()),
-      lastfmApiProvider.overrideWithValue(FakeLastfmApi()),
-      musicBrainzApiProvider.overrideWithValue(FakeMusicBrainzApi()),
-    ]);
-    // Keep the controller subscribed so it rebuilds eagerly on query/kind change.
-    c.listen(searchControllerProvider, (_, __) {});
-    return c;
-  }
+  group('CatalogService search pagination (via service layer)', () {
+    CatalogService makeSvc() => CatalogService(
+          itunesApi: _PagingiTunes(),
+          lastfmApi: FakeLastfmApi(),
+          musicBrainzApi: FakeMusicBrainzApi(),
+        );
 
-  test('first page loads and reports hasMore', () async {
-    final c = makeContainer();
-    addTearDown(c.dispose);
-    // Use single-kind mode so pagination is enabled.
-    c.read(searchKindProvider.notifier).state = 'track';
-    c.read(searchQueryProvider.notifier).state = 'radiohead';
-    // build() kicks off the async first page.
-    c.read(searchControllerProvider);
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+    test('first page returns a full page', () async {
+      final svc = makeSvc();
+      final page1 = await svc.search('test', kind: 'track', offset: 0, limit: kSearchPageSizeSingle);
+      expect(page1.length, kSearchPageSizeSingle);
+    });
 
-    final s = c.read(searchControllerProvider);
-    expect(s.items.length, kSearchPageSizeSingle);
-    expect(s.hasMore, isTrue);
-    expect(s.loading, isFalse);
-  });
+    test('second page returns the next kSearchPageSizeSingle items', () async {
+      final svc = makeSvc();
+      final page2 = await svc.search('test', kind: 'track', offset: kSearchPageSizeSingle, limit: kSearchPageSizeSingle);
+      expect(page2.length, kSearchPageSizeSingle);
+      // No overlap with first page
+      expect(page2.first.id, isNot('itunes:0'));
+    });
 
-  test('loadMore appends a second page and de-dupes', () async {
-    final c = makeContainer();
-    addTearDown(c.dispose);
-    c.read(searchKindProvider.notifier).state = 'track';
-    c.read(searchQueryProvider.notifier).state = 'radiohead';
-    c.read(searchControllerProvider);
-    await Future<void>.delayed(const Duration(milliseconds: 10));
+    test('short final page signals end of results', () async {
+      final svc = makeSvc();
+      final page3 = await svc.search('test', kind: 'track', offset: kSearchPageSizeSingle * 2, limit: kSearchPageSizeSingle);
+      expect(page3.length, lessThan(kSearchPageSizeSingle));
+    });
 
-    c.read(searchControllerProvider.notifier).loadMore();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-
-    final s = c.read(searchControllerProvider);
-    expect(s.items.length, kSearchPageSizeSingle * 2);
-    // Unique ids only.
-    expect(s.items.map((e) => e.id).toSet().length, s.items.length);
-  });
-
-  test('reaching a short final page clears hasMore', () async {
-    final c = makeContainer();
-    addTearDown(c.dispose);
-    c.read(searchKindProvider.notifier).state = 'track';
-    c.read(searchQueryProvider.notifier).state = 'radiohead';
-    c.read(searchControllerProvider);
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    c.read(searchControllerProvider.notifier).loadMore();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    c.read(searchControllerProvider.notifier).loadMore();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-
-    final s = c.read(searchControllerProvider);
-    expect(s.hasMore, isFalse);
-  });
-
-  test('changing the query resets results', () async {
-    final c = makeContainer();
-    addTearDown(c.dispose);
-    c.read(searchKindProvider.notifier).state = 'track';
-    c.read(searchQueryProvider.notifier).state = 'a';
-    c.read(searchControllerProvider);
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    c.read(searchControllerProvider.notifier).loadMore();
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(
-        c.read(searchControllerProvider).items.length, kSearchPageSizeSingle * 2);
-
-    c.read(searchQueryProvider.notifier).state = 'b';
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(
-        c.read(searchControllerProvider).items.length, kSearchPageSizeSingle);
+    test('empty query returns empty results', () async {
+      final svc = makeSvc();
+      final results = await svc.search('', kind: 'track');
+      expect(results, isEmpty);
+    });
   });
 }

@@ -7,7 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/repository/library_providers.dart';
-import '../../api/spotify_pkce_service.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import 'profile_service.dart';
@@ -65,9 +64,6 @@ class ProfileScreen extends ConsumerWidget {
               icon: const Icon(Icons.logout_rounded),
               tooltip: context.t('profile_logout', ref: ref),
               onPressed: () async {
-                try {
-                  await SpotifyPkceService.disconnect();
-                } catch (_) {}
                 try {
                   await Supabase.instance.client.auth.signOut();
                 } catch (_) {}
@@ -383,11 +379,7 @@ class ProfileScreen extends ConsumerWidget {
               icon: Icons.insights_rounded,
               title: context.t('profile_stats', ref: ref),
               onTap: () => context.go('/stats')),
-          _Tile(
-              icon: Icons.link_rounded,
-              title: context.t('home_spotify_connect', ref: ref),
-              subtitle: context.t('profile_spotify_sub', ref: ref),
-              onTap: () => context.go('/spotify-connect')),
+
           _Tile(
               icon: Icons.music_note_rounded,
               title: 'Last.fm 연동',

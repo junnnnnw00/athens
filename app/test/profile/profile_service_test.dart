@@ -35,18 +35,24 @@ void main() {
         'display_name': '준우',
         'bio': null,
         'is_public': true,
-        'spotify_enabled': false,
       });
       expect(p.handle, 'junwoo');
       expect(p.displayName, '준우');
       expect(p.isPublic, isTrue);
-      expect(p.spotifyEnabled, isFalse);
     });
 
     test('defaults missing bools to false', () {
       final p = UserProfile.fromMap({'id': 'u1', 'handle': 'x'});
       expect(p.isPublic, isFalse);
-      expect(p.spotifyEnabled, isFalse);
+    });
+
+    test('maps lastfm_username correctly', () {
+      final p = UserProfile.fromMap({
+        'id': 'u1',
+        'handle': 'junwoo',
+        'lastfm_username': 'junwoo_fm',
+      });
+      expect(p.lastfmUsername, 'junwoo_fm');
     });
   });
 }

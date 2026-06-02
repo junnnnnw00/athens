@@ -14,7 +14,7 @@ CatalogItem _track(String id, String title) => CatalogItem(
       kind: 'track',
       title: title,
       primaryArtist: 'Artist',
-      source: 'spotify',
+      source: 'lastfm',
       sourceId: id,
     );
 
@@ -23,10 +23,10 @@ void main() {
       (tester) async {
     final harness = TestHarness(
       recentlyPlayed: [
-        _track('spotify:rated', 'Already Rated'),
-        _track('spotify:fresh', 'Fresh Track'),
+        _track('lastfm:rated', 'Already Rated'),
+        _track('lastfm:fresh', 'Fresh Track'),
       ],
-      spotifyEnabled: true,
+      lastfmUsername: 'testuser',
     );
     harness.overrides.add(
       genreRecommendationsProvider.overrideWith((ref) => (genre: 'Indie', items: <CatalogItem>[])),
@@ -38,7 +38,7 @@ void main() {
     await container.read(libraryControllerProvider.future);
     await container
         .read(libraryControllerProvider.notifier)
-        .addItem(_track('spotify:rated', 'Already Rated'));
+        .addItem(_track('lastfm:rated', 'Already Rated'));
 
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
@@ -51,8 +51,8 @@ void main() {
     expect(find.text('Already Rated'), findsNothing);
   });
 
-  testWidgets('non-Spotify user sees a graceful empty state', (tester) async {
-    final harness = TestHarness(); // no recently-played
+  testWidgets('user without Last.fm sees a graceful empty state', (tester) async {
+    final harness = TestHarness(); // no lastfmUsername, no recentlyPlayed
     harness.overrides.add(
       genreRecommendationsProvider.overrideWith((ref) => (genre: 'Indie', items: <CatalogItem>[])),
     );
@@ -65,6 +65,6 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Spotify 연결'), findsOneWidget);
+    expect(find.text('Last.fm 연동하기'), findsOneWidget);
   });
 }

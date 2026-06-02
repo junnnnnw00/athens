@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:athens/api/spotify_api.dart';
 import 'package:athens/api/lastfm_api.dart';
 import 'package:athens/api/musicbrainz_api.dart';
 import 'package:athens/features/catalog/catalog_service.dart';
@@ -8,9 +7,8 @@ import '../fakes/fakes.dart';
 
 void main() {
   group('CatalogService.search', () {
-    test('returns Spotify results when available', () async {
+    test('returns iTunes results', () async {
       final svc = CatalogService(
-        spotifyApi: FakeSpotifyApi(),
         itunesApi: FakeItunesApi(),
         lastfmApi: FakeLastfmApi(),
         musicBrainzApi: FakeMusicBrainzApi(),
@@ -18,38 +16,11 @@ void main() {
 
       final results = await svc.search('shoegaze');
       expect(results, isNotEmpty);
-      expect(results.first.source, 'spotify');
-    });
-
-    test('falls back to iTunes when Spotify throws', () async {
-      final svc = CatalogService(
-        spotifyApi: _ThrowingSpotifyApi(),
-        itunesApi: FakeItunesApi(),
-        lastfmApi: FakeLastfmApi(),
-        musicBrainzApi: FakeMusicBrainzApi(),
-      );
-
-      final results = await svc.search('test');
-      expect(results, isNotEmpty);
-      expect(results.first.source, 'itunes');
-    });
-
-    test('falls back to iTunes when Spotify is rate-limited (429)', () async {
-      final svc = CatalogService(
-        spotifyApi: _RateLimitedSpotifyApi(),
-        itunesApi: FakeItunesApi(),
-        lastfmApi: FakeLastfmApi(),
-        musicBrainzApi: FakeMusicBrainzApi(),
-      );
-
-      final results = await svc.search('test');
-      expect(results, isNotEmpty);
       expect(results.first.source, 'itunes');
     });
 
     test('returns empty list for empty query', () async {
       final svc = CatalogService(
-        spotifyApi: FakeSpotifyApi(),
         itunesApi: FakeItunesApi(),
         lastfmApi: FakeLastfmApi(),
         musicBrainzApi: FakeMusicBrainzApi(),
@@ -63,7 +34,6 @@ void main() {
   group('CatalogService.enrichTags', () {
     test('returns combined tags from Last.fm and MusicBrainz', () async {
       final svc = CatalogService(
-        spotifyApi: FakeSpotifyApi(),
         itunesApi: FakeItunesApi(),
         lastfmApi: FakeLastfmApi(),
         musicBrainzApi: FakeMusicBrainzApi(),
@@ -84,7 +54,6 @@ void main() {
 
     test('gracefully handles Last.fm failure', () async {
       final svc = CatalogService(
-        spotifyApi: FakeSpotifyApi(),
         itunesApi: FakeItunesApi(),
         lastfmApi: _ThrowingLastfmApi(),
         musicBrainzApi: FakeMusicBrainzApi(),
@@ -98,7 +67,6 @@ void main() {
 
     test('gracefully handles MusicBrainz failure', () async {
       final svc = CatalogService(
-        spotifyApi: FakeSpotifyApi(),
         itunesApi: FakeItunesApi(),
         lastfmApi: FakeLastfmApi(),
         musicBrainzApi: _ThrowingMusicBrainzApi(),
@@ -112,7 +80,6 @@ void main() {
 
     test('returns empty list when all APIs fail', () async {
       final svc = CatalogService(
-        spotifyApi: _ThrowingSpotifyApi(),
         itunesApi: FakeItunesApi(),
         lastfmApi: _ThrowingLastfmApi(),
         musicBrainzApi: _ThrowingMusicBrainzApi(),
@@ -123,30 +90,6 @@ void main() {
       expect(tags, isEmpty);
     });
   });
-}
-
-class _ThrowingSpotifyApi implements SpotifyApi {
-  @override
-  Future<List<CatalogItem>> search(String query,
-          {String types = 'track,album,artist',
-          int offset = 0,
-          int limit = 20}) =>
-      Future.error(Exception('Spotify unavailable'));
-
-  @override
-  Future<List<CatalogItem>> getRecentlyPlayed() => Future.value([]);
-}
-
-class _RateLimitedSpotifyApi implements SpotifyApi {
-  @override
-  Future<List<CatalogItem>> search(String query,
-          {String types = 'track,album,artist',
-          int offset = 0,
-          int limit = 20}) =>
-      Future.error(const SpotifyRateLimitException(532));
-
-  @override
-  Future<List<CatalogItem>> getRecentlyPlayed() => Future.value([]);
 }
 
 class _ThrowingLastfmApi implements LastfmApi {

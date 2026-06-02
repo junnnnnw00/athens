@@ -36,9 +36,8 @@ void main() {
     await tester.pump(); // query state
     await tester.pump(); // future resolves
 
-    // Results come from the (fake) service layer, not a hardcoded list.
-    expect(find.text('Loveless'), findsOneWidget);
-    expect(find.text('Souvlaki'), findsOneWidget);
+    // Results come from the (fake) iTunes service layer.
+    expect(find.textContaining('iTunes Fallback'), findsOneWidget);
 
     // Add the first result.
     await tester.tap(find.text('추가').first);
@@ -60,8 +59,7 @@ void main() {
       child: _app(const SearchScreen()),
     ));
     await tester.pump();
-    // FakeSpotifyApi returns results for any non-empty query; assert the empty
-    // query branch instead (its own real UI, never a crash/blank).
+    // Empty query branch — its own real UI, never a crash/blank.
     expect(find.byType(SearchScreen), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
   });
