@@ -44,12 +44,15 @@ build-web: ## Flutter web build
 ADB := /opt/homebrew/share/android-commandlinetools/platform-tools/adb
 DEFINE_ANDROID := --dart-define-from-file=config/app_config.json
 
-.PHONY: android-run android-apk android-install android-logs
+.PHONY: android-run android-apk android-aab android-install android-logs
 android-run: ## Run debug build on USB-connected Android device
 	cd $(APP) && flutter run -d $(shell $(ADB) devices | awk 'NR==2{print $$1}') $(DEFINE_ANDROID)
 android-apk: ## Build signed release APK → app/build/app/outputs/flutter-apk/app-release.apk
 	cd $(APP) && flutter build apk --release $(DEFINE_ANDROID)
 	@echo "✅  APK: $(APP)/build/app/outputs/flutter-apk/app-release.apk"
+android-aab: ## Build signed release App Bundle (.aab) for Play Store upload
+	cd $(APP) && flutter build appbundle --release $(DEFINE_ANDROID)
+	@echo "✅  AAB: $(APP)/build/app/outputs/bundle/release/app-release.aab"
 android-install: android-apk ## Build + install release APK to USB device
 	$(ADB) install -r $(APP)/build/app/outputs/flutter-apk/app-release.apk
 	@echo "✅  Installed on device"
