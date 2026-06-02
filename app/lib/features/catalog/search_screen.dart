@@ -11,6 +11,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
 import '../../widgets/filter_chips.dart';
 import '../../widgets/initial_score_dialog.dart';
+import '../stats/stats_screen.dart';
 import 'catalog_service.dart';
 
 const _kindLabels = {
@@ -20,6 +21,16 @@ const _kindLabels = {
   '아티스트': 'artist',
 };
 const _kindHeaders = {'track': '곡', 'album': '앨범', 'artist': '아티스트'};
+
+final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, List<CatalogItem> items})>((ref) async {
+  final statsAsync = await ref.watch(statsProvider.future);
+  final genre = statsAsync.genrePreferences.firstOrNull?.name ?? 'Indie';
+  final service = ref.watch(catalogServiceProvider);
+  
+  // Recommend songs under this genre
+  final items = await service.search(genre, kind: 'track', limit: 5);
+  return (genre: genre, items: items);
+});
 
 class SearchScreen extends ConsumerStatefulWidget {
   /// When [debounceDuration] is [Duration.zero] (the default) searches fire
@@ -89,7 +100,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ),
       ),
       body: query.trim().isEmpty
-          ? _Hint(icon: Icons.search_rounded, text: '검색어를 입력하세요')
+          ? const _SearchRecommendations()
           : const _SearchBody(),
     );
   }
@@ -478,6 +489,308 @@ class _SearchSkeleton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SearchRecommendations extends ConsumerWidget {
+  const _SearchRecommendations();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final recsAsync = ref.watch(genreRecommendationsProvider);
+    final addedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
+    final statsAsync = ref.watch(statsProvider);
+
+    return ListView(
+      padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: 130),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          child: statsAsync.when(
+            loading: () => Container(
+              height: 120,
+              decoration: BoxDecoration(
+                color: p.surface2,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+              ),
+            ),
+            error: (_, __) => const SizedBox.shrink(),
+            data: (stats) {
+              final isDefault = stats.genrePreferences.isEmpty;
+              if (isDefault) {
+                return Card(
+                  color: p.surface2,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadii.card),
+                    side: BorderSide(color: p.line),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.auto_awesome_rounded, color: p.accent, size: 20),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(
+                              '나의 음악 취향 분석 엔진',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: p.text,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          '곡을 평가(듀얼)하여 추가하면, 나의 취향 장르 분석 결과가 실시간으로 반영되어 추천곡 목록이 지속적으로 업데이트됩니다.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: p.muted,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.icon(
+                            onPressed: () {
+                              context.go('/duel');
+                            },
+                            icon: const Icon(Icons.bolt_rounded, size: 16),
+                            label: const Text('지금 취향 분석하러 가기'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              // Has ratings and preferences
+              final activeGenre = recsAsync.valueOrNull?.genre ?? 'Indie';
+              return Card(
+                color: p.surface2,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.card),
+                  side: BorderSide(color: p.line),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.query_stats_rounded, color: p.accent, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            '실시간 장르 분석 결과',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: p.text,
+                            ),
+                          ),
+                          const Spacer(),
+                          Row(
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: p.accent,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '실시간 갱신 중',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: p.accent,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        '듀얼 평가 결과로 산출된 장르 선호도 순위입니다. 가장 선호하는 장르의 곡이 하단에 추천됩니다.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: p.muted,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.xs,
+                        children: stats.genrePreferences.take(3).map((pref) {
+                          final isTop = pref.name == activeGenre;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isTop ? p.accent.withOpacity(0.12) : p.chip,
+                              border: Border.all(
+                                color: isTop ? p.accent : p.line,
+                                width: 1,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isTop) ...[
+                                  Icon(Icons.check_circle_rounded, color: p.accent, size: 12),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  '#${pref.name}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: isTop ? FontWeight.bold : FontWeight.normal,
+                                    color: isTop ? p.accentText : p.text,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${pref.averageScore.toStringAsFixed(1)}★',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isTop ? p.accentText.withOpacity(0.8) : p.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        recsAsync.when(
+          loading: () => const _RecommendationsSkeleton(),
+          error: (e, _) => const SizedBox.shrink(),
+          data: (data) {
+            if (data.items.isEmpty) return const SizedBox.shrink();
+            
+            final isDefault = ref.read(statsProvider).valueOrNull?.genrePreferences.isEmpty ?? true;
+            final title = isDefault 
+                ? '지금 가장 핫한 #${data.genre} 추천 트랙'
+                : '자주 듣는 #${data.genre} 취향 저격 곡';
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                ...data.items.map((item) => Column(
+                  children: [
+                    _ResultRow(item: item, added: addedIds.contains(item.id)),
+                    Divider(height: 1, color: p.line, indent: AppSpacing.xl),
+                  ],
+                )),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _RecommendationsSkeleton extends StatelessWidget {
+  const _RecommendationsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 16,
+            width: 180,
+            decoration: BoxDecoration(
+              color: p.surface2,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          ...List.generate(
+            3,
+            (_) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: p.surface2,
+                      borderRadius: BorderRadius.circular(AppRadii.cover),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: 12,
+                          width: 140,
+                          decoration: BoxDecoration(
+                            color: p.surface2,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          height: 10,
+                          width: 80,
+                          decoration: BoxDecoration(
+                            color: p.surface2,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

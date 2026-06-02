@@ -20,12 +20,14 @@ import 'features/friends/friend_comparison_screen.dart';
 import 'features/premium/premium_upgrade_screen.dart';
 import 'widgets/floating_nav.dart';
 
+import 'features/auth/landing_screen.dart';
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/home',
     redirect: (context, state) {
       if (!isSupabaseInitialized) {
-        if (state.matchedLocation == '/auth') {
+        if (state.matchedLocation == '/auth' || state.matchedLocation == '/landing') {
           return '/home';
         }
         return null;
@@ -37,11 +39,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         // Fallback for offline network failure or transient errors
       }
       final loggingIn = state.matchedLocation == '/auth';
-      if (session == null) return loggingIn ? null : '/auth';
-      if (loggingIn) return '/home';
+      final onLanding = state.matchedLocation == '/landing';
+
+      if (session == null) {
+        if (loggingIn || onLanding) return null;
+        return '/landing';
+      }
+      if (loggingIn || onLanding) return '/home';
       return null;
     },
     routes: [
+      GoRoute(path: '/landing', builder: (c, s) => const LandingScreen()),
       GoRoute(path: '/auth', builder: (c, s) => const AuthScreen()),
       GoRoute(path: '/premium-upgrade', builder: (c, s) => const PremiumUpgradeScreen()),
       ShellRoute(

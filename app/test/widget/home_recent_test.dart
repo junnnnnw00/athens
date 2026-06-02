@@ -1,5 +1,6 @@
 import 'package:athens/data/repository/library_providers.dart';
 import 'package:athens/features/catalog/catalog_service.dart';
+import 'package:athens/features/catalog/search_screen.dart';
 import 'package:athens/features/home/home_screen.dart';
 import 'package:athens/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,9 @@ void main() {
       _track('spotify:rated', 'Already Rated'),
       _track('spotify:fresh', 'Fresh Track'),
     ]);
+    harness.overrides.add(
+      genreRecommendationsProvider.overrideWith((ref) => (genre: 'Indie', items: <CatalogItem>[])),
+    );
     addTearDown(harness.dispose);
 
     final container = harness.container();
@@ -46,6 +50,9 @@ void main() {
 
   testWidgets('non-Spotify user sees a graceful empty state', (tester) async {
     final harness = TestHarness(); // no recently-played
+    harness.overrides.add(
+      genreRecommendationsProvider.overrideWith((ref) => (genre: 'Indie', items: <CatalogItem>[])),
+    );
     addTearDown(harness.dispose);
 
     await tester.pumpWidget(ProviderScope(

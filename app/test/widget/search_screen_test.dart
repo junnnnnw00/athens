@@ -29,8 +29,8 @@ void main() {
     ));
     await tester.pump();
 
-    // Empty query → prompt.
-    expect(find.text('검색어를 입력하세요'), findsOneWidget);
+    // Empty query -> search screen is ready.
+    expect(find.byType(TextField), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'slowdive');
     await tester.pump(); // query state
@@ -63,6 +63,6 @@ void main() {
     // FakeSpotifyApi returns results for any non-empty query; assert the empty
     // query branch instead (its own real UI, never a crash/blank).
     expect(find.byType(SearchScreen), findsOneWidget);
-    expect(find.text('검색어를 입력하세요'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
   });
 }

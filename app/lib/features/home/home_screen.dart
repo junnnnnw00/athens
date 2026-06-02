@@ -12,6 +12,8 @@ import '../friends/friends_service.dart';
 import '../../i18n.dart';
 import '../../widgets/update_banner.dart';
 import '../../widgets/initial_score_dialog.dart';
+import '../catalog/search_screen.dart';
+import '../stats/stats_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -19,6 +21,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
+    final recsAsync = ref.watch(genreRecommendationsProvider);
     final recentAsync = ref.watch(recentlyPlayedProvider);
     final friendsRecentAsync = ref.watch(friendsRecentRatingsProvider);
     final ratedItems = ref.watch(ratedItemsProvider);
@@ -45,8 +48,12 @@ class HomeScreen extends ConsumerWidget {
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
+                ref.invalidate(genreRecommendationsProvider);
                 ref.invalidate(recentlyPlayedProvider);
                 ref.invalidate(friendsRecentRatingsProvider);
+                try {
+                  await ref.read(genreRecommendationsProvider.future);
+                } catch (_) {}
                 try {
                   await ref.read(recentlyPlayedProvider.future);
                 } catch (_) {}
@@ -62,9 +69,55 @@ class HomeScreen extends ConsumerWidget {
                   Text(context.t('home_title', ref: ref),
                       style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: AppSpacing.lg),
-                  const _DuelCallout(onTap: null), // Tap behavior is embedded inside _DuelCallout or can be passed
+                  if (ratedItems.length < 3)
+                    _OnboardingCard(currentCount: ratedItems.length)
+                  else
+                    const _DuelCallout(onTap: null), // Tap behavior is embedded inside _DuelCallout or can be passed
                   
-                  // Recommended Friend Ratings Section
+                  // 1. Recommended tracks (추천곡)
+                  recsAsync.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                    data: (data) {
+                      if (data.items.isEmpty) return const SizedBox.shrink();
+                      
+                      final isDefault = ref.read(statsProvider).valueOrNull?.genrePreferences.isEmpty ?? true;
+                      final title = isDefault 
+                          ? '지금 가장 핫한 #${data.genre} 추천 트랙'
+                          : '자주 듣는 #${data.genre} 취향 저격 곡';
+
+                      // Filter out items already rated
+                      final unrated = data.items.where((it) {
+                        final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
+                        return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
+                      }).toList();
+
+                      if (unrated.isEmpty) return const SizedBox.shrink();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: AppSpacing.xxl),
+                          Row(
+                            children: [
+                              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(width: AppSpacing.xs),
+                              Icon(Icons.auto_awesome_rounded, color: p.accent, size: 16),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Column(
+                            children: unrated
+                                .take(5)
+                                .map((it) => _RecentCard(item: it))
+                                .toList(),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
+                  // 2. Recommended Friend Ratings Section (친구 평가 음악)
                   friendsRecentAsync.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
@@ -325,6 +378,96 @@ class _RecentEmpty extends ConsumerWidget {
           OutlinedButton(
             onPressed: () => context.go('/spotify-connect'),
             child: Text(context.t('home_spotify_connect', ref: ref)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OnboardingCard extends StatelessWidget {
+  const _OnboardingCard({required this.currentCount});
+  final int currentCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final progress = (currentCount / 3).clamp(0.0, 1.0);
+    
+    String statusText = '';
+    if (currentCount == 0) {
+      statusText = '좋아하는 첫 번째 노래를 검색하고 별점을 주세요. 🎧';
+    } else if (currentCount == 1) {
+      statusText = '좋은 시작입니다! 2곡만 더 담으면 첫 번째 듀얼을 붙일 수 있어요.';
+    } else if (currentCount == 2) {
+      statusText = '이제 딱 한 곡 남았어요! 한 곡만 더 추가하고 듀얼 매치를 완성해 보세요.';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        border: Border.all(color: p.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.stars_rounded, color: p.accent, size: 24),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  '내 취향 랭킹 시작하기 ($currentCount/3)',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '곡 보관함이 완성되면 1:1 월드컵 듀얼을 시작하고, 내 음악 취향에 대한 상세한 분석 리포트를 얻을 수 있어요.',
+            style: TextStyle(color: p.muted, fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          
+          // Progress Bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: p.line,
+              color: p.accent,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            statusText,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: p.accentText,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          
+          ElevatedButton.icon(
+            onPressed: () => context.go('/search'),
+            icon: const Icon(Icons.search_rounded, size: 18),
+            label: const Text('노래 찾으러 가기'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: p.accentSoft,
+              foregroundColor: p.accentText,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+              ),
+            ),
           ),
         ],
       ),
