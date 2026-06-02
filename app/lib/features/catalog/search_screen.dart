@@ -27,9 +27,24 @@ final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, 
   final genre = statsAsync.genrePreferences.firstOrNull?.name ?? 'Indie';
   final service = ref.watch(catalogServiceProvider);
   
-  // Recommend songs under this genre
-  final items = await service.search(genre, kind: 'track', limit: 5);
-  return (genre: genre, items: items);
+  final ratedItems = ref.watch(ratedItemsProvider);
+  final ratedIds = ratedItems.map((e) => e.id).toSet();
+  final ratedKeys = ratedItems.map((r) {
+    final title = r.title.toLowerCase().trim();
+    final artist = (r.primaryArtist ?? '').toLowerCase().trim();
+    return '${r.kind}_${title}_$artist';
+  }).toSet();
+
+  // Search a larger pool (e.g. 30 items) to guarantee we have enough unrated recommendations
+  final candidates = await service.search(genre, kind: 'track', limit: 30);
+  
+  // Filter out already rated items
+  final unrated = candidates.where((it) {
+    final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
+    return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
+  }).toList();
+
+  return (genre: genre, items: unrated.take(5).toList());
 });
 
 class SearchScreen extends ConsumerStatefulWidget {

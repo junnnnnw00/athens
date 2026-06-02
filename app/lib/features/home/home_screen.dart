@@ -89,14 +89,6 @@ class HomeScreen extends ConsumerWidget {
                           ? '지금 가장 핫한 #${data.genre} 추천 트랙'
                           : '자주 듣는 #${data.genre} 취향 저격 곡';
 
-                      // Filter out items already rated
-                      final unrated = data.items.where((it) {
-                        final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
-                        return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
-                      }).toList();
-
-                      if (unrated.isEmpty) return const SizedBox.shrink();
-
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -110,8 +102,7 @@ class HomeScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: AppSpacing.md),
                           Column(
-                            children: unrated
-                                .take(5)
+                            children: data.items
                                 .map((it) => _RecentCard(item: it))
                                 .toList(),
                           ),
