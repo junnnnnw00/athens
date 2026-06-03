@@ -44,6 +44,9 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavKey,
     initialLocation: '/home',
+    // Safety net: any unmatched location (bad deep link, stale '/', etc.) recovers
+    // to Home instead of showing go_router's red error screen.
+    onException: (context, state, router) => router.go('/home'),
     redirect: (context, state) {
       if (!isSupabaseInitialized) {
         if (state.matchedLocation == '/auth' || state.matchedLocation == '/landing') {

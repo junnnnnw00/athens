@@ -91,6 +91,32 @@ void main() {
     expect(navIndex(tester), 1);
   });
 
+  testWidgets('item id with a colon (itunes:/spotify:) resolves under each tab',
+      (tester) async {
+    // Regression: relative push produced a bare "item/itunes:123" with no branch
+    // prefix → GoException. Callers now push encoded, branch-absolute paths.
+    final (_, router) = await pumpApp(tester);
+    final encoded = Uri.encodeComponent('itunes:1440783222');
+
+    router.push('/home/item/$encoded');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byType(ItemDetailScreen), findsOneWidget);
+    expect(navIndex(tester), 0);
+    router.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    router.go('/search');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    router.push('/search/item/$encoded');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byType(ItemDetailScreen), findsOneWidget);
+    expect(navIndex(tester), 0);
+  });
+
   testWidgets('switching tabs preserves the per-branch stack', (tester) async {
     final (_, router) = await pumpApp(tester);
 

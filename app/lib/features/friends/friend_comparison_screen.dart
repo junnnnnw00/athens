@@ -1191,7 +1191,9 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
             primaryArtist: item.artist,
             imageUrl: item.imageUrl,
           );
-          context.push('item/${item.id}', extra: catalogItem);
+          context.push(
+              '/friends/compare/${widget.friendId}/item/${Uri.encodeComponent(item.id)}',
+              extra: catalogItem);
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(

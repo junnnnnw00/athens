@@ -230,7 +230,7 @@ class _LibraryRow extends StatelessWidget {
     final p = context.palette;
     final score = scoreFromElo(item.elo);
     return InkWell(
-      onTap: () => context.push('item/${item.id}'),
+      onTap: () => context.push('/library/item/${Uri.encodeComponent(item.id)}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.xl, vertical: AppSpacing.md),
