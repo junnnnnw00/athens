@@ -90,8 +90,12 @@ export default function PrivacyPolicy() {
       <section style={sectionStyle}>
         <h2 style={h2Style}>4. 데이터 보관 및 삭제</h2>
         <p style={pStyle}>
-          이용자 데이터는 계정이 유지되는 동안 보관됩니다. 계정 삭제를 원하시면
-          아래 이메일로 요청해 주시면 관련 데이터를 삭제합니다.
+          이용자 데이터는 계정이 유지되는 동안 보관됩니다. 계정 및 관련 데이터의 영구 삭제를 원하시는 경우,
+          {" "}
+          <a href="/delete-account" style={{ color: "inherit", textDecoration: "underline" }}>
+            계정 및 데이터 삭제 요청 페이지
+          </a>
+          를 통해 신청하시거나 아래 이메일로 요청해 주시면 지체 없이 관련 데이터를 파기합니다.
         </p>
       </section>
 
