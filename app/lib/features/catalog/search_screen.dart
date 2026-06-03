@@ -424,7 +424,7 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
     final added = widget.added;
     return InkWell(
       onTap: () {
-        context.push('/item/${widget.item.id}', extra: widget.item);
+        context.push('item/${widget.item.id}', extra: widget.item);
       },
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: Padding(

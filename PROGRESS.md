@@ -1,5 +1,20 @@
 # Athens — Build Progress
 
+## Cleanup run (2026-06-03) — GOAL-cleanup.md
+
+Full spec in `GOAL-cleanup.md`. Order: A(탭 네비)→B(가림)→D12(Spotify)→C(리팩터)→D13~15→E.
+
+### [A] 탭 스코프 네비게이션 — DONE (코드), 런타임 검증 대기(E)
+- `router.dart`: 단일 `ShellRoute` → `StatefulShellRoute.indexedStack`, 2 브랜치(Home=`_homeNavKey`, Me=`_meNavKey`).
+  - Branch0 Home: `/home`(+child `item/:id`), `/duel`, `/duel/:focusId`, `/search`(+child `item/:id`), `/share`.
+  - Branch1 Me: `/library`(+`item/:id`), `/stats`, `/profile`(+`edit`), `/friends`(+`compare/:id`(+`item/:id`)).
+  - `/premium-upgrade`, `/auth`, `/landing` = 루트 네비게이터(탭바 없음).
+- `/item/:id` 를 공용 헬퍼 `_itemRoute()` 로 각 리스트 부모 아래 **상대 경로 자식**으로 등록 → 호출부를 상대 `push('item/<id>')` 로 변경(home/library/friends_comparison/search 4곳). 진입한 탭 네비게이터에 스택되어 탭 하이라이트·FloatingNav 유지.
+- `_AppShell._navIndex` 휴리스틱 제거 → `navigationShell.currentIndex` 가 진실 소스.
+- 하드웨어/브라우저 백: `PopScope` — 현재 브랜치 pop 가능하면 pop, 루트면 비-Home→Home 복귀, Home 루트에서만 종료 허용.
+- `item_detail` 삭제 후: `go('/library')` → `canPop?pop:go('/library')` (진입 탭 유지).
+- 검증: `make analyze` 0, `make test` 128 pass. **런타임 클릭 검증은 E 단계에서.**
+
 ## Current State (2026-06-02)
 
 Rebuilt from "compiles-but-mockup" into working software per ACCEPTANCE.md + DESIGN.md.

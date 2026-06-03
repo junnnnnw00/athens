@@ -303,7 +303,7 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
     final item = widget.item;
     return InkWell(
       onTap: () {
-        context.push('/item/${item.id}', extra: item);
+        context.push('item/${item.id}', extra: item);
       },
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: Container(

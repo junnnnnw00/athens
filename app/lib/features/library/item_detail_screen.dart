@@ -104,7 +104,14 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     );
     if (ok != true) return;
     await ref.read(libraryControllerProvider.notifier).deleteItem(widget.itemId);
-    if (mounted) context.go('/library');
+    if (!mounted) return;
+    // Item is gone — return to wherever we came from (list refreshes). Fall back
+    // to the library tab if this was opened via a deep link with no back stack.
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/library');
+    }
   }
 
   Future<void> _addFromUnrated() async {

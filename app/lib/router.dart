@@ -21,8 +21,28 @@ import 'widgets/floating_nav.dart';
 
 import 'features/auth/landing_screen.dart';
 
+final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final _homeNavKey = GlobalKey<NavigatorState>(debugLabel: 'home');
+final _meNavKey = GlobalKey<NavigatorState>(debugLabel: 'me');
+
+/// Shared item-detail route. Registered as a relative child (`item/:id`) under
+/// each list-bearing parent so that a relative `push('item/<id>')` stacks the
+/// detail page inside the *current* tab's navigator — the tab stays highlighted
+/// and the FloatingNav remains visible above it.
+GoRoute _itemRoute() => GoRoute(
+      path: 'item/:id',
+      builder: (c, s) {
+        final catalogItem = s.extra is CatalogItem ? s.extra as CatalogItem : null;
+        return ItemDetailScreen(
+          itemId: s.pathParameters['id']!,
+          catalogItem: catalogItem,
+        );
+      },
+    );
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
+    navigatorKey: _rootNavKey,
     initialLocation: '/home',
     redirect: (context, state) {
       if (!isSupabaseInitialized) {
@@ -50,45 +70,67 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/landing', builder: (c, s) => const LandingScreen()),
       GoRoute(path: '/auth', builder: (c, s) => const AuthScreen()),
+      // Full-screen modal-style routes live on the root navigator (no tab bar).
       GoRoute(path: '/premium-upgrade', builder: (c, s) => const PremiumUpgradeScreen()),
-      ShellRoute(
-        builder: (context, state, child) =>
-            _AppShell(location: state.matchedLocation, child: child),
-        routes: [
-          GoRoute(path: '/home', builder: (c, s) => const HomeScreen()),
-          GoRoute(path: '/duel', builder: (c, s) => const DuelScreen()),
-          GoRoute(
-              path: '/duel/:focusId',
-              builder: (c, s) =>
-                  DuelScreen(focusId: s.pathParameters['focusId'])),
-          GoRoute(path: '/library', builder: (c, s) => const LibraryScreen()),
-          GoRoute(path: '/stats', builder: (c, s) => const StatsScreen()),
-          GoRoute(path: '/profile', builder: (c, s) => const ProfileScreen()),
-          GoRoute(
-              path: '/profile/edit',
-              builder: (c, s) => const ProfileEditScreen()),
-          GoRoute(
-              path: '/search',
-              builder: (c, s) => const SearchScreen(
-                  debounceDuration: Duration(milliseconds: 400))),
-          GoRoute(path: '/share', builder: (c, s) => const ShareScreen()),
-          GoRoute(
-            path: '/item/:id',
-            builder: (c, s) {
-              final catalogItem = s.extra is CatalogItem ? s.extra as CatalogItem : null;
-              return ItemDetailScreen(
-                itemId: s.pathParameters['id']!,
-                catalogItem: catalogItem,
-              );
-            },
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            _AppShell(navigationShell: navigationShell),
+        branches: [
+          // ── Branch 0: Home (duel = core rating loop, search = add flow) ──
+          StatefulShellBranch(
+            navigatorKey: _homeNavKey,
+            routes: [
+              GoRoute(
+                path: '/home',
+                builder: (c, s) => const HomeScreen(),
+                routes: [_itemRoute()],
+              ),
+              GoRoute(path: '/duel', builder: (c, s) => const DuelScreen()),
+              GoRoute(
+                path: '/duel/:focusId',
+                builder: (c, s) => DuelScreen(focusId: s.pathParameters['focusId']),
+              ),
+              GoRoute(
+                path: '/search',
+                builder: (c, s) => const SearchScreen(
+                    debounceDuration: Duration(milliseconds: 400)),
+                routes: [_itemRoute()],
+              ),
+              GoRoute(path: '/share', builder: (c, s) => const ShareScreen()),
+            ],
           ),
-          GoRoute(
-            path: '/friends',
-            builder: (c, s) => const FriendListScreen(),
-          ),
-          GoRoute(
-            path: '/friends/compare/:id',
-            builder: (c, s) => FriendComparisonScreen(friendId: s.pathParameters['id']!),
+          // ── Branch 1: Me (library / stats / profile / friends) ──
+          StatefulShellBranch(
+            navigatorKey: _meNavKey,
+            routes: [
+              GoRoute(
+                path: '/library',
+                builder: (c, s) => const LibraryScreen(),
+                routes: [_itemRoute()],
+              ),
+              GoRoute(path: '/stats', builder: (c, s) => const StatsScreen()),
+              GoRoute(
+                path: '/profile',
+                builder: (c, s) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                      path: 'edit',
+                      builder: (c, s) => const ProfileEditScreen()),
+                ],
+              ),
+              GoRoute(
+                path: '/friends',
+                builder: (c, s) => const FriendListScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'compare/:id',
+                    builder: (c, s) =>
+                        FriendComparisonScreen(friendId: s.pathParameters['id']!),
+                    routes: [_itemRoute()],
+                  ),
+                ],
+              ),
+            ],
           ),
         ],
       ),
@@ -96,28 +138,49 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Hosts the main screens with the floating pill nav overlaid at the bottom.
+/// Hosts the indexed-stack of tab navigators with the floating pill nav
+/// overlaid at the bottom. The shell's [StatefulNavigationShell] is the single
+/// source of truth for the active tab (no path-prefix heuristics).
 class _AppShell extends StatelessWidget {
-  const _AppShell({required this.child, required this.location});
-  final Widget child;
-  final String location;
+  const _AppShell({required this.navigationShell});
+  final StatefulNavigationShell navigationShell;
 
-  int get _navIndex {
-    if (location.startsWith('/library') ||
-        location.startsWith('/profile') ||
-        location.startsWith('/stats') ||
-        location.startsWith('/friends')) {
-      return 1;
-    }
-    return 0;
+  static final _branchKeys = <GlobalKey<NavigatorState>>[_homeNavKey, _meNavKey];
+
+  void _goBranch(int index) {
+    navigationShell.goBranch(
+      index,
+      // Tapping the active tab again pops it back to that branch's root.
+      initialLocation: index == navigationShell.currentIndex,
+    );
   }
+
+  bool get _currentBranchCanPop =>
+      _branchKeys[navigationShell.currentIndex].currentState?.canPop() ?? false;
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      // System back is allowed to exit only from the Home root with an empty
+      // stack. Otherwise we either pop the current branch or fall back to Home.
+      canPop: navigationShell.currentIndex == 0 && !_currentBranchCanPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_currentBranchCanPop) {
+          _branchKeys[navigationShell.currentIndex].currentState?.pop();
+        } else if (navigationShell.currentIndex != 0) {
+          navigationShell.goBranch(0);
+        }
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(child: child),
+          Positioned.fill(child: navigationShell),
           Positioned(
             left: 0,
             right: 0,
@@ -126,8 +189,9 @@ class _AppShell extends StatelessWidget {
               child: Align(
                 alignment: Alignment.bottomCenter,
                 child: FloatingNav(
-                  currentIndex: _navIndex,
-                  onSelect: (i) => context.go(i == 0 ? '/home' : '/library'),
+                  currentIndex: navigationShell.currentIndex,
+                  onSelect: _goBranch,
+                  // Add = open search (lives in the Home branch; go() activates it).
                   onAdd: () => context.go('/search'),
                 ),
               ),
