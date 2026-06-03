@@ -86,28 +86,45 @@ const successCardStyle: React.CSSProperties = {
 
 export default function DeleteAccount() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password.trim()) return;
 
     setLoading(true);
     setError('');
 
     try {
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      
+      // 1. Verify user credentials by signing in
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: password.trim(),
+      });
+
+      if (authError) {
+        throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.');
+      }
+
+      // 2. Store the verified deletion request
       const { error: insertError } = await supabase
         .from('deletion_requests')
         .insert([{ email: email.trim().toLowerCase() }]);
 
       if (insertError) throw insertError;
+
+      // 3. Sign out to clear the transient session
+      await supabase.auth.signOut();
+      
       setSuccess(true);
     } catch (err: any) {
       console.error(err);
-      setError('요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      setError(err.message || '요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
     } finally {
       setLoading(false);
     }
@@ -119,7 +136,7 @@ export default function DeleteAccount() {
         <div style={cardStyle}>
           <h1 style={titleStyle}>계정 및 데이터 삭제 요청</h1>
           <p style={subtitleStyle}>
-            Athens 앱에서 사용하셨던 회원 계정 및 관련 데이터를 영구적으로 삭제할 수 있습니다.
+            본인 인증을 위해 가입하신 이메일과 비밀번호를 입력해 주세요.
           </p>
 
           <h2 style={sectionTitleStyle}>삭제되는 데이터 범위:</h2>
@@ -155,6 +172,19 @@ export default function DeleteAccount() {
               placeholder="example@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              style={inputStyle}
+              disabled={loading}
+            />
+
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#e4e4e7' }}>
+              비밀번호
+            </label>
+            <input
+              type="password"
+              required
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               style={inputStyle}
               disabled={loading}
             />
