@@ -72,71 +72,76 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/auth', builder: (c, s) => const AuthScreen()),
       // Full-screen modal-style routes live on the root navigator (no tab bar).
       GoRoute(path: '/premium-upgrade', builder: (c, s) => const PremiumUpgradeScreen()),
-      StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) =>
-            _AppShell(navigationShell: navigationShell),
-        branches: [
-          // ── Branch 0: Home (duel = core rating loop, search = add flow) ──
-          StatefulShellBranch(
-            navigatorKey: _homeNavKey,
-            routes: [
-              GoRoute(
-                path: '/home',
-                builder: (c, s) => const HomeScreen(),
-                routes: [_itemRoute()],
-              ),
-              GoRoute(path: '/duel', builder: (c, s) => const DuelScreen()),
-              GoRoute(
-                path: '/duel/:focusId',
-                builder: (c, s) => DuelScreen(focusId: s.pathParameters['focusId']),
-              ),
-              GoRoute(
-                path: '/search',
-                builder: (c, s) => const SearchScreen(
-                    debounceDuration: Duration(milliseconds: 400)),
-                routes: [_itemRoute()],
-              ),
-              GoRoute(path: '/share', builder: (c, s) => const ShareScreen()),
-            ],
-          ),
-          // ── Branch 1: Me (library / stats / profile / friends) ──
-          StatefulShellBranch(
-            navigatorKey: _meNavKey,
-            routes: [
-              GoRoute(
-                path: '/library',
-                builder: (c, s) => const LibraryScreen(),
-                routes: [_itemRoute()],
-              ),
-              GoRoute(path: '/stats', builder: (c, s) => const StatsScreen()),
-              GoRoute(
-                path: '/profile',
-                builder: (c, s) => const ProfileScreen(),
-                routes: [
-                  GoRoute(
-                      path: 'edit',
-                      builder: (c, s) => const ProfileEditScreen()),
-                ],
-              ),
-              GoRoute(
-                path: '/friends',
-                builder: (c, s) => const FriendListScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'compare/:id',
-                    builder: (c, s) =>
-                        FriendComparisonScreen(friendId: s.pathParameters['id']!),
-                    routes: [_itemRoute()],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
+      buildAppShellRoute(),
     ],
   );
 });
+
+/// The tab shell (StatefulShellRoute) with the Home and Me branches. Exposed as
+/// a top-level builder so widget tests can mount it directly without the auth
+/// redirect gate (see test/widget/navigation_test.dart).
+StatefulShellRoute buildAppShellRoute() => StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) =>
+          _AppShell(navigationShell: navigationShell),
+      branches: [
+        // ── Branch 0: Home (duel = core rating loop, search = add flow) ──
+        StatefulShellBranch(
+          navigatorKey: _homeNavKey,
+          routes: [
+            GoRoute(
+              path: '/home',
+              builder: (c, s) => const HomeScreen(),
+              routes: [_itemRoute()],
+            ),
+            GoRoute(path: '/duel', builder: (c, s) => const DuelScreen()),
+            GoRoute(
+              path: '/duel/:focusId',
+              builder: (c, s) => DuelScreen(focusId: s.pathParameters['focusId']),
+            ),
+            GoRoute(
+              path: '/search',
+              builder: (c, s) => const SearchScreen(
+                  debounceDuration: Duration(milliseconds: 400)),
+              routes: [_itemRoute()],
+            ),
+            GoRoute(path: '/share', builder: (c, s) => const ShareScreen()),
+          ],
+        ),
+        // ── Branch 1: Me (library / stats / profile / friends) ──
+        StatefulShellBranch(
+          navigatorKey: _meNavKey,
+          routes: [
+            GoRoute(
+              path: '/library',
+              builder: (c, s) => const LibraryScreen(),
+              routes: [_itemRoute()],
+            ),
+            GoRoute(path: '/stats', builder: (c, s) => const StatsScreen()),
+            GoRoute(
+              path: '/profile',
+              builder: (c, s) => const ProfileScreen(),
+              routes: [
+                GoRoute(
+                    path: 'edit',
+                    builder: (c, s) => const ProfileEditScreen()),
+              ],
+            ),
+            GoRoute(
+              path: '/friends',
+              builder: (c, s) => const FriendListScreen(),
+              routes: [
+                GoRoute(
+                  path: 'compare/:id',
+                  builder: (c, s) =>
+                      FriendComparisonScreen(friendId: s.pathParameters['id']!),
+                  routes: [_itemRoute()],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
 
 /// Hosts the indexed-stack of tab navigators with the floating pill nav
 /// overlaid at the bottom. The shell's [StatefulNavigationShell] is the single
