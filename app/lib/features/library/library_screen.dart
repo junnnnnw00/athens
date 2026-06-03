@@ -165,51 +165,25 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     ? Center(
                         child: Text(context.t('lib_empty_filter', ref: ref),
                             style: TextStyle(color: p.muted)))
-                    : SingleChildScrollView(
+                    : ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: EdgeInsets.only(
                             bottom: AppLayout.scrollBottomInset(context)),
-                        child: Builder(
-                          builder: (context) {
-                            final tops = <double>[];
-                            final heights = <double>[];
-                            double currentTop = 0.0;
-                            for (final item in displayItems) {
-                              final h = item.tags.isNotEmpty ? 126.0 : 86.0;
-                              tops.add(currentTop);
-                              heights.add(h);
-                              currentTop += h;
-                            }
-                            return SizedBox(
-                              height: currentTop,
-                              child: Stack(
-                                children: [
-                                  for (int i = 0; i < displayItems.length; i++)
-                                    AnimatedPositioned(
-                                      key: ValueKey(displayItems[i].id),
-                                      duration: const Duration(milliseconds: 600),
-                                      curve: Curves.easeInOut,
-                                      top: tops[i],
-                                      left: 0,
-                                      right: 0,
-                                      height: heights[i],
-                                      child: Material(
-                                        color: Colors.transparent,
-                                        child: Column(
-                                          children: [
-                                            Expanded(
-                                              child: _LibraryRow(rank: i + 1, item: displayItems[i]),
-                                            ),
-                                            Divider(height: 1, color: p.line, indent: AppSpacing.xl),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            );
-                          },
+                        itemCount: displayItems.length,
+                        separatorBuilder: (context, index) => Divider(
+                          height: 1,
+                          color: p.line,
+                          indent: AppSpacing.xl,
                         ),
+                        itemBuilder: (context, index) {
+                          return Material(
+                            color: Colors.transparent,
+                            child: _LibraryRow(
+                              rank: index + 1,
+                              item: displayItems[index],
+                            ),
+                          );
+                        },
                       ),
               ),
             ],

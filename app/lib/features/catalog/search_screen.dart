@@ -50,7 +50,17 @@ final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, 
   List<CatalogItem> candidates = const [];
   var genre = candidateGenres.first;
   for (final candidateGenre in candidateGenres) {
-    final results = await service.search(candidateGenre, kind: 'track', limit: 30);
+    final rawResults = await service.search(candidateGenre, kind: 'track', limit: 30);
+    final results = rawResults.where((item) {
+      final title = item.title.toLowerCase().trim();
+      final g = candidateGenre.toLowerCase().trim();
+      // Filter out low-quality songs where the title is exactly the genre name or
+      // starts with the genre name followed by common punctuation (e.g. "Shoegaze (Edit)", "Shoegaze - Mix")
+      if (title == g) return false;
+      if (title.startsWith('$g (') || title.startsWith('$g -')) return false;
+      return true;
+    }).toList();
+
     if (results.isNotEmpty) {
       candidates = results;
       genre = candidateGenre;

@@ -287,7 +287,13 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
         leading: _placement
             ? IconButton(
                 icon: const Icon(Icons.close_rounded),
-                onPressed: () => context.go('/library'),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/library');
+                  }
+                },
               )
             : null,
       ),

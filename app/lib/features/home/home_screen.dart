@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -16,11 +17,18 @@ import '../catalog/search_screen.dart';
 import '../stats/stats_screen.dart';
 import '../profile/profile_service.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  DateTime? _lastBackPressTime;
+
+  @override
+  Widget build(BuildContext context) {
     final p = context.palette;
     final recsAsync = ref.watch(genreRecommendationsProvider);
     final recentAsync = ref.watch(recentlyPlayedProvider);
@@ -36,7 +44,25 @@ class HomeScreen extends ConsumerWidget {
       return '${r.kind}_${title}_$artist';
     }).toSet();
 
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        final now = DateTime.now();
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('뒤로가기 버튼을 한 번 더 누르면 앱이 종료됩니다.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: const Text('Athens'),
         actions: [
@@ -175,7 +201,7 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _skeletonList(AppPalette p) => Column(
@@ -202,7 +228,7 @@ class _DuelCallout extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     return GestureDetector(
-      onTap: onTap ?? () => context.go('/duel'),
+      onTap: onTap ?? () => context.push('/duel'),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.xl),
         decoration: BoxDecoration(
@@ -291,7 +317,7 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
 
     if (!mounted) return;
     if (hasOpponents) {
-      router.go('/duel/${Uri.encodeComponent(enriched.id)}');
+      router.push('/duel/${Uri.encodeComponent(enriched.id)}');
     } else {
       setState(() => _busy = false);
       messenger.showSnackBar(

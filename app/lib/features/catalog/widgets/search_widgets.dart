@@ -176,7 +176,7 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
 
     if (hasOpponents) {
       // Place the new item by duelling it against existing same-kind items.
-      router.go('/duel/${Uri.encodeComponent(item.id)}');
+      router.push('/duel/${Uri.encodeComponent(item.id)}');
     } else {
       if (mounted) setState(() => _busy = false);
       messenger.showSnackBar(
@@ -369,7 +369,7 @@ class _SearchRecommendations extends ConsumerWidget {
                           width: double.infinity,
                           child: FilledButton.icon(
                             onPressed: () {
-                              context.go('/duel');
+                              context.push('/duel');
                             },
                             icon: const Icon(Icons.bolt_rounded, size: 16),
                             label: const Text('지금 취향 분석하러 가기'),

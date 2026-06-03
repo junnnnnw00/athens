@@ -84,7 +84,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         .read(libraryControllerProvider.notifier)
         .resetForPlacement(widget.itemId, startingElo: startingElo);
     if (mounted) {
-      context.go('/duel/${Uri.encodeComponent(widget.itemId)}');
+      context.push('/duel/${Uri.encodeComponent(widget.itemId)}');
     }
   }
 
@@ -158,7 +158,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     await controller.addItem(enrichedItem, startingElo: startingElo);
 
     if (hasOpponents) {
-      router.go('/duel/${Uri.encodeComponent(enrichedItem.id)}');
+      router.push('/duel/${Uri.encodeComponent(enrichedItem.id)}');
     } else {
       if (mounted) setState(() => _busy = false);
       messenger.showSnackBar(
