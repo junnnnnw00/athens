@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1780288668480,
+  "lastScanned": 1780397535870,
   "projectRoot": "/Users/junwoo/athens",
   "techStack": {
     "languages": [
@@ -19,7 +19,7 @@
   },
   "build": {
     "buildCommand": "make build",
-    "testCommand": "make test",
+    "testCommand": "cd /Users/junwoo/athens && make test 2>&1 | tail -2",
     "lintCommand": null,
     "devCommand": null,
     "scripts": {}
@@ -48,8 +48,8 @@
     "app": {
       "path": "app",
       "purpose": "Application code",
-      "fileCount": 8,
-      "lastAccessed": 1780288668439,
+      "fileCount": 9,
+      "lastAccessed": 1780397535806,
       "keyFiles": [
         "README.md",
         "analysis_options.yaml",
@@ -62,7 +62,7 @@
       "path": "docs",
       "purpose": "Documentation",
       "fileCount": 4,
-      "lastAccessed": 1780288668441,
+      "lastAccessed": 1780397535807,
       "keyFiles": [
         "ARCHITECTURE.md",
         "SETUP.md",
@@ -73,17 +73,20 @@
     "scripts": {
       "path": "scripts",
       "purpose": "Build/utility scripts",
-      "fileCount": 1,
-      "lastAccessed": 1780288668441,
+      "fileCount": 4,
+      "lastAccessed": 1780397535808,
       "keyFiles": [
-        "deploy-web.sh"
+        "deploy-web-dev.sh",
+        "deploy-web.sh",
+        "release-all.sh",
+        "release-macos.sh"
       ]
     },
     "supabase": {
       "path": "supabase",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1780288668442,
+      "lastAccessed": 1780397535809,
       "keyFiles": [
         "config.toml",
         "seed.sql"
@@ -92,8 +95,8 @@
     "web": {
       "path": "web",
       "purpose": null,
-      "fileCount": 17,
-      "lastAccessed": 1780288668442,
+      "fileCount": 18,
+      "lastAccessed": 1780397535813,
       "keyFiles": [
         "AGENTS.md",
         "CLAUDE.md",
@@ -106,25 +109,25 @@
       "path": "app/assets",
       "purpose": "Static assets",
       "fileCount": 0,
-      "lastAccessed": 1780288668444,
+      "lastAccessed": 1780397535835,
       "keyFiles": []
     },
     "app/build": {
       "path": "app/build",
       "purpose": "Build output",
-      "fileCount": 3,
-      "lastAccessed": 1780288668448,
+      "fileCount": 7,
+      "lastAccessed": 1780397535864,
       "keyFiles": [
-        "89a6598c8854ed031dfc25d83c80860e.cache.dill.track.dill",
-        "9766f7cf6d67cf7ae7525131be4473fe.cache.dill.track.dill",
-        "e78f0ccc435443c211f814b610f6379a.cache.dill.track.dill"
+        "05742dc2ffdab4658fcc485c292bfd3e.cache.dill.track.dill",
+        "4b97732e7b02b4d14e76d48889c58c70.cache.dill.track.dill",
+        "883fbe5b80b715e262fa03f8b263631a.cache.dill.track.dill"
       ]
     },
     "supabase/migrations": {
       "path": "supabase/migrations",
       "purpose": "Database migrations",
-      "fileCount": 9,
-      "lastAccessed": 1780288668450,
+      "fileCount": 16,
+      "lastAccessed": 1780397535866,
       "keyFiles": [
         "0001_initial_schema.sql",
         "0002_public_view.sql",
@@ -134,9 +137,15 @@
   },
   "hotPaths": [
     {
+      "path": "app/lib/features/catalog/search_screen.dart",
+      "accessCount": 28,
+      "lastAccessed": 1780465263191,
+      "type": "file"
+    },
+    {
       "path": "app/lib/features/rank/duel_screen.dart",
-      "accessCount": 23,
-      "lastAccessed": 1780173185119,
+      "accessCount": 27,
+      "lastAccessed": 1780466028935,
       "type": "file"
     },
     {
@@ -146,27 +155,45 @@
       "type": "file"
     },
     {
-      "path": "app/lib/features/catalog/search_screen.dart",
-      "accessCount": 20,
-      "lastAccessed": 1780189941178,
-      "type": "file"
-    },
-    {
       "path": "PROGRESS.md",
-      "accessCount": 14,
-      "lastAccessed": 1780191294796,
+      "accessCount": 22,
+      "lastAccessed": 1780466906224,
       "type": "file"
     },
     {
       "path": "app/lib/api/spotify_api.dart",
-      "accessCount": 13,
-      "lastAccessed": 1780190235393,
+      "accessCount": 18,
+      "lastAccessed": 1780465475131,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/router.dart",
+      "accessCount": 15,
+      "lastAccessed": 1780466700094,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/library/item_detail_screen.dart",
+      "accessCount": 14,
+      "lastAccessed": 1780465195787,
       "type": "file"
     },
     {
       "path": "BLOCKERS.md",
       "accessCount": 13,
       "lastAccessed": 1780191456517,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/home/home_screen.dart",
+      "accessCount": 12,
+      "lastAccessed": 1780467186905,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/library/library_screen.dart",
+      "accessCount": 12,
+      "lastAccessed": 1780467815247,
       "type": "file"
     },
     {
@@ -182,9 +209,9 @@
       "type": "file"
     },
     {
-      "path": "app/lib/features/library/item_detail_screen.dart",
-      "accessCount": 10,
-      "lastAccessed": 1780174043666,
+      "path": "app/lib/features/profile/profile_screen.dart",
+      "accessCount": 11,
+      "lastAccessed": 1780467835238,
       "type": "file"
     },
     {
@@ -194,9 +221,9 @@
       "type": "file"
     },
     {
-      "path": "app/lib/features/home/home_screen.dart",
-      "accessCount": 7,
-      "lastAccessed": 1780173208155,
+      "path": "app/lib/main.dart",
+      "accessCount": 10,
+      "lastAccessed": 1780465436490,
       "type": "file"
     },
     {
@@ -224,9 +251,9 @@
       "type": "file"
     },
     {
-      "path": "app/lib/features/library/library_screen.dart",
-      "accessCount": 6,
-      "lastAccessed": 1780172592128,
+      "path": "app/pubspec.yaml",
+      "accessCount": 7,
+      "lastAccessed": 1780465547966,
       "type": "file"
     },
     {
@@ -236,39 +263,21 @@
       "type": "file"
     },
     {
-      "path": "app/lib/router.dart",
-      "accessCount": 6,
-      "lastAccessed": 1780189878821,
-      "type": "file"
-    },
-    {
-      "path": "app/lib/main.dart",
-      "accessCount": 6,
-      "lastAccessed": 1780192027892,
-      "type": "file"
-    },
-    {
       "path": "app/lib/features/auth/auth_screen.dart",
       "accessCount": 5,
       "lastAccessed": 1780131218019,
       "type": "file"
     },
     {
-      "path": "app/lib/features/profile/profile_screen.dart",
-      "accessCount": 5,
-      "lastAccessed": 1780131533769,
-      "type": "file"
-    },
-    {
-      "path": "app/pubspec.yaml",
-      "accessCount": 5,
-      "lastAccessed": 1780192262711,
-      "type": "file"
-    },
-    {
       "path": "supabase/migrations/0001_initial_schema.sql",
       "accessCount": 5,
       "lastAccessed": 1780292218477,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/features/stats/stats_screen.dart",
+      "accessCount": 5,
+      "lastAccessed": 1780465693645,
       "type": "file"
     },
     {
@@ -281,6 +290,12 @@
       "path": "app/lib/api/musicbrainz_api.dart",
       "accessCount": 4,
       "lastAccessed": 1780173739438,
+      "type": "file"
+    },
+    {
+      "path": "app/lib/theme/tokens.dart",
+      "accessCount": 4,
+      "lastAccessed": 1780464978687,
       "type": "file"
     },
     {
@@ -335,12 +350,6 @@
       "path": "app/test/sync/sync_service_test.dart",
       "accessCount": 2,
       "lastAccessed": 1780084972476,
-      "type": "file"
-    },
-    {
-      "path": "app/lib/features/stats/stats_screen.dart",
-      "accessCount": 2,
-      "lastAccessed": 1780085264794,
       "type": "file"
     },
     {
@@ -401,12 +410,6 @@
       "path": "Athens-prototype.jsx",
       "accessCount": 1,
       "lastAccessed": 1780084597352,
-      "type": "file"
-    },
-    {
-      "path": "app/lib/theme/tokens.dart",
-      "accessCount": 1,
-      "lastAccessed": 1780084670486,
       "type": "file"
     },
     {
