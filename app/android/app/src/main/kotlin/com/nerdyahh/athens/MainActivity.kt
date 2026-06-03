@@ -1,4 +1,4 @@
-package com.athens.app.athens
+package com.nerdyahh.athens
 
 import io.flutter.embedding.android.FlutterActivity
 
