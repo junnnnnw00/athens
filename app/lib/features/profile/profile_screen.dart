@@ -413,6 +413,23 @@ class ProfileScreen extends ConsumerWidget {
                   await launchUrl(uri);
                 }
               }),
+          if (isLoggedIn)
+            _Tile(
+                icon: Icons.delete_forever_rounded,
+                title: '계정 및 데이터 삭제 요청',
+                subtitle: '계정과 모든 데이터를 영구적으로 삭제합니다',
+                onTap: () async {
+                  final uri = Uri.parse('https://athens.vercel.app/delete-account');
+                  try {
+                    await launchUrl(
+                      uri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } catch (_) {
+                    // Preferred launch mode unsupported here → fall back to default.
+                    await launchUrl(uri);
+                  }
+                }),
         ],
       ),
     );
