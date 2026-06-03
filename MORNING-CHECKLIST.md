@@ -5,6 +5,24 @@ Everything else was completed and tested automatically overnight.
 
 ---
 
+## 🔎 Cleanup run (2026-06-03) — click-through verification (needs human eyes)
+
+The navigation + layout fixes pass `analyze`/`test`/build, but tab-stack and
+back behavior need a real device. Run `make run` (macOS) and `make android-install`
+(phone), then verify each row:
+
+- [ ] **Home → 곡 카드 → 뒤로** : Home 탭 유지, 홈으로 복귀
+- [ ] **Me(라이브러리) → 곡 → 뒤로** : Me 탭 유지, 라이브러리로 복귀
+- [ ] **Me(친구) → 비교 → 곡 → 뒤로×2** : 매 단계 Me 탭 유지, 역순 복귀
+- [ ] **프로필 → 편집 → 뒤로** : 프로필로 복귀
+- [ ] **탭 전환 후 복귀** : 각 탭 스크롤 위치·스택 보존
+- [ ] **Android 하드웨어 백** : 하위페이지 pop → 비-Home 루트는 Home 복귀 → Home 루트서 종료
+- [ ] **친구 목록 하단** : 마지막 친구가 플로팅 네비 pill 위로 완전히 보임(가림 없음)
+- [ ] 같은 확인을 library/stats/profile/search/비교 스크롤 화면에서도
+- [ ] **Spotify 흔적 없음** : 어디에도 'Spotify 연결' 노출 안 됨(카탈로그 검색은 정상)
+
+---
+
 ## ✅ Done this session (backend live)
 
 Project `athens` (ref `hgehnwruprjoeewrhbgg`, Seoul):
