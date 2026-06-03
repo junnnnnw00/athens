@@ -1,5 +1,68 @@
 # Athens — Build Progress
 
+## v1.4.0 릴리즈 + Google Play Billing 도입 (2026-06-03)
+
+### 전체 배포 현황
+
+| 플랫폼 | 버전 | 상태 |
+|--------|------|------|
+| 🌐 Web (Vercel) | 1.4.0 | ✅ 라이브 — `athens.vercel.app` |
+| 🤖 Android APK (GitHub) | 1.4.0 | ✅ [GitHub Release v1.4.0](https://github.com/junnnnnw00/athens/releases/tag/v1.4.0) |
+| 🍎 macOS ZIP (GitHub) | 1.4.0 | ✅ [GitHub Release v1.4.0](https://github.com/junnnnnw00/athens/releases/tag/v1.4.0) |
+| 🛒 Android AAB (Play Store) | 1.4.0 | 🔄 업로드 진행 중 — `com.nerdyahh.athens` |
+
+### 배포 검증 (v1.4.0, 2026-06-03)
+
+| Check | Result |
+|-------|--------|
+| `make analyze` | ✅ No issues found |
+| `make test` | ✅ All 134 tests passed |
+| `make web-deploy` | ✅ Vercel prod + alias 재핀 (athens.vercel.app / athens-sand.vercel.app) |
+| `make android-apk` (GitHub용) | ✅ 70.8MB — GitHub Release v1.4.0 업로드 완료 |
+| `make android-aab-store` (Play Store용) | ✅ 55.6MB — STORE_BUILD=true, 패키지명 com.nerdyahh.athens |
+| `scripts/release-macos.sh` | ✅ athens-macos.zip — GitHub Release v1.4.0 업로드 완료 |
+
+### 주요 변경 내역
+
+#### [1] Google Play Billing 도입 (핵심)
+
+**전략: dart-define 빌드 플래버 분리**
+- `STORE_BUILD=false` (기본) → GitHub APK: 프로모 코드 방식 유지, billing 코드 없음
+- `STORE_BUILD=true` → Play Store AAB: Google Play Billing $4.99 일회성 구매
+
+**신규 파일:**
+- `lib/api/billing/billing_service.dart` — 추상 인터페이스 (`BillingService`, `PurchaseResult`)
+- `lib/api/billing/noop_billing_service.dart` — GitHub 빌드용 no-op (항상 `notSupported`)
+- `lib/api/billing/play_billing_service.dart` — Play Store 구현체 (`in_app_purchase` 패키지, 구매·복원·서버검증 흐름)
+- `lib/api/billing/billing_providers.dart` — Riverpod Provider (STORE_BUILD 분기)
+- `supabase/functions/verify-play-purchase/index.ts` — 구매 토큰 서버검증 Edge Function (Google Play Developer API 호출 → `profiles.is_premium = true`)
+- `supabase/migrations/0017_add_play_purchase_token.sql` — `profiles.play_purchase_token TEXT` 컬럼 추가
+
+**수정 파일:**
+- `pubspec.yaml`: `in_app_purchase: ^3.2.0` 추가
+- `features/premium/premium_upgrade_screen.dart`: Google Play 결제 카드 + 구매복원 버튼 추가 (kStoreBuild 조건부)
+- `features/profile/profile_service.dart`: `grantPremiumViaIap()` 메서드 추가
+- `Makefile`: `android-apk-store`, `android-aab-store` 타겟 추가, `deploy-functions`에 `verify-play-purchase` 포함
+- `android/app/build.gradle.kts`: `applicationId` / `namespace` → `com.nerdyahh.athens` (Play Console 등록명 맞춤)
+
+**Product ID:** `athens_premium` ($4.99, 일회성)
+
+#### [2] 버전 bump
+- `1.3.12+10312` → `1.4.0+10400`
+- Git tag: `v1.4.0`
+
+### Play Store 배포 잔여 수동 작업
+
+- [ ] Play Console 인앱 제품 `athens_premium` $4.99 등록 + 활성화
+- [ ] Google Cloud 서비스 계정 JSON 발급
+- [ ] `supabase secrets set GOOGLE_PLAY_PACKAGE_NAME=com.nerdyahh.athens`
+- [ ] `supabase secrets set GOOGLE_SERVICE_ACCOUNT_JSON='...'`
+- [ ] `make deploy-functions` (verify-play-purchase Edge Fn 배포)
+- [ ] Supabase Dashboard SQL — `0017_add_play_purchase_token.sql` 실행
+- [ ] Play Console 내부 테스트 → 프로덕션 검토 제출
+
+---
+
 ## Cleanup run (2026-06-03) — GOAL-cleanup.md
 
 Full spec in `GOAL-cleanup.md`. Order: A(탭 네비)→B(가림)→D12(Spotify)→C(리팩터)→D13~15→E.
