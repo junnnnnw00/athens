@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../api/billing/billing_providers.dart';
+import '../../api/billing/billing_service.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../profile/profile_service.dart';
@@ -23,6 +25,7 @@ class PremiumUpgradeScreen extends ConsumerStatefulWidget {
 class _PremiumUpgradeScreenState extends ConsumerState<PremiumUpgradeScreen> {
   final _codeController = TextEditingController();
   bool _isSubmitting = false;
+  bool _isPurchasing = false;
   String? _errorMessage;
 
   @override
@@ -220,6 +223,92 @@ class _PremiumUpgradeScreenState extends ConsumerState<PremiumUpgradeScreen> {
     }
   }
 
+  Future<void> _purchaseWithGooglePlay() async {
+    if (_isPurchasing) return;
+    setState(() => _isPurchasing = true);
+
+    try {
+      final billing = ref.read(billingServiceProvider);
+      final result = await billing.purchasePremium();
+
+      if (!mounted) return;
+
+      switch (result) {
+        case PurchaseResult.success:
+          // Edge Fn already set is_premium=true; confirm locally and refresh.
+          await ref.read(profileServiceProvider).grantPremiumViaIap();
+          ref.invalidate(myProfileProvider);
+          if (mounted) {
+            Navigator.of(context).pop();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: context.palette.accent,
+                content: const Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: Colors.black),
+                    SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'Athens Premium이 활성화되었습니다! 🎉',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        case PurchaseResult.cancelled:
+          // Nothing — user backed out.
+          break;
+        case PurchaseResult.error:
+        case PurchaseResult.notSupported:
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('결제 중 문제가 발생했습니다. 다시 시도해 주세요.'),
+              ),
+            );
+          }
+      }
+    } finally {
+      if (mounted) setState(() => _isPurchasing = false);
+    }
+  }
+
+  Future<void> _restorePurchases() async {
+    if (_isPurchasing) return;
+    setState(() => _isPurchasing = true);
+    try {
+      final billing = ref.read(billingServiceProvider);
+      final restored = await billing.restorePurchases();
+      if (!mounted) return;
+      if (restored) {
+        await ref.read(profileServiceProvider).grantPremiumViaIap();
+        ref.invalidate(myProfileProvider);
+        if (mounted) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: context.palette.accent,
+              content: const Text(
+                '이전 구매가 복원되었습니다!',
+                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+              ),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('복원할 구매 내역이 없습니다.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPurchasing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -325,6 +414,12 @@ class _PremiumUpgradeScreenState extends ConsumerState<PremiumUpgradeScreen> {
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.md),
+
+              // Card 0: Google Play (Store builds only)
+              if (kStoreBuild) ...[
+                _buildGooglePlayCard(context),
+                const SizedBox(height: AppSpacing.md),
+              ],
 
               // Card 1: Promo Code
               Container(
@@ -513,6 +608,123 @@ class _PremiumUpgradeScreenState extends ConsumerState<PremiumUpgradeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Google Play 결제 카드 — kStoreBuild == true 일 때만 렌더됨.
+  Widget _buildGooglePlayCard(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            p.accent.withValues(alpha: 0.12),
+            p.accentSoft.withValues(alpha: 0.06),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: p.accent.withValues(alpha: 0.5), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: p.accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.shopping_bag_rounded, color: p.accentText, size: 18),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Athens Premium',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    Text(
+                      '일회성 구매 · 영구 소유',
+                      style: TextStyle(color: p.muted, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              // Price badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: p.accent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  '\$4.99',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            '한 번만 결제하면 모든 프리미엄 기능을 영구적으로 사용할 수 있습니다. 기기 변경 시에도 구매 복원이 가능합니다.',
+            style: TextStyle(color: p.muted, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          // Purchase button
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: p.accent,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            onPressed: _isPurchasing ? null : _purchaseWithGooglePlay,
+            child: _isPurchasing
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                    ),
+                  )
+                : const Text(
+                    'Google Play로 구매하기',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // Restore purchases
+          TextButton(
+            onPressed: _isPurchasing ? null : _restorePurchases,
+            child: Text(
+              '이전 구매 복원',
+              style: TextStyle(
+                color: p.muted,
+                fontSize: 12,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

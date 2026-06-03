@@ -53,6 +53,12 @@ android-apk: ## Build signed release APK → app/build/app/outputs/flutter-apk/a
 android-aab: ## Build signed release App Bundle (.aab) for Play Store upload
 	cd $(APP) && flutter build appbundle --release $(DEFINE_ANDROID)
 	@echo "✅  AAB: $(APP)/build/app/outputs/bundle/release/app-release.aab"
+android-apk-store: ## Build Play Store APK with Google Billing (STORE_BUILD=true)
+	cd $(APP) && flutter build apk --release $(DEFINE_ANDROID) --dart-define=STORE_BUILD=true
+	@echo "✅  Store APK: $(APP)/build/app/outputs/flutter-apk/app-release.apk"
+android-aab-store: ## Build Play Store AAB with Google Billing (STORE_BUILD=true)
+	cd $(APP) && flutter build appbundle --release $(DEFINE_ANDROID) --dart-define=STORE_BUILD=true
+	@echo "✅  Store AAB: $(APP)/build/app/outputs/bundle/release/app-release.aab"
 android-install: android-apk ## Build + install release APK to USB device
 	$(ADB) install -r $(APP)/build/app/outputs/flutter-apk/app-release.apk
 	@echo "✅  Installed on device"
@@ -94,6 +100,7 @@ deploy-functions: ## Deploy edge functions to the linked remote project
 	supabase functions deploy spotify-app-token --no-verify-jwt
 	supabase functions deploy lastfm-proxy --no-verify-jwt
 	supabase functions deploy musicbrainz-proxy --no-verify-jwt
+	supabase functions deploy verify-play-purchase
 
 # ---- SQL lint ----
 .PHONY: sqlfluff

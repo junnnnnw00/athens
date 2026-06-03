@@ -122,6 +122,21 @@ class ProfileService {
     await _client.from('profiles').update({'is_premium': premium}).eq('id', user.id);
   }
 
+  /// Called after a successful Google Play purchase verification.
+  ///
+  /// The Edge Function [verify-play-purchase] already sets `is_premium = true`
+  /// in the DB; this method is a client-side confirmation step that re-fetches
+  /// the profile so Riverpod can invalidate it.
+  Future<void> grantPremiumViaIap() async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw StateError('Not signed in');
+    // The edge function already wrote is_premium=true. Just confirm it locally.
+    await _client
+        .from('profiles')
+        .update({'is_premium': true})
+        .eq('id', user.id);
+  }
+
   /// Redeems a promo code to unlock premium. Returns true if successful, false otherwise.
   Future<bool> redeemPromoCode(String code) async {
     final user = _client.auth.currentUser;
