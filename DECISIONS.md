@@ -235,3 +235,45 @@ secrets, so they stay out of the repo but must exist on the project.
 * **Required env (set in Vercel project + `web/.env.local`, never commit):**
   `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_DASHBOARD_PASSWORD`, `ADMIN_PATH_SECRET`
   (long random slug — the hidden path).
+
+---
+
+## PROPOSAL — Play Store premium via Google Play Billing + retained promo codes (2026-06-03) — NEEDS HUMAN APPROVAL
+
+**Context:** Current premium unlock = external 후원 (Ko-fi / 텀블벅) → custom promo code →
+`redeem_promo_code` RPC sets `profiles.is_premium = true`. On the Play Store this is a policy
+violation: premium **unlocks in-app digital features** (분석 차트, 골드 배지, 비교 리포트), so it
+counts as a digital good that **must** go through Google Play Billing. Routing users to external
+payment for an in-app good also breaks Google's anti-steering rule → automatic rejection.
+
+**Decision (proposed):** Add Google Play Billing as the paid path on Android while keeping the
+existing promo-code redemption as a **free-grant** mechanism. Both paths flip the same
+`profiles.is_premium` flag, so all downstream gating is unchanged.
+
+### Scope
+| Area | Change |
+|------|--------|
+| Dependency | Add `in_app_purchase` (official Flutter plugin) |
+| Play Console | Create **non-consumable** product `athens_premium_lifetime` (one-time, matches "영구" badge) |
+| Purchase flow | `purchaseStream` → on `PurchaseStatus.purchased` → **server-side verify** → set `is_premium` → `completePurchase` |
+| Server verify | New edge function `verify-play-purchase`: validates `purchaseToken` against Google Play Developer API, then service-role sets `is_premium`. Client-only flag-flip is spoofable → reject. |
+| Restore | `restorePurchases()` → re-verify → re-flag (required by Play) |
+| Android UI (`premium_upgrade_screen.dart`) | `Platform.isAndroid`: **add** 구매 button (Play Billing); **hide** `Athens 후원하기` Ko-fi external link; **keep** `프로모션 코드 입력`; reword "텀블벅 후원으로 코드 발급" copy to drop external-buy wording |
+| Other platforms | Web / macOS UI unchanged (Ko-fi + full 후원 UI stays — not Google's jurisdiction) |
+| Existing code holders | **Unaffected** — `redeem_promo_code` RPC untouched; codes still redeem |
+
+### Security (guardrail: secrets in edge functions only)
+* Google Play service-account JSON key lives **only** in the `verify-play-purchase` edge function
+  env — never bundled in the Flutter app.
+* `is_premium` is only ever written server-side (RPC for codes, edge fn for purchases).
+
+### Open items to confirm before build
+1. **`is_premium` column on HOSTED Supabase** — memory flags migration `0010` may not be applied
+   to prod (`hgehnwruprjoeewrhbgg`). Verify `profiles.is_premium`, `promo_codes`,
+   `redeem_promo_code` all exist on hosted before IAP can work. If missing → push migrations first.
+2. **Google merchant / payments profile** must be set up in Play Console (separate from dev account).
+3. **Price point** for `athens_premium_lifetime`.
+
+### Reversibility
+Remove `in_app_purchase` dep + `verify-play-purchase` edge fn + the Android 구매 button. `is_premium`
+flag and promo-code system pre-date this and remain. No destructive schema change.
