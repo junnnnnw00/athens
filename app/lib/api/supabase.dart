@@ -1,4 +1,7 @@
 
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 const supabaseUrl = String.fromEnvironment(
   'SUPABASE_URL',
   defaultValue: 'https://hgehnwruprjoeewrhbgg.supabase.co/',
@@ -12,5 +15,11 @@ const supabaseAuthRedirectUrl = String.fromEnvironment(
   defaultValue: 'https://athens.vercel.app/app/',
 );
 
-bool get isSupabaseInitialized =>
-    supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+bool get isSupabaseInitialized {
+  if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) return false;
+  // Disable in unit/widget tests to avoid accessing uninitialized Supabase.instance
+  if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+    return false;
+  }
+  return true;
+}

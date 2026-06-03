@@ -15,5 +15,10 @@ abstract final class AppPlatform {
   static bool get isMobile => isAndroid || isIOS;
 
   /// Platforms wired for the GitHub-release self-update flow (see UpdateService).
-  static bool get supportsInAppUpdate => isAndroid || isMacOS;
+  /// Excludes Store builds since updates are managed by the App Store / Play Store.
+  static bool get supportsInAppUpdate {
+    const isStoreBuild = bool.fromEnvironment('STORE_BUILD');
+    if (isStoreBuild) return false;
+    return isAndroid || isMacOS;
+  }
 }
