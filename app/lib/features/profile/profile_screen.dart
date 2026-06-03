@@ -57,7 +57,7 @@ class ProfileScreen extends ConsumerWidget {
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: context.t('profile_edit', ref: ref),
-              onPressed: () => context.go('/profile/edit'),
+              onPressed: () => context.push('/profile/edit'),
             ),
           if (isLoggedIn)
             IconButton(
@@ -364,13 +364,13 @@ class ProfileScreen extends ConsumerWidget {
                 icon: Icons.edit_outlined,
                 title: context.t('profile_edit', ref: ref),
                 subtitle: context.t('edit_public_desc', ref: ref),
-                onTap: () => context.go('/profile/edit')),
+                onTap: () => context.push('/profile/edit')),
           if (isLoggedIn)
             _Tile(
                 icon: Icons.people_rounded,
                 title: '친구 목록 및 검색',
                 subtitle: '친구들의 음악 취향과 나의 매칭률 확인',
-                onTap: () => context.go('/friends')),
+                onTap: () => context.push('/friends')),
           _Tile(
               icon: Icons.library_music_rounded,
               title: context.t('profile_library', ref: ref),
@@ -378,7 +378,7 @@ class ProfileScreen extends ConsumerWidget {
           _Tile(
               icon: Icons.insights_rounded,
               title: context.t('profile_stats', ref: ref),
-              onTap: () => context.go('/stats')),
+              onTap: () => context.push('/stats')),
 
           _Tile(
               icon: Icons.music_note_rounded,
@@ -386,7 +386,7 @@ class ProfileScreen extends ConsumerWidget {
               subtitle: profile?.lastfmUsername != null && profile!.lastfmUsername!.trim().isNotEmpty
                   ? '연동 완료 (@${profile.lastfmUsername})'
                   : 'Last.fm 계정 연동하여 재생 기록 가져오기',
-              onTap: () => context.go('/profile/edit')),
+              onTap: () => context.push('/profile/edit')),
           _Tile(
               icon: Icons.language_rounded,
               title: context.t('profile_language', ref: ref),

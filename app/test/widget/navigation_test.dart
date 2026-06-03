@@ -1,6 +1,7 @@
 import 'package:athens/features/home/home_screen.dart';
 import 'package:athens/features/library/item_detail_screen.dart';
 import 'package:athens/features/library/library_screen.dart';
+import 'package:athens/features/stats/stats_screen.dart';
 import 'package:athens/router.dart';
 import 'package:athens/theme/app_theme.dart';
 import 'package:athens/widgets/floating_nav.dart';
@@ -115,6 +116,28 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.byType(ItemDetailScreen), findsOneWidget);
     expect(navIndex(tester), 0);
+  });
+
+  testWidgets('stats pushed from library pops back to library', (tester) async {
+    // Drill-downs in the Me tab build a back stack rooted at library, so the
+    // back gesture / swipe-back returns to library.
+    final (_, router) = await pumpApp(tester);
+    router.go('/library');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byType(LibraryScreen), findsOneWidget);
+
+    router.push('/stats');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byType(StatsScreen), findsOneWidget);
+    expect(navIndex(tester), 1);
+
+    router.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byType(LibraryScreen), findsOneWidget);
+    expect(navIndex(tester), 1);
   });
 
   testWidgets('switching tabs preserves the per-branch stack', (tester) async {

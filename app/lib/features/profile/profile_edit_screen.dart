@@ -143,7 +143,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       messenger.showSnackBar(
         const SnackBar(content: Text('프로필 저장됨')),
       );
-      router.go('/profile');
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go('/profile');
+      }
     } on HandleTakenException {
       if (mounted) setState(() => _error = '이미 사용 중인 핸들이에요');
     } catch (e) {
