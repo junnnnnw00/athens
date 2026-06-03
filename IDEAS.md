@@ -26,6 +26,17 @@ scope / preserve restraint. For the morning review. Not bugs, not TODOs.
 - Light/dark toggle in-app (theme supports both; currently dark-locked at runtime).
 - Localized strings via `intl` ARB files (UI is Korean-first hardcoded for now).
 
+## Refactor (cleanup run 2026-06-03)
+- **friend_comparison_screen.dart decomposition (~1487 lines, one State class).**
+  stats_screen and search_screen were split into `part` files (leaf widgets moved
+  out, zero behavior change). friend_comparison can't be `part`-split the same way:
+  it's a single giant `State` class, and `part` only splits at top-level
+  declarations. Reducing it means extracting tab-content `_buildX()` methods into
+  standalone widget classes that take their data as params — a real refactor with
+  meaningful regression surface (ref/context/setState coupling, premium gating,
+  two TabBarView tabs). Deferred deliberately: do it as its own focused PR with
+  golden coverage per extracted widget, not inside the broad cleanup run.
+
 ## Why these are parked
 Each is either (a) outside PROMPT.md's data sources/constraints, (b) more than a
 small self-contained change, or (c) a feature that would add chrome to a loop whose
