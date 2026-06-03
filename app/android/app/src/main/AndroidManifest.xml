@@ -28,24 +28,7 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Spotify PKCE OAuth callback: the browser redirects to
-                 athens://spotify-callback?code=… and app_links delivers it to
-                 the running app (singleTop, so no new task is spawned). Without
-                 this the agree screen has nowhere to return to. -->
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="athens" android:host="spotify-callback"/>
-            </intent-filter>
         </activity>
-        <!-- Disable the Flutter engine's built-in deep-link → router forwarding.
-             Otherwise the OAuth callback athens://spotify-callback?code=… is fed
-             to go_router as a location → "GoException: no routes for location".
-             app_links handles the URI instead (see main.dart). -->
-        <meta-data
-            android:name="flutter_deeplinking_enabled"
-            android:value="false" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

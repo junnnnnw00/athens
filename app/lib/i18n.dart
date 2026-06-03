@@ -60,8 +60,6 @@ class I18n {
     'home_start_duel': {AppLanguage.ko: '듀얼 시작하기', AppLanguage.en: 'Start Duel'},
     'home_start_duel_sub': {AppLanguage.ko: '둘 중 더 좋은 걸 고르면 순위가 매겨져요', AppLanguage.en: 'Choose the better one to rank your music'},
     'home_rate': {AppLanguage.ko: '평가', AppLanguage.en: 'Rate'},
-    'home_spotify_connect_desc': {AppLanguage.ko: 'Spotify를 연결하면 최근 들은 곡이 여기에 나와요', AppLanguage.en: 'Connect Spotify to see your recently played tracks here'},
-    'home_spotify_connect': {AppLanguage.ko: 'Spotify 연결', AppLanguage.en: 'Connect Spotify'},
     // Library Screen
     'lib_no_rated_title': {AppLanguage.ko: '아직 평가한 음악이 없어요', AppLanguage.en: 'No rated music yet'},
     'lib_no_rated_desc': {AppLanguage.ko: '검색해서 음악을 추가하고 듀얼을 시작하세요.', AppLanguage.en: 'Search music to add them, then start dueling.'},
@@ -102,7 +100,6 @@ class I18n {
     'profile_library': {AppLanguage.ko: '라이브러리', AppLanguage.en: 'Library'},
     'profile_stats': {AppLanguage.ko: '통계', AppLanguage.en: 'Stats'},
     'profile_share': {AppLanguage.ko: '취향 공유', AppLanguage.en: 'Share Taste'},
-    'profile_spotify_sub': {AppLanguage.ko: '최근 들은 곡 가져오기', AppLanguage.en: 'Import recently played tracks'},
     'profile_language': {AppLanguage.ko: '언어 설정 (Language)', AppLanguage.en: 'Language Settings'},
     'profile_feedback_title': {AppLanguage.ko: '기능 건의함', AppLanguage.en: 'Suggest Features'},
     'profile_feedback_subtitle': {AppLanguage.ko: '의견이나 건의사항은 Instagram DM(@nerdyahh_)으로 보내주세요', AppLanguage.en: 'Send feedback or suggestions via Instagram DM (@nerdyahh_)'},

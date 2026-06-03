@@ -5,13 +5,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase.dart';
 import '../features/catalog/catalog_service.dart';
-import 'spotify_pkce_service.dart';
 
-/// Spotify catalog + listening-history access.
+/// Spotify catalog access.
 ///
 /// Catalog search uses an app-level token (Client Credentials) minted by the
 /// `spotify-app-token` edge function, so the client never holds the secret.
-/// Recently-played uses the per-user PKCE token (allow-listed users only).
+/// (Per-user Spotify OAuth was removed; listening history comes from Last.fm.)
 /// Thrown when Spotify replies 429. Carries the server's Retry-After (seconds)
 /// when present so callers can back off instead of hammering the rate limit.
 class SpotifyRateLimitException implements Exception {
@@ -28,7 +27,6 @@ abstract class SpotifyApi {
   /// [offset] pages through results (Spotify caps offset+limit at 1000).
   Future<List<CatalogItem>> search(String query,
       {String types = 'track,album,artist', int offset = 0, int limit = 20});
-  Future<List<CatalogItem>> getRecentlyPlayed();
 }
 
 class SpotifyApiHttp implements SpotifyApi {
@@ -90,19 +88,6 @@ class SpotifyApiHttp implements SpotifyApi {
     return parseSearch(res.body);
   }
 
-  @override
-  Future<List<CatalogItem>> getRecentlyPlayed() async {
-    final token = await SpotifyPkceService.getValidAccessToken();
-    if (token == null) return [];
-    final res = await _http.get(
-      Uri.https('api.spotify.com', '/v1/me/player/recently-played',
-          {'limit': '20'}),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-    if (res.statusCode != 200) return [];
-    return parseRecentlyPlayed(res.body);
-  }
-
   /// Parses Spotify's `/search` response into catalog items.
   static List<CatalogItem> parseSearch(String body) {
     final json = _obj(body);
@@ -117,20 +102,6 @@ class SpotifyApiHttp implements SpotifyApi {
       items.add(_artist(ar));
     }
     return items;
-  }
-
-  /// Parses `/me/player/recently-played`, de-duplicating repeated tracks.
-  static List<CatalogItem> parseRecentlyPlayed(String body) {
-    final json = _obj(body);
-    final out = <CatalogItem>[];
-    final seen = <String>{};
-    for (final entry in (json['items'] as List? ?? const [])) {
-      final t = (entry as Map)['track'];
-      if (t is! Map) continue;
-      final item = _track(Map<String, dynamic>.from(t));
-      if (seen.add(item.sourceId ?? item.id)) out.add(item);
-    }
-    return out;
   }
 
   static CatalogItem _track(Map<String, dynamic> t) {

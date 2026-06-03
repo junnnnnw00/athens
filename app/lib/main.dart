@@ -1,4 +1,3 @@
-import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -31,32 +30,11 @@ Future<void> main() async {
   ));
 }
 
-class AthensApp extends ConsumerStatefulWidget {
+class AthensApp extends ConsumerWidget {
   const AthensApp({super.key});
 
   @override
-  ConsumerState<AthensApp> createState() => _AthensAppState();
-}
-
-class _AthensAppState extends ConsumerState<AthensApp> {
-  final _appLinks = AppLinks();
-
-  @override
-  void initState() {
-    super.initState();
-    _appLinks.uriLinkStream.listen(_handleDeepLink);
-    _appLinks.getInitialLink().then((uri) {
-      if (uri != null) _handleDeepLink(uri);
-    });
-    _handleDeepLink(Uri.base);
-  }
-
-  Future<void> _handleDeepLink(Uri uri) async {
-    // Deep link handler (reserved for future integrations).
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: 'Athens',

@@ -27,7 +27,7 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.30
   path_provider: ^2.1.5
 
-  # Secure storage (Spotify tokens)
+  # Secure storage (app preferences, e.g. language)
   flutter_secure_storage: ^9.2.4
 
   # Charts
@@ -36,10 +36,6 @@ dependencies:
   # Share / export
   screenshot: ^3.0.0
   share_plus: ^10.1.4
-
-  # Deep links + crypto (PKCE)
-  app_links: ^7.0.0
-  crypto: ^3.0.7
 
   # Utilities
   freezed_annotation: ^2.4.4
