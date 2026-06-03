@@ -73,8 +73,8 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
+        padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm,
+            AppSpacing.xl, AppLayout.scrollBottomInset(context)),
         children: [
           Row(
             children: [

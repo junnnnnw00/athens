@@ -228,7 +228,7 @@ class _SearchBody extends ConsumerWidget {
       );
     }
     return ListView(
-      padding: const EdgeInsets.only(bottom: 130),
+      padding: EdgeInsets.only(bottom: AppLayout.scrollBottomInset(context)),
       children: rows,
     );
   }
@@ -504,7 +504,8 @@ class _SearchSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     return ListView.builder(
-      padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: 130),
+      padding: EdgeInsets.only(
+          top: AppSpacing.sm, bottom: AppLayout.scrollBottomInset(context)),
       itemCount: 8,
       itemBuilder: (_, __) => Padding(
         padding: const EdgeInsets.symmetric(
@@ -544,7 +545,8 @@ class _SearchRecommendations extends ConsumerWidget {
     final selectedGenre = ref.watch(selectedGenreProvider);
 
     return ListView(
-      padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: 130),
+      padding: EdgeInsets.only(
+          top: AppSpacing.lg, bottom: AppLayout.scrollBottomInset(context)),
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),

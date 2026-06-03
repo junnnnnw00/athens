@@ -141,7 +141,8 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
+      padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl,
+          AppLayout.scrollBottomInset(context)),
       itemCount: _searchResults.length,
       separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
       itemBuilder: (context, index) {
@@ -375,7 +376,8 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
         if (friends.isEmpty) {
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            padding: EdgeInsets.fromLTRB(0, AppSpacing.md, 0,
+                AppLayout.scrollBottomInset(context)),
             children: [
               ...recommendationsWidget,
               Center(
@@ -406,7 +408,8 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
 
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+          padding: EdgeInsets.fromLTRB(0, AppSpacing.md, 0,
+              AppLayout.scrollBottomInset(context)),
           children: [
             ...recommendationsWidget,
             Padding(

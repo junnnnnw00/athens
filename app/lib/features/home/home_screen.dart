@@ -67,8 +67,8 @@ class HomeScreen extends ConsumerWidget {
               },
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
+                padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm,
+                    AppSpacing.xl, AppLayout.scrollBottomInset(context)),
                 children: [
                   Text(context.t('home_title', ref: ref),
                       style: Theme.of(context).textTheme.headlineSmall),

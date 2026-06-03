@@ -239,7 +239,8 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     final p = context.palette;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 110.0),
+      padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md,
+          AppLayout.scrollBottomInset(context)),
       children: [
         // ── 1. Basic stats (Free) ───────────────────────────────────────────
         _buildBasicStatsSection(match, myProfile, isPremium),
@@ -1035,7 +1036,8 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
         // ── Song list ────────────────────────────────────────────────────
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, 110.0),
+            padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm,
+                AppSpacing.md, AppLayout.scrollBottomInset(context)),
             children: [
               for (final section in sections) ...[
                 if (_selectedTrackCategory == -1) ...[
@@ -1321,7 +1323,8 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     final p = context.palette;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 110.0),
+      padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md,
+          AppLayout.scrollBottomInset(context)),
       children: [
         // 1. Shared Genres
         if (match.sharedGenres.isNotEmpty) ...[

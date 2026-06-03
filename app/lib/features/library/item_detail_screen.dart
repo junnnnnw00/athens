@@ -227,8 +227,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.xl, 0, AppSpacing.xl, 110),
+        padding: EdgeInsets.fromLTRB(
+            AppSpacing.xl, 0, AppSpacing.xl, AppLayout.scrollBottomInset(context)),
         children: [
           Center(
             child: CoverArt(

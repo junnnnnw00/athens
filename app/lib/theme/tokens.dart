@@ -118,6 +118,20 @@ abstract final class AppRadii {
   static const double nav = 34;
 }
 
+/// Layout constants tied to app chrome. The floating nav is a Stack overlay
+/// (not a Scaffold bottom bar), so scrollable content must reserve room for it.
+abstract final class AppLayout {
+  /// Height the floating pill nav occupies above the bottom safe-area inset
+  /// (outer 18 gap + pill body ≈ 60). Single source of truth for the overlay size.
+  static const double floatingNavHeight = 78;
+
+  /// Bottom inset so a scroll view's last item clears the floating nav and the
+  /// device safe area. Use as (or add to) the bottom padding of any scroll view
+  /// that sits under the nav.
+  static double scrollBottomInset(BuildContext context) =>
+      floatingNavHeight + AppSpacing.md + MediaQuery.of(context).viewPadding.bottom;
+}
+
 /// Font families. Hanken Grotesk for Latin UI, Pretendard for Korean.
 abstract final class AppFonts {
   static const String display = 'Hanken Grotesk';

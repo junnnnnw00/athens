@@ -167,7 +167,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                             style: TextStyle(color: p.muted)))
                     : SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 110),
+                        padding: EdgeInsets.only(
+                            bottom: AppLayout.scrollBottomInset(context)),
                         child: Builder(
                           builder: (context) {
                             final tops = <double>[];

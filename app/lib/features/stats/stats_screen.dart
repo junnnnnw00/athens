@@ -107,8 +107,8 @@ class StatsScreen extends ConsumerWidget {
         return Scaffold(
           appBar: AppBar(title: Text(context.t('stats_title', ref: ref))),
           body: ListView(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 110),
+            padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm,
+                AppSpacing.xl, AppLayout.scrollBottomInset(context)),
             children: [
               Row(
                 children: [

@@ -449,7 +449,8 @@ class _PlacementDone extends ConsumerWidget {
       appBar: AppBar(title: Text(context.t('home_rate', ref: ref))),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
+          padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm,
+              AppSpacing.xl, AppLayout.scrollBottomInset(context)),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
