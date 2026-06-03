@@ -1,11 +1,10 @@
 import 'dart:async';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/platform.dart';
 import '../../data/repository/library_providers.dart';
 import '../../domain/pair_selector.dart';
 import '../../domain/score.dart';
@@ -150,7 +149,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
   Future<void> _pick(String winnerId) async {
     if (_picked != null || _pair == null) return;
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+    if (AppPlatform.isMobile) {
       HapticFeedback.lightImpact();
     }
     final (a, b) = _pair!;

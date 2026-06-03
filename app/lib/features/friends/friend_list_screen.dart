@@ -294,7 +294,10 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
         try {
           await ref.read(friendsProvider.future);
           await ref.read(followersProvider.future);
-        } catch (_) {}
+        } catch (_) {
+          // Hold the spinner until refresh settles; the error is shown by
+          // friendsAsync.when's error branch below.
+        }
       },
       child: friendsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

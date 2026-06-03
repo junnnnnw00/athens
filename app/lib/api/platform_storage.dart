@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
+
+import 'platform.dart';
 
 class FileStorage {
   static FileStorage? _instance;
@@ -30,7 +31,9 @@ class FileStorage {
           _data = json.map((k, v) => MapEntry(k.toString(), v.toString()));
         }
       }
-    } catch (_) {}
+    } catch (_) {
+      // Corrupt/missing cache file → start empty. Non-fatal.
+    }
   }
 
   Future<void> _save() async {
@@ -39,7 +42,9 @@ class FileStorage {
         await _file.parent.create(recursive: true);
       }
       await _file.writeAsString(jsonEncode(_data));
-    } catch (_) {}
+    } catch (_) {
+      // Best-effort local persistence; a write failure must not crash the app.
+    }
   }
 
   Future<String?> read({required String key}) async {
@@ -62,7 +67,7 @@ class PlatformStorage {
     mOptions: MacOsOptions(useDataProtectionKeyChain: false),
   );
 
-  static bool get _useFileStorage => !kIsWeb && Platform.isMacOS;
+  static bool get _useFileStorage => AppPlatform.isMacOS;
 
   static Future<String?> read({required String key}) async {
     if (_useFileStorage) {

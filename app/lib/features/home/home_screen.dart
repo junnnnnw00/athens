@@ -55,6 +55,9 @@ class HomeScreen extends ConsumerWidget {
                 ref.invalidate(genreRecommendationsProvider);
                 ref.invalidate(recentlyPlayedProvider);
                 ref.invalidate(friendsRecentRatingsProvider);
+                // Await each refresh only to hold the pull-to-refresh spinner
+                // until they settle. Failures are swallowed here because each
+                // provider's error is rendered by its own AsyncValue.when below.
                 try {
                   await ref.read(genreRecommendationsProvider.future);
                 } catch (_) {}

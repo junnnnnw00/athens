@@ -409,6 +409,7 @@ class ProfileScreen extends ConsumerWidget {
                     mode: LaunchMode.externalApplication,
                   );
                 } catch (_) {
+                  // Preferred launch mode unsupported here → fall back to default.
                   await launchUrl(uri);
                 }
               }),
@@ -501,6 +502,7 @@ class _PublicProfileCard extends ConsumerWidget {
                     mode: LaunchMode.inAppBrowserView,
                   );
                 } catch (_) {
+                  // Preferred launch mode unsupported here → fall back to default.
                   await launchUrl(uri);
                 }
               },

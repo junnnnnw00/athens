@@ -34,7 +34,9 @@ class LocaleNotifier extends StateNotifier<AppLanguage> {
   Future<void> setLanguage(AppLanguage language) async {
     try {
       await PlatformStorage.write(key: _localeKey, value: language.code);
-    } catch (_) {}
+    } catch (_) {
+      // Persisting the preference is best-effort; apply the language regardless.
+    }
     state = language;
   }
 }

@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+
+import 'platform.dart';
 
 /// Checks GitHub Releases for a newer version and returns a download URL.
 class UpdateService {
@@ -15,7 +15,7 @@ class UpdateService {
   /// Returns [UpdateInfo] if a newer version is available, else null.
   static Future<UpdateInfo?> checkForUpdate() async {
     // Check on Android (APK sideloading) and macOS. Skip on web/iOS/linux/windows.
-    if (kIsWeb || (!Platform.isAndroid && !Platform.isMacOS)) return null;
+    if (!AppPlatform.supportsInAppUpdate) return null;
 
     try {
       final info = await PackageInfo.fromPlatform();
@@ -34,7 +34,7 @@ class UpdateService {
       if (!_isNewer(latest, current)) return null;
 
       // Find the correct asset (.apk for Android, .zip for macOS)
-      final extension = Platform.isAndroid ? '.apk' : '.zip';
+      final extension = AppPlatform.isAndroid ? '.apk' : '.zip';
       final assets = data['assets'] as List<dynamic>? ?? [];
       final targetAsset = assets.firstWhere(
         (a) => (a['name'] as String).endsWith(extension),
