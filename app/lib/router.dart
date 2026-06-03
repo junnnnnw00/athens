@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -40,10 +42,30 @@ GoRoute _itemRoute() => GoRoute(
       },
     );
 
+class GoRouterRefreshStream extends ChangeNotifier {
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen(
+          (dynamic _) => notifyListeners(),
+        );
+  }
+
+  late final StreamSubscription<dynamic> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: _rootNavKey,
     initialLocation: '/home',
+    refreshListenable: isSupabaseInitialized
+        ? GoRouterRefreshStream(Supabase.instance.client.auth.onAuthStateChange)
+        : null,
     // Safety net: any unmatched location (bad deep link, stale '/', etc.) recovers
     // to Home instead of showing go_router's red error screen.
     onException: (context, state, router) => router.go('/home'),

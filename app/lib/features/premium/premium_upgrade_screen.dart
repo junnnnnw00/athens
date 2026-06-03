@@ -468,60 +468,62 @@ class _PremiumUpgradeScreenState extends ConsumerState<PremiumUpgradeScreen> {
                 ),
               ),
 
-              const SizedBox(height: AppSpacing.md),
+              if (!kStoreBuild) ...[
+                const SizedBox(height: AppSpacing.md),
 
-              // Card 2: Support link
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                decoration: BoxDecoration(
-                  color: p.surface2,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: p.line),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.favorite_rounded, color: Colors.pinkAccent.withValues(alpha: 0.8)),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          'Athens 후원하기',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Athens 프로젝트의 독립적 개발과 운영을 후원하고 프로모션 코드를 받으실 수 있습니다.',
-                      style: TextStyle(color: p.muted, fontSize: 12, height: 1.4),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: p.text,
-                        side: BorderSide(color: p.line),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: _launchSponsor,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                // Card 2: Support link
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  decoration: BoxDecoration(
+                    color: p.surface2,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: p.line),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
                         children: [
-                          const Text(
-                            '후원 및 상세 정보 보기',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          Icon(Icons.favorite_rounded, color: Colors.pinkAccent.withValues(alpha: 0.8)),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            'Athens 후원하기',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(width: 4),
-                          Icon(Icons.open_in_new_rounded, size: 14, color: p.muted),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Athens 프로젝트의 독립적 개발과 운영을 후원하고 프로모션 코드를 받으실 수 있습니다.',
+                        style: TextStyle(color: p.muted, fontSize: 12, height: 1.4),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: p.text,
+                          side: BorderSide(color: p.line),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: _launchSponsor,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              '후원 및 상세 정보 보기',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.open_in_new_rounded, size: 14, color: p.muted),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
 
               // Developer bypass card
               if (kDebugMode || kDevSeed) ...[
