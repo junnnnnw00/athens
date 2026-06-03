@@ -102,6 +102,66 @@ class LibraryRepository {
     } catch (_) {
       // Offline / RLS / transient — local cache stays as-is.
     }
+    await _syncComparisons();
+  }
+
+  /// Two-way sync of the duel log so the per-item "내 Elo 변화" trend has the same
+  /// events on every device. Push first (backfills rows recorded before sync
+  /// existed, or while offline), then pull anything this device is missing. Both
+  /// directions are keyed by the local comparison id (`client_id`) so they're
+  /// idempotent. Best-effort; failures leave local data untouched.
+  Future<void> _syncComparisons() async {
+    if (!_syncEnabled) return;
+    try {
+      final local = await _db.getComparisonsForUser(userId);
+      final localIds = {for (final c in local) c.id};
+      final remote = await _remote!.getComparisons(userId);
+      final remoteIds = {
+        for (final r in remote)
+          if (r['client_id'] != null) r['client_id'] as String
+      };
+
+      // Push: local rows the server hasn't got yet (legacy/offline backfill),
+      // batched into a single upsert.
+      final toPush = <Map<String, dynamic>>[];
+      for (final c in local) {
+        if (remoteIds.contains(c.id)) continue;
+        final wUuid = await _remoteItemId(c.winnerItemId);
+        final lUuid = await _remoteItemId(c.loserItemId);
+        if (wUuid == null || lUuid == null) continue;
+        toPush.add({
+          'client_id': c.id,
+          'user_id': userId,
+          'winner_item_id': wUuid,
+          'loser_item_id': lUuid,
+          'created_at': c.createdAt.toIso8601String(),
+        });
+      }
+      await _remote.insertComparisons(toPush);
+
+      // Pull: server rows this device is missing → insert locally.
+      for (final r in remote) {
+        final clientId = r['client_id'] as String?;
+        if (clientId == null || localIds.contains(clientId)) continue;
+        final w = r['winner'] as Map<String, dynamic>?;
+        final l = r['loser'] as Map<String, dynamic>?;
+        if (w == null || l == null) continue;
+        final winnerLocal = '${w['source']}:${w['source_id']}';
+        final loserLocal = '${l['source']}:${l['source_id']}';
+        final createdAt =
+            DateTime.tryParse((r['created_at'] as String?) ?? '') ??
+                DateTime.now();
+        await _db.insertComparison(LocalComparisonsCompanion(
+          id: Value(clientId),
+          userId: Value(userId),
+          winnerItemId: Value(winnerLocal),
+          loserItemId: Value(loserLocal),
+          createdAt: Value(createdAt),
+        ));
+      }
+    } catch (_) {
+      // Offline / RLS / transient — trend just stays as sparse as local data.
+    }
   }
 
   /// Re-encodes a jsonb tag list (already `[{name, source}, …]`) to a string.
@@ -285,8 +345,9 @@ class LibraryRepository {
       comparisons: Value(loser.comparisons + 1),
       updatedAt: Value(now),
     ));
+    final compId = '${userId}_${now.microsecondsSinceEpoch}';
     await _db.insertComparison(LocalComparisonsCompanion(
-      id: Value('${userId}_${now.microsecondsSinceEpoch}'),
+      id: Value(compId),
       userId: Value(userId),
       winnerItemId: Value(winnerId),
       loserItemId: Value(loserId),
@@ -294,6 +355,29 @@ class LibraryRepository {
     ));
     await _pushRating(winnerId, wElo, winner.comparisons + 1);
     await _pushRating(loserId, lElo, loser.comparisons + 1);
+    await _pushComparison(compId, winnerId, loserId, now);
+  }
+
+  /// Pushes one duel event to Supabase, keyed by its local id (`client_id`) so
+  /// the upsert is idempotent. Best-effort; offline rows are backfilled later by
+  /// [pullRemote].
+  Future<void> _pushComparison(
+      String compId, String winnerId, String loserId, DateTime createdAt) async {
+    if (!_syncEnabled) return;
+    try {
+      final wUuid = await _remoteItemId(winnerId);
+      final lUuid = await _remoteItemId(loserId);
+      if (wUuid == null || lUuid == null) return;
+      await _remote!.insertComparison({
+        'client_id': compId,
+        'user_id': userId,
+        'winner_item_id': wUuid,
+        'loser_item_id': lUuid,
+        'created_at': createdAt.toIso8601String(),
+      });
+    } catch (_) {
+      // Offline / transient — pullRemote backfills this row next time.
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -365,5 +449,59 @@ class LibraryRepository {
   Future<List<DateTime>> getComparisonDates() async {
     final list = await _db.getComparisonsForUser(userId);
     return list.map((c) => c.createdAt).toList();
+  }
+
+  // --------------------------------------------------------------------------
+  // Community stats helpers
+  // --------------------------------------------------------------------------
+
+  /// Resolves (and caches/creates) the shared-catalog uuid for a local item id,
+  /// so the per-item community stats RPCs can be called. Returns null offline /
+  /// when signed out.
+  Future<String?> resolveRemoteItemId(String localItemId) async {
+    if (!_syncEnabled) return null;
+    try {
+      return await _remoteItemId(localItemId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Reconstructs the user's own **Elo** history for one item by replaying their
+  /// local duel log: every comparison is re-applied in chronological order from
+  /// the shared starting Elo, capturing this item's Elo **after each duel it took
+  /// part in**. One point per duel — the point count matches the item's
+  /// `comparisons`. The series is shifted so its final point matches the item's
+  /// current Elo (exact placement seeds aren't logged), preserving the trend's
+  /// shape. Elo (not the 0–10 score) is used so movement stays visible even when
+  /// the compressed score barely changes. Returns `[]` when the item has no
+  /// duels.
+  Future<List<({DateTime t, double elo})>> getOwnRatingTrend(
+      String localItemId) async {
+    final ratings = await _db.getRatingsForUser(userId);
+    final current = ratings.where((r) => r.itemId == localItemId).firstOrNull;
+    if (current == null) return const [];
+
+    final comps = await _db.getComparisonsForUser(userId)
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    final elo = <String, double>{};
+    final raw = <({DateTime t, double elo})>[];
+    for (final c in comps) {
+      final involves =
+          c.winnerItemId == localItemId || c.loserItemId == localItemId;
+      elo.putIfAbsent(c.winnerItemId, () => Elo.startingElo);
+      elo.putIfAbsent(c.loserItemId, () => Elo.startingElo);
+      final (wE, lE) = Elo.update(elo[c.winnerItemId]!, elo[c.loserItemId]!);
+      elo[c.winnerItemId] = wE;
+      elo[c.loserItemId] = lE;
+      if (involves) {
+        raw.add((t: c.createdAt, elo: elo[localItemId]!));
+      }
+    }
+    if (raw.isEmpty) return const [];
+
+    final shift = current.elo - raw.last.elo;
+    return raw.map((p) => (t: p.t, elo: p.elo + shift)).toList();
   }
 }

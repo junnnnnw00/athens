@@ -307,17 +307,24 @@ class _MiniTag extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: p.chip,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: p.line),
-      ),
-      child: Text(
-        name,
-        style:
-            TextStyle(color: p.muted, fontSize: 10.5, fontWeight: FontWeight.w600),
+    return ConstrainedBox(
+      // Cap width so a long tag name ellipsizes instead of spilling past the card.
+      constraints: const BoxConstraints(maxWidth: 120),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: p.chip,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(color: p.line),
+        ),
+        child: Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          softWrap: false,
+          style:
+              TextStyle(color: p.muted, fontSize: 10.5, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

@@ -153,7 +153,38 @@ class FakeSupabaseGateway implements SupabaseGateway {
 
   @override
   Future<void> insertComparison(Map<String, dynamic> comparison) async {
+    final clientId = comparison['client_id'];
+    if (clientId != null) {
+      comparisons.removeWhere((c) => c['client_id'] == clientId);
+    }
     comparisons.add(comparison);
+  }
+
+  @override
+  Future<void> insertComparisons(List<Map<String, dynamic>> rows) async {
+    for (final r in rows) {
+      await insertComparison(r);
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getComparisons(String userId) async {
+    final byId = {for (final i in items.values) i['id'] as String: i};
+    Map<String, dynamic>? src(dynamic uuid) {
+      final i = byId[uuid];
+      return i == null
+          ? null
+          : {'source': i['source'], 'source_id': i['source_id']};
+    }
+
+    return comparisons.where((c) => c['user_id'] == userId).map((c) {
+      return {
+        'client_id': c['client_id'],
+        'created_at': c['created_at'],
+        'winner': src(c['winner_item_id']),
+        'loser': src(c['loser_item_id']),
+      };
+    }).toList();
   }
 
   @override
@@ -182,4 +213,17 @@ class FakeSupabaseGateway implements SupabaseGateway {
   Future<void> upsertProfile(Map<String, dynamic> profile) async {
     _profiles[profile['id'] as String] = profile;
   }
+
+  @override
+  Future<Map<String, dynamic>?> getItemRatingStats(String itemUuid) async =>
+      null;
+
+  @override
+  Future<List<Map<String, dynamic>>> getItemRatingTrend(String itemUuid) async =>
+      const [];
+
+  @override
+  Future<List<Map<String, dynamic>>> getItemPublicReviews(
+          String itemUuid) async =>
+      const [];
 }

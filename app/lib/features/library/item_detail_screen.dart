@@ -10,6 +10,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
 import '../../widgets/score_ring.dart';
 import '../../widgets/initial_score_dialog.dart';
+import 'community_stats_section.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
   const ItemDetailScreen({super.key, required this.itemId, this.catalogItem});
@@ -384,6 +385,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                   ),
                 ),
               ),
+            CommunityStatsSection(itemId: widget.itemId),
           ] else ...[
             Center(
               child: SizedBox(

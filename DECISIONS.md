@@ -277,3 +277,45 @@ existing promo-code redemption as a **free-grant** mechanism. Both paths flip th
 ### Reversibility
 Remove `in_app_purchase` dep + `verify-play-purchase` edge fn + the Android 구매 button. `is_premium`
 flag and promo-code system pre-date this and remain. No destructive schema change.
+
+---
+
+## DECISION — Per-item community rating stats (2026-06-04)
+
+**Request:** On a song/album/artist detail page, show rating statistics (average, distribution,
+trend) drawn from **all accounts (public + private)**; show **reviews from public accounts only**;
+plus the signed-in user's **own rating trend** for that item.
+
+**Decision (built):** Migration `0019_item_rating_stats.sql` + Flutter detail-screen section.
+
+### Privacy model (this is the guardrail-flagged part)
+- Individual `ratings` / `reviews` rows keep their existing per-user / public-only RLS. Nothing that
+  attributes a score to a single **private** user is ever exposed.
+- Private accounts contribute to stats **only as non-identifying aggregates** (count / average /
+  10-bucket distribution) returned by `SECURITY DEFINER` functions — never raw rows.
+- **Small-N guard:** `item_rating_stats` / `item_rating_trend` take `min_n` (default **3**). Below
+  the threshold only the rater *count* is returned (avg + distribution withheld) so a lone private
+  rating can't be reverse-engineered from the average. Raise/lower the default in the SQL functions.
+- Reviews surfaced via `item_public_reviews` filter to `profiles.is_public = true` only (mirrors the
+  existing `ratings_select_public` policy from 0010; adds matching `reviews_select_public`).
+
+### Trend data (new infra, builds forward)
+- `ratings` stores current state only — no score history. New table `item_rating_daily`
+  (`item_id, day, rating_count, avg_score`) captures a daily community aggregate going forward via
+  `snapshot_item_ratings()`, scheduled by **pg_cron** (`5 0 * * *`). Trend is empty until points
+  accrue; today's point is seeded at migration time. Table is aggregate-only → readable by any
+  authenticated user.
+- **Own trend** needs no backend: reconstructed client-side in `LibraryRepository.getOwnRatingTrend`
+  by replaying the local duel log (`comparisons`) through the Elo formula, then shifting the series
+  so its endpoint matches the item's current Elo (placement seeds aren't logged).
+
+### Surface
+- New `CommunityStatsSection` on `item_detail_screen` (rated items only): avg headline, distribution
+  bar chart, community trend line, own-trend line, public-review cards.
+- New RPC passthroughs on `SupabaseGateway`; `communityItemDataProvider` (autoDispose family) loads
+  all of it for one item id.
+
+### Reversibility
+`DROP` table `item_rating_daily` + the four functions + `cron.unschedule('snapshot-item-ratings')` +
+`reviews_select_public` policy. No column changes to existing tables. Flutter side is additive
+(delete the section widget + service + gateway methods). No secrets introduced.

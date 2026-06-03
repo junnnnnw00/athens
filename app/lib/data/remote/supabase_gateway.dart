@@ -14,11 +14,30 @@ abstract class SupabaseGateway {
   Future<void> upsertRating(Map<String, dynamic> rating);
   Future<void> deleteRating(String userId, String remoteItemId);
   Future<void> insertComparison(Map<String, dynamic> comparison);
+
+  /// Batch idempotent upsert of duel rows (keyed by client_id) — used to backfill
+  /// the whole local log in one call.
+  Future<void> insertComparisons(List<Map<String, dynamic>> rows);
+
+  /// The user's duel log joined to each item's source/source_id, so a pulling
+  /// device can map remote uuids back to its local item ids.
+  Future<List<Map<String, dynamic>>> getComparisons(String userId);
   Future<void> deleteComparisonsForItem(String userId, String remoteItemId);
   Future<List<Map<String, dynamic>>> getReviews(String userId);
   Future<void> upsertReview(Map<String, dynamic> review);
   Future<Map<String, dynamic>?> getProfile(String userId);
   Future<void> upsertProfile(Map<String, dynamic> profile);
+
+  /// Aggregate rating stats for one catalog item across ALL accounts
+  /// (public + private). Returns `{count, avg, distribution: [c0..c9]}`; `avg`
+  /// and `distribution` are null until a privacy threshold of raters is met.
+  Future<Map<String, dynamic>?> getItemRatingStats(String itemUuid);
+
+  /// Daily community-average trend for one item (from item_rating_daily).
+  Future<List<Map<String, dynamic>>> getItemRatingTrend(String itemUuid);
+
+  /// Reviews for one item from PUBLIC accounts only, with author profile fields.
+  Future<List<Map<String, dynamic>>> getItemPublicReviews(String itemUuid);
 }
 
 class SupabaseGatewayImpl implements SupabaseGateway {
@@ -69,7 +88,33 @@ class SupabaseGatewayImpl implements SupabaseGateway {
 
   @override
   Future<void> insertComparison(Map<String, dynamic> comparison) async {
-    await _client.from('comparisons').insert(comparison);
+    // Upsert on client_id so re-pushing the same local row (backfill / retry)
+    // is idempotent. Falls back to a plain insert if no client_id is supplied.
+    if (comparison['client_id'] != null) {
+      await _client
+          .from('comparisons')
+          .upsert(comparison, onConflict: 'client_id', ignoreDuplicates: true);
+    } else {
+      await _client.from('comparisons').insert(comparison);
+    }
+  }
+
+  @override
+  Future<void> insertComparisons(List<Map<String, dynamic>> rows) async {
+    if (rows.isEmpty) return;
+    await _client
+        .from('comparisons')
+        .upsert(rows, onConflict: 'client_id', ignoreDuplicates: true);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getComparisons(String userId) async {
+    final rows = await _client
+        .from('comparisons')
+        .select(
+            'client_id, created_at, winner:items!winner_item_id(source, source_id), loser:items!loser_item_id(source, source_id)')
+        .eq('user_id', userId);
+    return List<Map<String, dynamic>>.from(rows);
   }
 
   @override
@@ -100,5 +145,33 @@ class SupabaseGatewayImpl implements SupabaseGateway {
   @override
   Future<void> upsertProfile(Map<String, dynamic> profile) async {
     await _client.from('profiles').upsert(profile);
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getItemRatingStats(String itemUuid) async {
+    final row = await _client.rpc(
+      'item_rating_stats',
+      params: {'p_item_id': itemUuid},
+    );
+    return row == null ? null : Map<String, dynamic>.from(row as Map);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getItemRatingTrend(String itemUuid) async {
+    final rows = await _client.rpc(
+      'item_rating_trend',
+      params: {'p_item_id': itemUuid},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getItemPublicReviews(
+      String itemUuid) async {
+    final rows = await _client.rpc(
+      'item_public_reviews',
+      params: {'p_item_id': itemUuid},
+    );
+    return List<Map<String, dynamic>>.from(rows as List);
   }
 }
