@@ -189,8 +189,24 @@ class LibraryRepository {
         updatedAt: r.updatedAt,
       ));
     }
-    result.sort((a, b) => b.elo.compareTo(a.elo));
-    return result;
+    // Collapse duplicates that refer to the same logical item — e.g. a track
+    // added from search (`itunes:..`) and the same track later synced from the
+    // Last.fm feed (`lastfm:..`), which carry different ids. Keep the most-
+    // dueled (then highest-Elo) copy so ranking history isn't lost.
+    final byKey = <String, RatedCatalogItem>{};
+    for (final r in result) {
+      final key =
+          '${r.kind}|${r.title.toLowerCase().trim()}|${(r.primaryArtist ?? '').toLowerCase().trim()}';
+      final existing = byKey[key];
+      if (existing == null ||
+          r.comparisons > existing.comparisons ||
+          (r.comparisons == existing.comparisons && r.elo > existing.elo)) {
+        byKey[key] = r;
+      }
+    }
+    final deduped = byKey.values.toList()
+      ..sort((a, b) => b.elo.compareTo(a.elo));
+    return deduped;
   }
 
   /// Replaces the cached tags for an item (used by the tag backfill) and pushes

@@ -450,15 +450,17 @@ final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
       final artist = t.artist;
       final title = t.title;
       final mbid = t.mbid;
-      final id = mbid ?? 'lastfm_${artist.replaceAll(' ', '_')}_${title.replaceAll(' ', '_')}';
+      final sourceId = mbid ?? '${artist}_$title';
+      // Keep the id as `source:sourceId` so a later remote sync (which rebuilds
+      // ids that way) reconciles to the same row instead of duplicating it.
       return CatalogItem(
-        id: id,
+        id: 'lastfm:$sourceId',
         kind: 'track',
         title: title,
         primaryArtist: artist,
         imageUrl: t.imageUrl,
         source: 'lastfm',
-        sourceId: mbid ?? '${artist}_$title',
+        sourceId: sourceId,
         playedAtUts: t.playedAtUts,
       );
     }).toList();

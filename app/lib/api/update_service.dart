@@ -37,12 +37,14 @@ class UpdateService {
       final extension = AppPlatform.isAndroid ? '.apk' : '.zip';
       final assets = data['assets'] as List<dynamic>? ?? [];
       final targetAsset = assets.firstWhere(
-        (a) => (a['name'] as String).endsWith(extension),
+        (a) => (a['name'] as String).toLowerCase().endsWith(extension),
         orElse: () => null,
       );
-      final downloadUrl = targetAsset != null
-          ? targetAsset['browser_download_url'] as String
-          : data['html_url'] as String;
+      // No binary asset for this platform on the latest release → no actionable
+      // update. Do NOT fall back to the release HTML page: it would be
+      // downloaded as a bogus "zip" and fail to unzip.
+      if (targetAsset == null) return null;
+      final downloadUrl = targetAsset['browser_download_url'] as String;
 
       return UpdateInfo(
         currentVersion: info.version,

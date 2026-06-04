@@ -62,7 +62,15 @@ class _UpdateBannerState extends State<UpdateBanner>
         if (response.statusCode != 200) {
           throw Exception('Failed to download update: ${response.statusCode}');
         }
-        await File(zipPath).writeAsBytes(response.bodyBytes);
+        final bytes = response.bodyBytes;
+        // Sanity-check the ZIP magic ("PK\x03\x04") so a stray HTML/redirect
+        // page doesn't get fed to unzip with a cryptic error.
+        if (bytes.length < 4 ||
+            bytes[0] != 0x50 ||
+            bytes[1] != 0x4B) {
+          throw Exception('다운로드한 파일이 올바른 업데이트 패키지가 아니에요. 잠시 후 다시 시도해 주세요.');
+        }
+        await File(zipPath).writeAsBytes(bytes);
 
         // 3. Unzip the file
         final extractedDir = '${tempDir.path}/extracted';
