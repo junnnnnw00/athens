@@ -125,6 +125,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        // Search is usually entered via `go('/search')` (no back stack), so the
+        // automatic leading is absent — add an explicit back that pops when it
+        // can and otherwise returns to Home.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: '뒤로',
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/home'),
+        ),
         title: TextField(
           autofocus: true,
           style: Theme.of(context).textTheme.bodyLarge,

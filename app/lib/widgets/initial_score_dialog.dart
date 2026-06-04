@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../theme/tokens.dart';
 import '../theme/app_theme.dart';
@@ -92,12 +93,12 @@ class _InitialScoreDialogState extends State<InitialScoreDialog> {
                   if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        widget.imageUrl!,
+                      child: CachedNetworkImage(
+                        imageUrl: widget.imageUrl!,
                         width: 48,
                         height: 48,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorWidget: (_, __, ___) => Container(
                           width: 48,
                           height: 48,
                           color: p.surface2,

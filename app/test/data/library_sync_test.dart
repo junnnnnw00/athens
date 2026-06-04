@@ -30,6 +30,7 @@ void main() {
 
   test('addItem pushes the item + a rating to the remote', () async {
     await repo.addItem(_item('spotify:a', 'A'));
+    await pumpEventQueue(); // remote sync is fire-and-forget; let it flush
     expect(remote.items.length, 1);
     final ratings = await remote.getRatings('auth-uuid');
     expect(ratings.length, 1);
@@ -41,6 +42,7 @@ void main() {
     await repo.addItem(_item('spotify:a', 'A'));
     await repo.addItem(_item('spotify:b', 'B'));
     await repo.recordComparison(winnerId: 'spotify:a', loserId: 'spotify:b');
+    await pumpEventQueue(); // fire-and-forget remote sync flushes here
 
     final ratings = {
       for (final r in await remote.getRatings('auth-uuid')) r['item_id']: r
@@ -66,6 +68,7 @@ void main() {
     await repo.addItem(_item('spotify:a', 'A'));
     await repo.addItem(_item('spotify:b', 'B'));
     await repo.recordComparison(winnerId: 'spotify:a', loserId: 'spotify:b');
+    await pumpEventQueue(); // ensure device A's detached pushes reach the remote
 
     // Device B: a brand-new local DB, same user + same remote, empty to start.
     final dbB = AppDatabase.forTesting(NativeDatabase.memory());
@@ -86,6 +89,7 @@ void main() {
   test('pullRemote does not clobber a newer local rating (last-write-wins)',
       () async {
     await repo.addItem(_item('spotify:a', 'A')); // remote rating at ~now
+    await pumpEventQueue(); // flush the detached push before device B pulls
 
     final dbB = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(dbB.close);
@@ -112,9 +116,11 @@ void main() {
     await repo.addItem(_item('spotify:a', 'A'));
     await repo.addItem(_item('spotify:b', 'B'));
     await repo.recordComparison(winnerId: 'spotify:a', loserId: 'spotify:b');
+    await pumpEventQueue(); // let the setup pushes reach the remote first
     expect((await repo.loadLibrary()).length, 2);
 
     await repo.removeItem('spotify:a');
+    await pumpEventQueue(); // then let the detached remote delete flush
 
     final local = await repo.loadLibrary();
     expect(local.map((i) => i.id), ['spotify:b']);
@@ -128,12 +134,14 @@ void main() {
     await repo.addItem(_item('spotify:a', 'A'));
     await repo.addItem(_item('spotify:b', 'B'));
     await repo.recordComparison(winnerId: 'spotify:a', loserId: 'spotify:b');
+    await pumpEventQueue(); // setup pushes reach the remote first
     final winner =
         (await repo.loadLibrary()).firstWhere((i) => i.id == 'spotify:a');
     expect(winner.elo, greaterThan(1000));
     expect(winner.comparisons, 1);
 
     await repo.resetForPlacement('spotify:a');
+    await pumpEventQueue(); // then the detached remote comparison-clear flushes
 
     final a = (await repo.loadLibrary()).firstWhere((i) => i.id == 'spotify:a');
     expect(a.elo, 1000);

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -236,8 +237,8 @@ class StatsScreen extends ConsumerWidget {
                                   if (data.imageUrl != null)
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(AppRadii.cover),
-                                      child: Image.network(
-                                        data.imageUrl!,
+                                      child: CachedNetworkImage(
+                                        imageUrl: data.imageUrl!,
                                         width: 40,
                                         height: 40,
                                         fit: BoxFit.cover,

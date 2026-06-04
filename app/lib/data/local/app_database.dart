@@ -82,19 +82,31 @@ class LocalReviews extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Cached rich item detail (year/album/duration/listeners/summary/genres/top
+/// tracks) keyed by a `kind|artist|title` signature. Persisted so the item
+/// detail screen shows the last-fetched info fully offline.
+class LocalItemInfos extends Table {
+  TextColumn get key => text()();
+  TextColumn get json => text()();
+  DateTimeColumn get updatedAt => dateTime().map(const DateTimeCorrectionConverter()).withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
 // ============================================================================
 // Database
 // ============================================================================
 
 @DriftDatabase(
-    tables: [LocalItems, LocalRatings, LocalComparisons, LocalReviews])
+    tables: [LocalItems, LocalRatings, LocalComparisons, LocalReviews, LocalItemInfos])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -106,9 +118,19 @@ class AppDatabase extends _$AppDatabase {
         if (from < 2) {
           await customStatement('UPDATE local_ratings SET elo = elo + 200.0;');
         }
+        if (from < 3) {
+          await m.createTable(localItemInfos);
+        }
       },
     );
   }
+
+  // Cached item detail info
+  Future<LocalItemInfo?> getItemInfo(String key) =>
+      (select(localItemInfos)..where((i) => i.key.equals(key))).getSingleOrNull();
+
+  Future<void> upsertItemInfo(LocalItemInfosCompanion info) =>
+      into(localItemInfos).insertOnConflictUpdate(info);
 
   // Items
   Future<List<LocalItem>> getAllItems() => select(localItems).get();
@@ -118,6 +140,20 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> upsertItem(LocalItemsCompanion item) =>
       into(localItems).insertOnConflictUpdate(item);
+
+  /// The non-anonymous user id that owns the most locally-cached ratings. Used
+  /// at startup to resolve the library owner when offline with a lapsed token
+  /// (Supabase can't confirm the session, so `currentUser` is null). Returns
+  /// null when only the signed-out `local-user` has data.
+  Future<String?> mostActiveUserId() async {
+    final rows = await customSelect(
+      "SELECT user_id FROM local_ratings WHERE user_id != 'local-user' "
+      'GROUP BY user_id ORDER BY COUNT(*) DESC LIMIT 1',
+      readsFrom: {localRatings},
+    ).get();
+    if (rows.isEmpty) return null;
+    return rows.first.read<String>('user_id');
+  }
 
   // Ratings
   Future<List<LocalRating>> getRatingsForUser(String userId) =>
@@ -145,6 +181,9 @@ class AppDatabase extends _$AppDatabase {
                 (c.winnerItemId.equals(itemId) | c.loserItemId.equals(itemId)))
             ..orderBy([(c) => OrderingTerm(expression: c.createdAt, mode: OrderingMode.desc)]))
           .get();
+
+  Future<void> deleteComparisonById(String id) =>
+      (delete(localComparisons)..where((c) => c.id.equals(id))).go();
 
   Future<void> deleteComparisonsForItem(String userId, String itemId) =>
       (delete(localComparisons)

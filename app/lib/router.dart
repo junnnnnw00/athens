@@ -20,6 +20,10 @@ import 'features/friends/friend_list_screen.dart';
 import 'features/friends/friend_comparison_screen.dart';
 import 'features/premium/premium_upgrade_screen.dart';
 import 'widgets/floating_nav.dart';
+import 'widgets/offline_banner.dart';
+import 'data/connectivity_providers.dart';
+import 'data/offline_support.dart';
+import 'data/repository/library_providers.dart';
 
 import 'features/auth/landing_screen.dart';
 
@@ -86,6 +90,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final onLanding = state.matchedLocation == '/landing';
 
       if (session == null) {
+        // Returning user with a cached id but no live session (offline / lapsed
+        // token): keep them in the app on their cached local library instead of
+        // bouncing to the landing page.
+        final cachedUid = ref.read(lastKnownUserIdProvider);
+        if (cachedUid != null && cachedUid.isNotEmpty) {
+          if (loggingIn || onLanding) return '/home';
+          return null;
+        }
         if (loggingIn || onLanding) return null;
         return '/landing';
       }
@@ -171,7 +183,7 @@ StatefulShellRoute buildAppShellRoute() => StatefulShellRoute.indexedStack(
 /// Hosts the indexed-stack of tab navigators with the floating pill nav
 /// overlaid at the bottom. The shell's [StatefulNavigationShell] is the single
 /// source of truth for the active tab (no path-prefix heuristics).
-class _AppShell extends StatelessWidget {
+class _AppShell extends ConsumerWidget {
   const _AppShell({required this.navigationShell});
   final StatefulNavigationShell navigationShell;
 
@@ -189,7 +201,7 @@ class _AppShell extends StatelessWidget {
       _branchKeys[navigationShell.currentIndex].currentState?.canPop() ?? false;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return PopScope(
       // System back is allowed to exit only from the Home root with an empty
       // stack. Otherwise we either pop the current branch or fall back to Home.
@@ -202,30 +214,46 @@ class _AppShell extends StatelessWidget {
           navigationShell.goBranch(0);
         }
       },
-      child: _buildScaffold(context),
+      child: _buildScaffold(context, ref),
     );
   }
 
-  Widget _buildScaffold(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(child: navigationShell),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SafeArea(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: FloatingNav(
-                  currentIndex: navigationShell.currentIndex,
-                  onSelect: _goBranch,
-                  // Add = open search (lives in the Home branch; go() activates it).
-                  onAdd: () => context.go('/search'),
-                ),
+  Widget _buildScaffold(BuildContext context, WidgetRef ref) {
+    // Keep the offline-support wiring (id caching + reconnect reload) alive.
+    ref.watch(offlineSupportProvider);
+    final offline = ref.watch(isOfflineProvider);
+    final stack = Stack(
+      children: [
+        Positioned.fill(child: navigationShell),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: SafeArea(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: FloatingNav(
+                currentIndex: navigationShell.currentIndex,
+                onSelect: _goBranch,
+                // Add = open search (lives in the Home branch; go() activates it).
+                onAdd: () => context.go('/search'),
               ),
             ),
+          ),
+        ),
+      ],
+    );
+    return Scaffold(
+      body: Column(
+        children: [
+          // The offline strip consumes the top safe area itself, so strip the
+          // duplicate status-bar padding from the screens below it.
+          if (offline) const OfflineBanner(),
+          Expanded(
+            child: offline
+                ? MediaQuery.removePadding(
+                    context: context, removeTop: true, child: stack)
+                : stack,
           ),
         ],
       ),

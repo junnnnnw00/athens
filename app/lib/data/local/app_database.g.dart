@@ -1491,6 +1491,237 @@ class LocalReviewsCompanion extends UpdateCompanion<LocalReview> {
   }
 }
 
+class $LocalItemInfosTable extends LocalItemInfos
+    with TableInfo<$LocalItemInfosTable, LocalItemInfo> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalItemInfosTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+      'key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _jsonMeta = const VerificationMeta('json');
+  @override
+  late final GeneratedColumn<String> json = GeneratedColumn<String>(
+      'json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, DateTime> updatedAt =
+      GeneratedColumn<DateTime>('updated_at', aliasedName, false,
+              type: DriftSqlType.dateTime,
+              requiredDuringInsert: false,
+              defaultValue: currentDateAndTime)
+          .withConverter<DateTime>($LocalItemInfosTable.$converterupdatedAt);
+  @override
+  List<GeneratedColumn> get $columns => [key, json, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_item_infos';
+  @override
+  VerificationContext validateIntegrity(Insertable<LocalItemInfo> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+          _keyMeta, key.isAcceptableOrUnknown(data['key']!, _keyMeta));
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('json')) {
+      context.handle(
+          _jsonMeta, json.isAcceptableOrUnknown(data['json']!, _jsonMeta));
+    } else if (isInserting) {
+      context.missing(_jsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  LocalItemInfo map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalItemInfo(
+      key: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}key'])!,
+      json: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}json'])!,
+      updatedAt: $LocalItemInfosTable.$converterupdatedAt.fromSql(
+          attachedDatabase.typeMapping.read(
+              DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!),
+    );
+  }
+
+  @override
+  $LocalItemInfosTable createAlias(String alias) {
+    return $LocalItemInfosTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, DateTime> $converterupdatedAt =
+      const DateTimeCorrectionConverter();
+}
+
+class LocalItemInfo extends DataClass implements Insertable<LocalItemInfo> {
+  final String key;
+  final String json;
+  final DateTime updatedAt;
+  const LocalItemInfo(
+      {required this.key, required this.json, required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['json'] = Variable<String>(json);
+    {
+      map['updated_at'] = Variable<DateTime>(
+          $LocalItemInfosTable.$converterupdatedAt.toSql(updatedAt));
+    }
+    return map;
+  }
+
+  LocalItemInfosCompanion toCompanion(bool nullToAbsent) {
+    return LocalItemInfosCompanion(
+      key: Value(key),
+      json: Value(json),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalItemInfo.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalItemInfo(
+      key: serializer.fromJson<String>(json['key']),
+      json: serializer.fromJson<String>(json['json']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'json': serializer.toJson<String>(json),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LocalItemInfo copyWith({String? key, String? json, DateTime? updatedAt}) =>
+      LocalItemInfo(
+        key: key ?? this.key,
+        json: json ?? this.json,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  LocalItemInfo copyWithCompanion(LocalItemInfosCompanion data) {
+    return LocalItemInfo(
+      key: data.key.present ? data.key.value : this.key,
+      json: data.json.present ? data.json.value : this.json,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalItemInfo(')
+          ..write('key: $key, ')
+          ..write('json: $json, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, json, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalItemInfo &&
+          other.key == this.key &&
+          other.json == this.json &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalItemInfosCompanion extends UpdateCompanion<LocalItemInfo> {
+  final Value<String> key;
+  final Value<String> json;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const LocalItemInfosCompanion({
+    this.key = const Value.absent(),
+    this.json = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalItemInfosCompanion.insert({
+    required String key,
+    required String json,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : key = Value(key),
+        json = Value(json);
+  static Insertable<LocalItemInfo> custom({
+    Expression<String>? key,
+    Expression<String>? json,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (json != null) 'json': json,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalItemInfosCompanion copyWith(
+      {Value<String>? key,
+      Value<String>? json,
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
+    return LocalItemInfosCompanion(
+      key: key ?? this.key,
+      json: json ?? this.json,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (json.present) {
+      map['json'] = Variable<String>(json.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(
+          $LocalItemInfosTable.$converterupdatedAt.toSql(updatedAt.value));
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalItemInfosCompanion(')
+          ..write('key: $key, ')
+          ..write('json: $json, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1499,12 +1730,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $LocalComparisonsTable localComparisons =
       $LocalComparisonsTable(this);
   late final $LocalReviewsTable localReviews = $LocalReviewsTable(this);
+  late final $LocalItemInfosTable localItemInfos = $LocalItemInfosTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [localItems, localRatings, localComparisons, localReviews];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        localItems,
+        localRatings,
+        localComparisons,
+        localReviews,
+        localItemInfos
+      ];
 }
 
 typedef $$LocalItemsTableCreateCompanionBuilder = LocalItemsCompanion Function({
@@ -2294,6 +2531,152 @@ typedef $$LocalReviewsTableProcessedTableManager = ProcessedTableManager<
     ),
     LocalReview,
     PrefetchHooks Function()>;
+typedef $$LocalItemInfosTableCreateCompanionBuilder = LocalItemInfosCompanion
+    Function({
+  required String key,
+  required String json,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+typedef $$LocalItemInfosTableUpdateCompanionBuilder = LocalItemInfosCompanion
+    Function({
+  Value<String> key,
+  Value<String> json,
+  Value<DateTime> updatedAt,
+  Value<int> rowid,
+});
+
+class $$LocalItemInfosTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalItemInfosTable> {
+  $$LocalItemInfosTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get json => $composableBuilder(
+      column: $table.json, builder: (column) => ColumnFilters(column));
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, DateTime> get updatedAt =>
+      $composableBuilder(
+          column: $table.updatedAt,
+          builder: (column) => ColumnWithTypeConverterFilters(column));
+}
+
+class $$LocalItemInfosTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalItemInfosTable> {
+  $$LocalItemInfosTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+      column: $table.key, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get json => $composableBuilder(
+      column: $table.json, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalItemInfosTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalItemInfosTable> {
+  $$LocalItemInfosTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get json =>
+      $composableBuilder(column: $table.json, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$LocalItemInfosTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalItemInfosTable,
+    LocalItemInfo,
+    $$LocalItemInfosTableFilterComposer,
+    $$LocalItemInfosTableOrderingComposer,
+    $$LocalItemInfosTableAnnotationComposer,
+    $$LocalItemInfosTableCreateCompanionBuilder,
+    $$LocalItemInfosTableUpdateCompanionBuilder,
+    (
+      LocalItemInfo,
+      BaseReferences<_$AppDatabase, $LocalItemInfosTable, LocalItemInfo>
+    ),
+    LocalItemInfo,
+    PrefetchHooks Function()> {
+  $$LocalItemInfosTableTableManager(
+      _$AppDatabase db, $LocalItemInfosTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalItemInfosTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalItemInfosTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalItemInfosTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> key = const Value.absent(),
+            Value<String> json = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalItemInfosCompanion(
+            key: key,
+            json: json,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String key,
+            required String json,
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalItemInfosCompanion.insert(
+            key: key,
+            json: json,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalItemInfosTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $LocalItemInfosTable,
+    LocalItemInfo,
+    $$LocalItemInfosTableFilterComposer,
+    $$LocalItemInfosTableOrderingComposer,
+    $$LocalItemInfosTableAnnotationComposer,
+    $$LocalItemInfosTableCreateCompanionBuilder,
+    $$LocalItemInfosTableUpdateCompanionBuilder,
+    (
+      LocalItemInfo,
+      BaseReferences<_$AppDatabase, $LocalItemInfosTable, LocalItemInfo>
+    ),
+    LocalItemInfo,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2306,4 +2689,6 @@ class $AppDatabaseManager {
       $$LocalComparisonsTableTableManager(_db, _db.localComparisons);
   $$LocalReviewsTableTableManager get localReviews =>
       $$LocalReviewsTableTableManager(_db, _db.localReviews);
+  $$LocalItemInfosTableTableManager get localItemInfos =>
+      $$LocalItemInfosTableTableManager(_db, _db.localItemInfos);
 }

@@ -1,8 +1,18 @@
 import 'dart:math';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
 import '../theme/app_theme.dart';
+
+/// Known Last.fm blank-art placeholder hash; such URLs render an empty grey box.
+const String _kLastfmBlankArtHash = '2a96cbd8b46e442fc41c2b86b821562f';
+
+/// Whether [url] points at real artwork worth loading (non-empty and not the
+/// Last.fm blank placeholder). Used so missing/placeholder art falls back to a
+/// monogram tile instead of an empty box, including in the duel.
+bool hasUsableArt(String? url) =>
+    url != null && url.isNotEmpty && !url.contains(_kLastfmBlankArtHash);
 
 /// Album/track cover. Shows the real artwork, or a quiet neutral tile with the
 /// title's initials when art is missing (never a rainbow filler tile).
@@ -35,13 +45,15 @@ class CoverArt extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size,
-        child: url != null && url.isNotEmpty
-            ? Image.network(
-                url,
+        child: hasUsableArt(url)
+            ? CachedNetworkImage(
+                imageUrl: url!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _fallback(p),
-                loadingBuilder: (context, child, progress) =>
-                    progress == null ? child : _fallback(p),
+                // Disk-cached, so it renders offline once seen. Keep the neutral
+                // tile as both the loading placeholder and the error fallback.
+                fadeInDuration: const Duration(milliseconds: 150),
+                placeholder: (_, __) => _fallback(p),
+                errorWidget: (_, __, ___) => _fallback(p),
               )
             : _fallback(p),
       ),

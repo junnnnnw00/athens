@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -207,7 +208,21 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     });
   }
 
+  Future<void> _undoLastDuel() async {
+    if (AppPlatform.isMobile) HapticFeedback.lightImpact();
+    await ref.read(libraryControllerProvider.notifier).undoLastDuel();
+    if (!mounted) return;
+    setState(() {
+      _showStreakNudge = false;
+      _streakTimer?.cancel();
+      _picked = null;
+      _pair = null; // rebuild picks a fresh pair from the restored library
+    });
+  }
+
   void _skip(List<RatedCatalogItem> items) {
+    // A skip changes nothing, so the previous pick is no longer the "last action".
+    ref.read(libraryControllerProvider.notifier).clearUndo();
     setState(() {
       _showStreakNudge = false;
       _streakTimer?.cancel();
@@ -281,6 +296,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
         : (lang == AppLanguage.ko
             ? '어떤 ${_localizedKindLabel(_kind!, lang)}이 더 좋아요?'
             : 'Which ${_localizedKindLabel(_kind!, lang)} do you prefer?');
+    final canUndo = !_placement && ref.watch(canUndoDuelProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(context.t('home_rate', ref: ref)),
@@ -296,6 +312,14 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                 },
               )
             : null,
+        actions: [
+          if (canUndo)
+            TextButton.icon(
+              onPressed: _picked == null ? _undoLastDuel : null,
+              icon: const Icon(Icons.undo_rounded, size: 18),
+              label: Text(context.t('duel_undo', ref: ref)),
+            ),
+        ],
       ),
       body: Stack(
         children: [
@@ -668,8 +692,8 @@ class _DuelArt extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = imageUrl;
-    if (url == null || url.isEmpty) {
-      // No artwork — a clean monogram tile instead of an empty box.
+    if (!hasUsableArt(url)) {
+      // No (usable) artwork — a clean monogram tile instead of an empty box.
       return ColoredBox(
         color: fallback,
         child: Center(
@@ -681,12 +705,12 @@ class _DuelArt extends StatelessWidget {
         ),
       );
     }
-    return Image.network(
-      url,
+    return CachedNetworkImage(
+      imageUrl: url!,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => ColoredBox(color: fallback),
-      loadingBuilder: (c, child, prog) =>
-          prog == null ? child : ColoredBox(color: fallback),
+      // Disk-cached so duel artwork shows offline once seen.
+      placeholder: (_, __) => ColoredBox(color: fallback),
+      errorWidget: (_, __, ___) => ColoredBox(color: fallback),
     );
   }
 }

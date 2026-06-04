@@ -48,6 +48,11 @@ dependencies:
   image_picker: ^1.1.2
   package_info_plus: ^9.0.1
 
+  # Offline: disk-cache album art + detect connectivity for the offline indicator
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
+  connectivity_plus: ^6.1.0
+
   # In-app purchases (Google Play Billing — Store build only)
   in_app_purchase: ^3.2.0
 
@@ -63,6 +68,9 @@ dev_dependencies:
   json_serializable: ^6.9.5
   riverpod_generator: ^2.6.1
   flutter_launcher_icons: ^0.14.1
+  # Routes sqflite (used by cached_network_image's disk cache) to a native FFI
+  # factory under flutter_test, where the platform plugin is unavailable.
+  sqflite_common_ffi: ^2.3.3
 
 # App icon (the orange bull). Regenerate platform icons with:
 #   dart run flutter_launcher_icons

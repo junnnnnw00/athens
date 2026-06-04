@@ -23,6 +23,7 @@ abstract class SupabaseGateway {
   /// device can map remote uuids back to its local item ids.
   Future<List<Map<String, dynamic>>> getComparisons(String userId);
   Future<void> deleteComparisonsForItem(String userId, String remoteItemId);
+  Future<void> deleteComparison(String userId, String clientId);
   Future<List<Map<String, dynamic>>> getReviews(String userId);
   Future<void> upsertReview(Map<String, dynamic> review);
   Future<Map<String, dynamic>?> getProfile(String userId);
@@ -122,6 +123,15 @@ class SupabaseGatewayImpl implements SupabaseGateway {
       String userId, String remoteItemId) async {
     await _client.from('comparisons').delete().eq('user_id', userId).or(
         'winner_item_id.eq.$remoteItemId,loser_item_id.eq.$remoteItemId');
+  }
+
+  @override
+  Future<void> deleteComparison(String userId, String clientId) async {
+    await _client
+        .from('comparisons')
+        .delete()
+        .eq('user_id', userId)
+        .eq('client_id', clientId);
   }
 
   @override

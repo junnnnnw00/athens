@@ -319,3 +319,28 @@ plus the signed-in user's **own rating trend** for that item.
 `DROP` table `item_rating_daily` + the four functions + `cron.unschedule('snapshot-item-ratings')` +
 `reviews_select_public` policy. No column changes to existing tables. Flutter side is additive
 (delete the section widget + service + gateway methods). No secrets introduced.
+
+---
+
+## Decision: Offline auth tolerance + last-user cache (2026-06-04)
+
+**What:** App now keeps a returning user inside the app (Home/Library) when there
+is no live Supabase session but a cached `last_user_id` exists (offline / lapsed
+token), instead of bouncing to `/landing`.
+
+- `last_user_id` cached locally via `PlatformStorage` (file on macOS, secure
+  storage elsewhere). Seeded into `lastKnownUserIdProvider` at startup (main.dart).
+- `currentUserIdProvider` falls back to the cached id so the local library keyed
+  by that uuid still loads offline.
+- Router `redirect`: `session == null && cachedUid != null` → stay (no landing).
+- Written on auth events, cleared on `signedOut` (`offlineSupportProvider`).
+
+**Why:** "오프라인 상태에서도 라이브러리 최대 사용성" — a cold start while offline must not
+log the user out of their own local data.
+
+**Security:** No new tokens/scopes/privileges. Only enables *reading already-local*
+data offline; all network calls still require a valid session and fail closed.
+First-ever launch with no prior login still needs one online sign-in.
+
+**Reversibility:** Delete `lastKnownUserIdProvider` fallback + the cachedUid branch
+in router redirect + `offlineSupportProvider`; remove the `last_user_id` cache key.

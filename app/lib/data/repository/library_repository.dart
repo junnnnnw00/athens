@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
@@ -208,19 +209,54 @@ class LibraryRepository {
       tags: Value(_encodeTags(tags)),
     ));
     if (!_syncEnabled) return;
-    try {
-      await _remote!.upsertItemReturningId({
-        'kind': item.kind,
-        'source': item.source,
-        'source_id': item.sourceId,
-        'title': item.title,
-        'primary_artist': item.primaryArtist,
-        'image_url': item.imageUrl,
-        'tags': tags.map((t) => {'name': t.name, 'source': t.source}).toList(),
-      });
-    } catch (_) {
-      // Best-effort — local cache already holds the tags.
-    }
+    unawaited(() async {
+      try {
+        await _remote!.upsertItemReturningId({
+          'kind': item.kind,
+          'source': item.source,
+          'source_id': item.sourceId,
+          'title': item.title,
+          'primary_artist': item.primaryArtist,
+          'image_url': item.imageUrl,
+          'tags': tags.map((t) => {'name': t.name, 'source': t.source}).toList(),
+        });
+      } catch (_) {
+        // Best-effort — local cache already holds the tags.
+      }
+    }());
+  }
+
+  /// Replaces the cached cover art for an item (used by the art backfill) and
+  /// pushes the updated catalog row to Supabase. Best-effort remote.
+  Future<void> updateItemImage(String localId, String imageUrl) async {
+    final item = await _db.getItemById(localId);
+    if (item == null) return;
+    await _db.upsertItem(LocalItemsCompanion(
+      id: Value(item.id),
+      kind: Value(item.kind),
+      source: Value(item.source),
+      sourceId: Value(item.sourceId),
+      title: Value(item.title),
+      primaryArtist: Value(item.primaryArtist),
+      imageUrl: Value(imageUrl),
+      tags: Value(item.tags),
+    ));
+    if (!_syncEnabled) return;
+    unawaited(() async {
+      try {
+        await _remote!.upsertItemReturningId({
+          'kind': item.kind,
+          'source': item.source,
+          'source_id': item.sourceId,
+          'title': item.title,
+          'primary_artist': item.primaryArtist,
+          'image_url': imageUrl,
+          'tags': jsonDecode(item.tags),
+        });
+      } catch (_) {
+        // Best-effort — local cache already holds the art.
+      }
+    }());
   }
 
   Future<RatedCatalogItem?> getItem(String itemId) async {
@@ -253,7 +289,7 @@ class LibraryRepository {
       comparisons: const Value(0),
       updatedAt: Value(DateTime.now()),
     ));
-    await _pushRating(item.id, startingElo, 0);
+    unawaited(_pushRating(item.id, startingElo, 0));
   }
 
   /// Removes an item from the user's library: deletes their rating, comparisons
@@ -263,14 +299,16 @@ class LibraryRepository {
     await _db.deleteRatingForItem(userId, localId);
     await _db.deleteReviewForItem(userId, localId);
     if (!_syncEnabled) return;
-    try {
-      final uuid = await _remoteItemId(localId);
-      if (uuid == null) return;
-      await _remote!.deleteComparisonsForItem(userId, uuid);
-      await _remote.deleteRating(userId, uuid);
-    } catch (_) {
-      // Best-effort — local removal already succeeded.
-    }
+    unawaited(() async {
+      try {
+        final uuid = await _remoteItemId(localId);
+        if (uuid == null) return;
+        await _remote!.deleteComparisonsForItem(userId, uuid);
+        await _remote.deleteRating(userId, uuid);
+      } catch (_) {
+        // Best-effort — local removal already succeeded.
+      }
+    }());
   }
 
   /// Returns the current streak for an item. A positive number indicates a win streak,
@@ -305,18 +343,21 @@ class LibraryRepository {
       comparisons: const Value(0),
       updatedAt: Value(DateTime.now()),
     ));
-    await _pushRating(localId, startingElo, 0);
+    unawaited(_pushRating(localId, startingElo, 0));
     if (!_syncEnabled) return;
-    try {
-      final uuid = await _remoteItemId(localId);
-      if (uuid != null) await _remote!.deleteComparisonsForItem(userId, uuid);
-    } catch (_) {
-      // Best-effort.
-    }
+    unawaited(() async {
+      try {
+        final uuid = await _remoteItemId(localId);
+        if (uuid != null) await _remote!.deleteComparisonsForItem(userId, uuid);
+      } catch (_) {
+        // Best-effort.
+      }
+    }());
   }
 
   /// Records a duel result: updates both Elos and stores the comparison.
-  Future<void> recordComparison({
+  /// Returns the new comparison's id (for undo), or null when it was a no-op.
+  Future<String?> recordComparison({
     required String winnerId,
     required String loserId,
   }) async {
@@ -325,7 +366,7 @@ class LibraryRepository {
     };
     final winner = ratings[winnerId];
     final loser = ratings[loserId];
-    if (winner == null || loser == null) return;
+    if (winner == null || loser == null) return null;
 
     final (wElo, lElo) = Elo.update(winner.elo, loser.elo);
     final now = DateTime.now();
@@ -353,9 +394,56 @@ class LibraryRepository {
       loserItemId: Value(loserId),
       createdAt: Value(now),
     ));
-    await _pushRating(winnerId, wElo, winner.comparisons + 1);
-    await _pushRating(loserId, lElo, loser.comparisons + 1);
-    await _pushComparison(compId, winnerId, loserId, now);
+    // Remote sync is best-effort and MUST NOT block the local write — an offline
+    // duel would otherwise hang on a network / token-refresh timeout. Detached.
+    unawaited(() async {
+      await _pushRating(winnerId, wElo, winner.comparisons + 1);
+      await _pushRating(loserId, lElo, loser.comparisons + 1);
+      await _pushComparison(compId, winnerId, loserId, now);
+    }());
+    return compId;
+  }
+
+  /// Undoes a single duel: restores both items to their pre-duel Elo and
+  /// comparison counts and removes the comparison row (local + best-effort
+  /// remote). Caller supplies the snapshot captured before the duel.
+  Future<void> revertComparison({
+    required String comparisonId,
+    required String winnerId,
+    required double winnerElo,
+    required int winnerComparisons,
+    required String loserId,
+    required double loserElo,
+    required int loserComparisons,
+  }) async {
+    final now = DateTime.now();
+    await _db.upsertRating(LocalRatingsCompanion(
+      id: Value(_ratingId(winnerId)),
+      userId: Value(userId),
+      itemId: Value(winnerId),
+      elo: Value(winnerElo),
+      comparisons: Value(winnerComparisons),
+      updatedAt: Value(now),
+    ));
+    await _db.upsertRating(LocalRatingsCompanion(
+      id: Value(_ratingId(loserId)),
+      userId: Value(userId),
+      itemId: Value(loserId),
+      elo: Value(loserElo),
+      comparisons: Value(loserComparisons),
+      updatedAt: Value(now),
+    ));
+    await _db.deleteComparisonById(comparisonId);
+    unawaited(() async {
+      await _pushRating(winnerId, winnerElo, winnerComparisons);
+      await _pushRating(loserId, loserElo, loserComparisons);
+      if (!_syncEnabled) return;
+      try {
+        await _remote!.deleteComparison(userId, comparisonId);
+      } catch (_) {
+        // Best-effort — local undo already succeeded.
+      }
+    }());
   }
 
   /// Pushes one duel event to Supabase, keyed by its local id (`client_id`) so

@@ -8,8 +8,8 @@ import '../features/catalog/catalog_service.dart';
 /// Spotify is unavailable or returns nothing.
 abstract class ItunesApi {
   /// [entity] is the iTunes entity filter (song,album,musicArtist by default).
-  /// [offset] is accepted for interface compatibility but ignored (iTunes does
-  /// not support reliable offset-based pagination).
+  /// [offset] paginates: the implementation fetches `offset + limit` results
+  /// (iTunes has no native offset param) and returns the slice past [offset].
   Future<List<CatalogItem>> search(String query,
       {String entity = 'song,album,musicArtist', int offset = 0, int limit = 20});
 }
@@ -25,16 +25,23 @@ class ItunesApiHttp implements ItunesApi {
       {String entity = 'song,album,musicArtist',
       int offset = 0,
       int limit = 20}) async {
+    // iTunes has no offset param, so fetch a window covering [offset, offset+limit)
+    // (capped at the API's 200 max) and return the slice past [offset]. Results
+    // are stably ordered, so paging by re-fetching a larger window is consistent.
+    final fetchLimit = (offset + limit).clamp(1, 200);
     final res = await _http.get(Uri.https('itunes.apple.com', '/search', {
       'term': query,
       'media': 'music',
       'entity': entity,
-      'limit': '$limit',
+      'limit': '$fetchLimit',
     }));
     if (res.statusCode != 200) {
       throw StateError('iTunes search failed: ${res.statusCode}');
     }
-    return parseSearch(res.body);
+    final all = parseSearch(res.body);
+    if (offset >= all.length) return const [];
+    final end = (offset + limit) > all.length ? all.length : offset + limit;
+    return all.sublist(offset, end);
   }
 
   /// Parses the iTunes Search response into catalog items.

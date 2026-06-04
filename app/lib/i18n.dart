@@ -150,6 +150,7 @@ class I18n {
     'duel_skip': {AppLanguage.ko: '무승부 / 둘 다 모름', AppLanguage.en: 'Skip / Don\'t know either'},
     'duel_not_sure': {AppLanguage.ko: '잘 모르겠어요', AppLanguage.en: 'Not sure'},
     'duel_skip_btn': {AppLanguage.ko: '건너뛰기', AppLanguage.en: 'Skip'},
+    'duel_undo': {AppLanguage.ko: '되돌리기', AppLanguage.en: 'Undo'},
     'duel_assigning_rank': {AppLanguage.ko: '순위 정하는 중 · {0}/{1}', AppLanguage.en: 'Assigning rank · {0}/{1}'},
     'duel_placement_complete': {AppLanguage.ko: '순위가 정해졌어요', AppLanguage.en: 'Rank determined!'},
     'duel_view_library': {AppLanguage.ko: '라이브러리 보기', AppLanguage.en: 'View Library'},

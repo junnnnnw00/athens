@@ -7,6 +7,9 @@ import 'router.dart';
 import 'theme/app_theme.dart';
 
 import 'api/supabase.dart';
+import 'api/platform_storage.dart';
+import 'data/offline_support.dart' show kLastUserIdKey;
+import 'data/repository/library_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +30,52 @@ Future<void> main() async {
     }
   }
 
-  final container = ProviderContainer();
+  // Resolve the library owner id so a returning user can cold-start fully
+  // offline (router + currentUserIdProvider use it). Priority:
+  //   1. live session (valid token)        — authoritative, refresh the cache
+  //   2. last cached id                     — written on a prior signed-in run
+  //   3. owner of the most local ratings    — ground truth already in Drift
+  String? liveUserId;
+  if (isSupabaseInitialized) {
+    try {
+      final auth = Supabase.instance.client.auth;
+      liveUserId = auth.currentUser?.id ?? auth.currentSession?.user.id;
+    } catch (_) {}
+  }
+  String? cachedUserId;
+  try {
+    cachedUserId = await PlatformStorage.read(key: kLastUserIdKey);
+  } catch (_) {}
+  if (liveUserId != null && liveUserId.isNotEmpty) {
+    // Keep the cache fresh for future offline launches.
+    try {
+      await PlatformStorage.write(key: kLastUserIdKey, value: liveUserId);
+    } catch (_) {}
+  }
+  var effectiveUserId = liveUserId ?? cachedUserId;
+
+  final container = ProviderContainer(
+    overrides: [
+      if (effectiveUserId != null && effectiveUserId.isNotEmpty)
+        lastKnownUserIdProvider.overrideWith((ref) => effectiveUserId),
+    ],
+  );
+
+  // Still unknown (offline, lapsed token, never cached) → recover the owner from
+  // the local database so the offline library isn't keyed to the wrong id.
+  if (effectiveUserId == null || effectiveUserId.isEmpty) {
+    try {
+      final owner = await container.read(appDatabaseProvider).mostActiveUserId();
+      if (owner != null && owner.isNotEmpty) {
+        effectiveUserId = owner;
+        container.read(lastKnownUserIdProvider.notifier).state = owner;
+        try {
+          await PlatformStorage.write(key: kLastUserIdKey, value: owner);
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
   if (kDevSeed) {
     await seedDevData(container);
   }

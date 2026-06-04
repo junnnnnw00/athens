@@ -11,6 +11,7 @@ import '../../widgets/cover_art.dart';
 import '../../widgets/score_ring.dart';
 import '../../widgets/initial_score_dialog.dart';
 import 'community_stats_section.dart';
+import 'item_info_cache.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
   const ItemDetailScreen({super.key, required this.itemId, this.catalogItem});
@@ -476,7 +477,7 @@ class _InfoSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
-    final infoAsync = ref.watch(itemInfoProvider((
+    final infoAsync = ref.watch(cachedItemInfoProvider((
       kind: kind,
       artist: artist,
       title: title,

@@ -119,6 +119,28 @@ class ItemInfo {
       (summary == null || summary!.isEmpty) &&
       genres.isEmpty &&
       topTracks.isEmpty;
+
+  Map<String, dynamic> toJson() => {
+        'album': album,
+        'durationMs': durationMs,
+        'year': year,
+        'listeners': listeners,
+        'playcount': playcount,
+        'summary': summary,
+        'genres': genres,
+        'topTracks': topTracks,
+      };
+
+  factory ItemInfo.fromJson(Map<String, dynamic> j) => ItemInfo(
+        album: j['album'] as String?,
+        durationMs: (j['durationMs'] as num?)?.toInt(),
+        year: j['year'] as String?,
+        listeners: (j['listeners'] as num?)?.toInt(),
+        playcount: (j['playcount'] as num?)?.toInt(),
+        summary: j['summary'] as String?,
+        genres: (j['genres'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        topTracks: (j['topTracks'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      );
 }
 
 class CatalogService {
@@ -192,6 +214,28 @@ class CatalogService {
       summary: ti?.summary,
       genres: mb.genres,
     );
+  }
+
+  /// Best-effort lookup of real cover art for an item that has none (or only a
+  /// Last.fm placeholder). Searches the catalog and returns the first result's
+  /// artwork, or null when nothing usable is found / offline.
+  Future<String?> findArtworkUrl({
+    required String kind,
+    required String artist,
+    required String title,
+  }) async {
+    final query = kind == 'artist' ? artist : '$artist $title'.trim();
+    if (query.isEmpty) return null;
+    try {
+      final results = await search(query, kind: kind, limit: 5);
+      for (final r in results) {
+        final url = r.imageUrl;
+        if (url != null && url.isNotEmpty) return url;
+      }
+    } catch (_) {
+      // Offline / transient — leave the item art-less for now.
+    }
+    return null;
   }
 
   Future<List<CatalogTag>> enrichTags(CatalogItem item) async {

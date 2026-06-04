@@ -229,6 +229,12 @@ class LastfmApiHttp implements LastfmApi {
         if (largeImg is Map) {
           imageUrl = largeImg['#text'] as String?;
           if (imageUrl?.isEmpty ?? true) imageUrl = null;
+          // Last.fm serves a blank "star" placeholder for art-less tracks —
+          // treat it as no art so we don't store/show an empty grey box.
+          if (imageUrl != null &&
+              imageUrl.contains('2a96cbd8b46e442fc41c2b86b821562f')) {
+            imageUrl = null;
+          }
         }
       }
 

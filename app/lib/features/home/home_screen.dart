@@ -36,6 +36,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final profile = profileAsync.valueOrNull;
     final lastfmEnabled = profile?.lastfmUsername != null && profile!.lastfmUsername!.trim().isNotEmpty;
     final friendsRecentAsync = ref.watch(friendsRecentRatingsProvider);
+    final libraryAsync = ref.watch(libraryControllerProvider);
     final ratedItems = ref.watch(ratedItemsProvider);
     final ratedIds = ratedItems.map((e) => e.id).toSet();
     final ratedKeys = ratedItems.map((r) {
@@ -102,7 +103,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Text(context.t('home_title', ref: ref),
                       style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: AppSpacing.lg),
-                  if (ratedItems.length < 3)
+                  // Don't decide onboarding vs. duel until the library has
+                  // actually loaded — otherwise the "취향 찾기" card flashes on a
+                  // cold (esp. offline) start before local data resolves.
+                  if (!libraryAsync.hasValue)
+                    const SizedBox.shrink()
+                  else if (ratedItems.length < 3)
                     _OnboardingCard(currentCount: ratedItems.length)
                   else
                     const _DuelCallout(onTap: null), // Tap behavior is embedded inside _DuelCallout or can be passed

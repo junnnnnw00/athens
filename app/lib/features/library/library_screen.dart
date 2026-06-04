@@ -15,6 +15,12 @@ import '../../i18n.dart';
 final _libraryFilterProvider = StateProvider<String>((ref) => 'All');
 final _lastLibraryOrderProvider = StateProvider<Map<String, List<String>>>((ref) => {});
 
+/// How the library list is ordered.
+enum LibrarySort { rank, recent, alpha, mostDueled }
+
+final _librarySortProvider = StateProvider<LibrarySort>((ref) => LibrarySort.rank);
+final _librarySearchProvider = StateProvider<String>((ref) => '');
+
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
@@ -28,6 +34,133 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   List<RatedCatalogItem>? _animatedItems;
   String? _lastFilter;
   bool _animating = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Restore any in-flight search text when returning to the screen.
+    _searchController.text = ref.read(_librarySearchProvider);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refresh() =>
+      ref.read(libraryControllerProvider.notifier).refresh();
+
+  List<RatedCatalogItem> _sorted(List<RatedCatalogItem> list, LibrarySort sort) {
+    final out = List<RatedCatalogItem>.from(list);
+    switch (sort) {
+      case LibrarySort.rank:
+        out.sort((a, b) => b.elo.compareTo(a.elo));
+      case LibrarySort.recent:
+        out.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      case LibrarySort.alpha:
+        out.sort((a, b) =>
+            a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+      case LibrarySort.mostDueled:
+        out.sort((a, b) => b.comparisons.compareTo(a.comparisons));
+    }
+    return out;
+  }
+
+  PopupMenuItem<LibrarySort> _sortMenuItem(
+      LibrarySort value, String label, LibrarySort current) {
+    final selected = value == current;
+    return PopupMenuItem<LibrarySort>(
+      value: value,
+      child: Row(
+        children: [
+          Icon(Icons.check_rounded,
+              size: 16,
+              color: selected ? context.palette.accent : Colors.transparent),
+          const SizedBox(width: 8),
+          Text(label,
+              style: TextStyle(
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.normal)),
+        ],
+      ),
+    );
+  }
+
+  /// The default (rank, no-search) view, with the smooth post-duel reorder
+  /// animation. Returns the list to display.
+  List<RatedCatalogItem> _resolveDefaultView(
+      String filter, List<RatedCatalogItem> filtered) {
+    if (_lastFilter != filter || _animatedItems == null) {
+      _lastFilter = filter;
+      final lastOrderMap = ref.read(_lastLibraryOrderProvider);
+      final lastIds = lastOrderMap[filter];
+
+      if (lastIds != null && lastIds.isNotEmpty) {
+        final Map<String, int> orderMap = {
+          for (int i = 0; i < lastIds.length; i++) lastIds[i]: i
+        };
+        final sortedToMatchLast = List<RatedCatalogItem>.from(filtered)
+          ..sort((a, b) {
+            final indexA = orderMap[a.id];
+            final indexB = orderMap[b.id];
+            if (indexA != null && indexB != null) {
+              return indexA.compareTo(indexB);
+            }
+            if (indexA != null) return -1;
+            if (indexB != null) return 1;
+            return b.elo.compareTo(a.elo);
+          });
+        _animatedItems = sortedToMatchLast;
+
+        if (!_animating) {
+          _animating = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Future.delayed(const Duration(milliseconds: 150), () {
+                if (mounted) {
+                  setState(() {
+                    _animatedItems = filtered;
+                    _animating = false;
+                  });
+                  final newIds = filtered.map((i) => i.id).toList();
+                  ref.read(_lastLibraryOrderProvider.notifier).update((state) => {
+                        ...state,
+                        filter: newIds,
+                      });
+                }
+              });
+            }
+          });
+        }
+      } else {
+        _animatedItems = filtered;
+        final newIds = filtered.map((i) => i.id).toList();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ref.read(_lastLibraryOrderProvider.notifier).update((state) => {
+                  ...state,
+                  filter: newIds,
+                });
+          }
+        });
+      }
+    } else {
+      if (!_animating) {
+        _animatedItems = filtered;
+        final newIds = filtered.map((i) => i.id).toList();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ref.read(_lastLibraryOrderProvider.notifier).update((state) => {
+                  ...state,
+                  filter: newIds,
+                });
+          }
+        });
+      }
+    }
+    return _animatedItems ?? filtered;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +186,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       appBar: AppBar(
         title: Text(context.t('profile_library', ref: ref)),
         actions: [
+          if (ref.watch(pendingSyncProvider) > 0)
+            IconButton(
+              tooltip: lang == AppLanguage.ko
+                  ? '동기화 대기 ${ref.watch(pendingSyncProvider)}개 · 탭하여 동기화'
+                  : '${ref.watch(pendingSyncProvider)} pending · tap to sync',
+              icon: Badge(
+                label: Text('${ref.watch(pendingSyncProvider)}'),
+                child: const Icon(Icons.cloud_upload_outlined),
+              ),
+              onPressed: _refresh,
+            ),
           IconButton(
             tooltip: context.t('profile_stats', ref: ref),
             icon: const Icon(Icons.bar_chart_rounded),
@@ -70,87 +214,107 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         error: (e, _) => _LibraryError(message: '$e'),
         data: (items) {
           if (items.isEmpty) return const _LibraryEmpty();
-          final filtered = filter == 'All'
+          final kindFiltered = filter == 'All'
               ? items
               : items.where((i) => i.kind == LibraryScreen._kinds[filter]).toList();
 
-          if (_lastFilter != filter || _animatedItems == null) {
-            _lastFilter = filter;
-            final lastOrderMap = ref.read(_lastLibraryOrderProvider);
-            final lastIds = lastOrderMap[filter];
+          final query = ref.watch(_librarySearchProvider).trim().toLowerCase();
+          final sort = ref.watch(_librarySortProvider);
+          final searched = query.isEmpty
+              ? kindFiltered
+              : kindFiltered
+                  .where((i) =>
+                      i.title.toLowerCase().contains(query) ||
+                      (i.primaryArtist ?? '').toLowerCase().contains(query) ||
+                      i.tags.any((t) => t.name.toLowerCase().contains(query)))
+                  .toList();
 
-            if (lastIds != null && lastIds.isNotEmpty) {
-              final Map<String, int> orderMap = {
-                for (int i = 0; i < lastIds.length; i++) lastIds[i]: i
-              };
-              final sortedToMatchLast = List<RatedCatalogItem>.from(filtered)
-                ..sort((a, b) {
-                  final indexA = orderMap[a.id];
-                  final indexB = orderMap[b.id];
-                  if (indexA != null && indexB != null) {
-                    return indexA.compareTo(indexB);
-                  }
-                  if (indexA != null) return -1;
-                  if (indexB != null) return 1;
-                  return b.elo.compareTo(a.elo);
-                });
-              _animatedItems = sortedToMatchLast;
-
-              if (!_animating) {
-                _animating = true;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    Future.delayed(const Duration(milliseconds: 150), () {
-                      if (mounted) {
-                        setState(() {
-                          _animatedItems = filtered;
-                          _animating = false;
-                        });
-                        final newIds = filtered.map((i) => i.id).toList();
-                        ref.read(_lastLibraryOrderProvider.notifier).update((state) => {
-                          ...state,
-                          filter: newIds,
-                        });
-                      }
-                    });
-                  }
-                });
-              }
-            } else {
-              _animatedItems = filtered;
-              final newIds = filtered.map((i) => i.id).toList();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  ref.read(_lastLibraryOrderProvider.notifier).update((state) => {
-                    ...state,
-                    filter: newIds,
-                  });
-                }
-              });
-            }
+          // Default view keeps the post-duel reorder animation; search/sort show
+          // the computed order directly (and reset the animation state).
+          final isDefaultView = sort == LibrarySort.rank && query.isEmpty;
+          final List<RatedCatalogItem> displayItems;
+          if (isDefaultView) {
+            displayItems = _resolveDefaultView(filter, searched);
           } else {
-            if (!_animating) {
-              _animatedItems = filtered;
-              final newIds = filtered.map((i) => i.id).toList();
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  ref.read(_lastLibraryOrderProvider.notifier).update((state) => {
-                    ...state,
-                    filter: newIds,
-                  });
-                }
-              });
-            }
+            _animatedItems = null;
+            _lastFilter = null;
+            displayItems = _sorted(searched, sort);
           }
-
-          final displayItems = _animatedItems ?? filtered;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl, AppSpacing.xs, AppSpacing.xl, AppSpacing.md),
+                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (v) =>
+                            ref.read(_librarySearchProvider.notifier).state = v,
+                        textInputAction: TextInputAction.search,
+                        style: const TextStyle(fontSize: 14),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          hintText: lang == AppLanguage.ko
+                              ? '내 라이브러리 검색…'
+                              : 'Search your library…',
+                          prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                          suffixIcon: query.isEmpty
+                              ? null
+                              : IconButton(
+                                  icon: const Icon(Icons.close_rounded, size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    ref
+                                        .read(_librarySearchProvider.notifier)
+                                        .state = '';
+                                  },
+                                ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 0, horizontal: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                            borderSide: BorderSide(color: p.line),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                            borderSide: BorderSide(color: p.line),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    PopupMenuButton<LibrarySort>(
+                      icon: Icon(Icons.sort_rounded,
+                          color: sort == LibrarySort.rank ? p.muted : p.accent),
+                      tooltip: lang == AppLanguage.ko ? '정렬' : 'Sort',
+                      initialValue: sort,
+                      onSelected: (s) =>
+                          ref.read(_librarySortProvider.notifier).state = s,
+                      itemBuilder: (c) => [
+                        _sortMenuItem(LibrarySort.rank,
+                            lang == AppLanguage.ko ? '랭킹순' : 'By rank', sort),
+                        _sortMenuItem(
+                            LibrarySort.recent,
+                            lang == AppLanguage.ko ? '최근 평가순' : 'Recently rated',
+                            sort),
+                        _sortMenuItem(LibrarySort.alpha,
+                            lang == AppLanguage.ko ? '가나다순' : 'Alphabetical', sort),
+                        _sortMenuItem(
+                            LibrarySort.mostDueled,
+                            lang == AppLanguage.ko ? '듀얼 많은순' : 'Most dueled',
+                            sort),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.md),
                 child: FilterChips(
                   options: options.map(getOptionLabel).toList(),
                   selected: getOptionLabel(filter),
@@ -161,30 +325,42 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 ),
               ),
               Expanded(
-                child: displayItems.isEmpty
-                    ? Center(
-                        child: Text(context.t('lib_empty_filter', ref: ref),
-                            style: TextStyle(color: p.muted)))
-                    : ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: EdgeInsets.only(
-                            bottom: AppLayout.scrollBottomInset(context)),
-                        itemCount: displayItems.length,
-                        separatorBuilder: (context, index) => Divider(
-                          height: 1,
-                          color: p.line,
-                          indent: AppSpacing.xl,
+                child: RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: displayItems.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.3),
+                            Center(
+                                child: Text(
+                                    context.t('lib_empty_filter', ref: ref),
+                                    style: TextStyle(color: p.muted))),
+                          ],
+                        )
+                      : ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: EdgeInsets.only(
+                              bottom: AppLayout.scrollBottomInset(context)),
+                          itemCount: displayItems.length,
+                          separatorBuilder: (context, index) => Divider(
+                            height: 1,
+                            color: p.line,
+                            indent: AppSpacing.xl,
+                          ),
+                          itemBuilder: (context, index) {
+                            return Material(
+                              color: Colors.transparent,
+                              child: _LibraryRow(
+                                rank: index + 1,
+                                item: displayItems[index],
+                              ),
+                            );
+                          },
                         ),
-                        itemBuilder: (context, index) {
-                          return Material(
-                            color: Colors.transparent,
-                            child: _LibraryRow(
-                              rank: index + 1,
-                              item: displayItems[index],
-                            ),
-                          );
-                        },
-                      ),
+                ),
               ),
             ],
           );
