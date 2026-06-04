@@ -65,6 +65,13 @@ android-install: android-apk ## Build + install release APK to USB device
 android-logs: ## Stream logcat from connected device (filter by athens)
 	$(ADB) logcat | grep -i athens
 
+.PHONY: macos-zip
+macos-zip: ## Build macOS release + zip Athens.app → attach .zip to the GitHub Release (in-app updater asset)
+	cd $(APP) && flutter build macos --release $(DEFINE)
+	cd $(APP)/build/macos/Build/Products/Release && ditto -c -k --keepParent Athens.app "$(CURDIR)/$(APP)/build/athens-macos.zip"
+	@echo "✅  macOS zip: $(APP)/build/athens-macos.zip"
+	@echo "    ⚠️  EVERY release needs a .zip asset or macOS in-app update breaks (downloads the release HTML page instead). Upload with: gh release upload vX.Y.Z app/build/athens-macos.zip"
+
 
 # ---- Unified web app (Next.js host: / landing, /u/[handle] profile, /app Flutter) ----
 # Deploy pipeline: flutter build web → copy → vercel deploy --prod → re-pin aliases.
