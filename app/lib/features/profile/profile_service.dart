@@ -34,7 +34,8 @@ class UserProfile {
         bio: m['bio'] as String?,
         avatarUrl: m['avatar_url'] as String?,
         isPublic: m['is_public'] as bool? ?? false,
-        isPremium: m['is_premium'] as bool? ?? false,
+        // Free app: every feature is unlocked for everyone. (No IAP / paywall.)
+        isPremium: true,
         lastfmUsername: m['lastfm_username'] as String?,
       );
 }

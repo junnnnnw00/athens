@@ -35,18 +35,36 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   String? _lastFilter;
   bool _animating = false;
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
+  bool _searchOpen = false;
 
   @override
   void initState() {
     super.initState();
-    // Restore any in-flight search text when returning to the screen.
+    _searchOpen = ref.read(_librarySearchProvider).isNotEmpty;
     _searchController.text = ref.read(_librarySearchProvider);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  void _openSearch() {
+    setState(() => _searchOpen = true);
+    // Focus after the field is mounted so the keyboard rises on intent only.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocus.requestFocus();
+    });
+  }
+
+  void _closeSearch() {
+    _searchFocus.unfocus();
+    _searchController.clear();
+    ref.read(_librarySearchProvider.notifier).state = '';
+    setState(() => _searchOpen = false);
   }
 
   Future<void> _refresh() =>
@@ -66,6 +84,25 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         out.sort((a, b) => b.comparisons.compareTo(a.comparisons));
     }
     return out;
+  }
+
+  Widget _sortAction(LibrarySort sort, AppLanguage lang) {
+    final ko = lang == AppLanguage.ko;
+    return PopupMenuButton<LibrarySort>(
+      icon: Icon(Icons.sort_rounded,
+          color: sort == LibrarySort.rank ? null : context.palette.accent),
+      tooltip: ko ? '정렬' : 'Sort',
+      initialValue: sort,
+      onSelected: (s) => ref.read(_librarySortProvider.notifier).state = s,
+      itemBuilder: (c) => [
+        _sortMenuItem(LibrarySort.rank, ko ? '랭킹순' : 'By rank', sort),
+        _sortMenuItem(
+            LibrarySort.recent, ko ? '최근 평가순' : 'Recently rated', sort),
+        _sortMenuItem(LibrarySort.alpha, ko ? '가나다순' : 'Alphabetical', sort),
+        _sortMenuItem(
+            LibrarySort.mostDueled, ko ? '듀얼 많은순' : 'Most dueled', sort),
+      ],
+    );
   }
 
   PopupMenuItem<LibrarySort> _sortMenuItem(
@@ -182,32 +219,78 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       return opt;
     }
 
+    final sort = ref.watch(_librarySortProvider);
+    final pending = ref.watch(pendingSyncProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.t('profile_library', ref: ref)),
-        actions: [
-          if (ref.watch(pendingSyncProvider) > 0)
-            IconButton(
-              tooltip: lang == AppLanguage.ko
-                  ? '동기화 대기 ${ref.watch(pendingSyncProvider)}개 · 탭하여 동기화'
-                  : '${ref.watch(pendingSyncProvider)} pending · tap to sync',
-              icon: Badge(
-                label: Text('${ref.watch(pendingSyncProvider)}'),
-                child: const Icon(Icons.cloud_upload_outlined),
-              ),
-              onPressed: _refresh,
-            ),
-          IconButton(
-            tooltip: context.t('profile_stats', ref: ref),
-            icon: const Icon(Icons.bar_chart_rounded),
-            onPressed: () => context.push('/stats'),
-          ),
-          IconButton(
-            tooltip: context.t('profile_me', ref: ref),
-            icon: const Icon(Icons.person_outline_rounded),
-            onPressed: () => context.push('/profile'),
-          ),
-        ],
+        leading: _searchOpen
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                tooltip: lang == AppLanguage.ko ? '닫기' : 'Close',
+                onPressed: _closeSearch,
+              )
+            : null,
+        title: _searchOpen
+            ? TextField(
+                controller: _searchController,
+                focusNode: _searchFocus,
+                onChanged: (v) =>
+                    ref.read(_librarySearchProvider.notifier).state = v,
+                textInputAction: TextInputAction.search,
+                style: Theme.of(context).textTheme.titleMedium,
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  hintText: lang == AppLanguage.ko
+                      ? '내 라이브러리 검색…'
+                      : 'Search your library…',
+                  border: InputBorder.none,
+                ),
+              )
+            : Text(context.t('profile_library', ref: ref)),
+        actions: _searchOpen
+            ? [
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
+                    tooltip: lang == AppLanguage.ko ? '지우기' : 'Clear',
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () {
+                      _searchController.clear();
+                      ref.read(_librarySearchProvider.notifier).state = '';
+                      setState(() {});
+                    },
+                  ),
+                _sortAction(sort, lang),
+              ]
+            : [
+                IconButton(
+                  tooltip: lang == AppLanguage.ko ? '검색' : 'Search',
+                  icon: const Icon(Icons.search_rounded),
+                  onPressed: _openSearch,
+                ),
+                _sortAction(sort, lang),
+                if (pending > 0)
+                  IconButton(
+                    tooltip: lang == AppLanguage.ko
+                        ? '동기화 대기 $pending개 · 탭하여 동기화'
+                        : '$pending pending · tap to sync',
+                    icon: Badge(
+                      label: Text('$pending'),
+                      child: const Icon(Icons.cloud_upload_outlined),
+                    ),
+                    onPressed: _refresh,
+                  ),
+                IconButton(
+                  tooltip: context.t('profile_stats', ref: ref),
+                  icon: const Icon(Icons.bar_chart_rounded),
+                  onPressed: () => context.push('/stats'),
+                ),
+                IconButton(
+                  tooltip: context.t('profile_me', ref: ref),
+                  icon: const Icon(Icons.person_outline_rounded),
+                  onPressed: () => context.push('/profile'),
+                ),
+              ],
       ),
       body: async.when(
         loading: () => const _LibrarySkeleton(),
@@ -246,75 +329,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, 0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: (v) =>
-                            ref.read(_librarySearchProvider.notifier).state = v,
-                        textInputAction: TextInputAction.search,
-                        style: const TextStyle(fontSize: 14),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          hintText: lang == AppLanguage.ko
-                              ? '내 라이브러리 검색…'
-                              : 'Search your library…',
-                          prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                          suffixIcon: query.isEmpty
-                              ? null
-                              : IconButton(
-                                  icon: const Icon(Icons.close_rounded, size: 18),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    ref
-                                        .read(_librarySearchProvider.notifier)
-                                        .state = '';
-                                  },
-                                ),
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 0, horizontal: 12),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
-                            borderSide: BorderSide(color: p.line),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
-                            borderSide: BorderSide(color: p.line),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    PopupMenuButton<LibrarySort>(
-                      icon: Icon(Icons.sort_rounded,
-                          color: sort == LibrarySort.rank ? p.muted : p.accent),
-                      tooltip: lang == AppLanguage.ko ? '정렬' : 'Sort',
-                      initialValue: sort,
-                      onSelected: (s) =>
-                          ref.read(_librarySortProvider.notifier).state = s,
-                      itemBuilder: (c) => [
-                        _sortMenuItem(LibrarySort.rank,
-                            lang == AppLanguage.ko ? '랭킹순' : 'By rank', sort),
-                        _sortMenuItem(
-                            LibrarySort.recent,
-                            lang == AppLanguage.ko ? '최근 평가순' : 'Recently rated',
-                            sort),
-                        _sortMenuItem(LibrarySort.alpha,
-                            lang == AppLanguage.ko ? '가나다순' : 'Alphabetical', sort),
-                        _sortMenuItem(
-                            LibrarySort.mostDueled,
-                            lang == AppLanguage.ko ? '듀얼 많은순' : 'Most dueled',
-                            sort),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.md),
+                    AppSpacing.xl, AppSpacing.xs, AppSpacing.xl, AppSpacing.md),
                 child: FilterChips(
                   options: options.map(getOptionLabel).toList(),
                   selected: getOptionLabel(filter),

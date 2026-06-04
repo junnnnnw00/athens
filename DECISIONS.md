@@ -344,3 +344,23 @@ First-ever launch with no prior login still needs one online sign-in.
 
 **Reversibility:** Delete `lastKnownUserIdProvider` fallback + the cachedUid branch
 in router redirect + `offlineSupportProvider`; remove the `last_user_id` cache key.
+
+---
+
+## Decision: Ship as a free app — remove premium/IAP (2026-06-04, v1.5.4)
+
+**What:** Athens ships fully free. Removed the paywall entirely:
+- Deleted `premium_upgrade_screen`, `premium_lock_overlay`, `api/billing/*`
+  (billing_service, noop/play implementations, billing_providers), and the
+  `/premium-upgrade` route. Dropped the `in_app_purchase` dependency.
+- `UserProfile.isPremium` is now always `true` → every premium-gated feature
+  (detailed stats, friend comparison depth, etc.) is unlocked for everyone.
+- Removed the "Premium" profile badge.
+
+**Why:** No monetization at this stage. Free + no IAP means **no 통신판매업
+신고, no escrow, no Google Play payments/tax profile** — fastest path to launch
+with zero cost. (See chat: youth/student, cost-averse.)
+
+**Reversibility:** All premium code is recoverable from git history (pre-v1.5.4).
+Re-add `in_app_purchase`, restore the deleted files + `/premium-upgrade` route,
+and revert `isPremium` to read the column. Re-open this proposal before doing so.

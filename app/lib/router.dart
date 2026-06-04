@@ -18,7 +18,6 @@ import 'features/library/item_detail_screen.dart';
 import 'features/catalog/catalog_service.dart';
 import 'features/friends/friend_list_screen.dart';
 import 'features/friends/friend_comparison_screen.dart';
-import 'features/premium/premium_upgrade_screen.dart';
 import 'widgets/floating_nav.dart';
 import 'widgets/offline_banner.dart';
 import 'data/connectivity_providers.dart';
@@ -107,8 +106,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/landing', builder: (c, s) => const LandingScreen()),
       GoRoute(path: '/auth', builder: (c, s) => const AuthScreen()),
-      // Full-screen modal-style routes live on the root navigator (no tab bar).
-      GoRoute(path: '/premium-upgrade', builder: (c, s) => const PremiumUpgradeScreen()),
       buildAppShellRoute(),
     ],
   );

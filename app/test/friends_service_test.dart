@@ -5,26 +5,24 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('UserProfile isPremium Mapping', () {
-    test('maps is_premium correctly', () {
-      final profile = UserProfile.fromMap({
+    // Free app: every feature is unlocked for everyone, so isPremium is always
+    // true regardless of the (now unused) is_premium column.
+    test('isPremium is always true (free app)', () {
+      final withFlag = UserProfile.fromMap({
         'id': 'u-premium',
         'handle': 'vip_user',
         'display_name': 'VIP',
         'is_public': true,
-        'is_premium': true,
+        'is_premium': false,
       });
-
-      expect(profile.isPremium, isTrue);
-    });
-
-    test('defaults is_premium to false if missing', () {
-      final profile = UserProfile.fromMap({
+      final missing = UserProfile.fromMap({
         'id': 'u-free',
         'handle': 'regular_user',
         'is_public': true,
       });
 
-      expect(profile.isPremium, isFalse);
+      expect(withFlag.isPremium, isTrue);
+      expect(missing.isPremium, isTrue);
     });
   });
 

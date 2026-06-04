@@ -1,7 +1,7 @@
 name: athens
 description: "Athens — pairwise music rating app. Open-source, single hosted instance."
 publish_to: 'none'
-version: 1.5.3+105003
+version: 1.5.4+105004
 environment:
   sdk: ^3.6.0
   flutter: ">=3.29.0"
@@ -52,9 +52,6 @@ dependencies:
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
   connectivity_plus: ^6.1.0
-
-  # In-app purchases (Google Play Billing — Store build only)
-  in_app_purchase: ^3.2.0
 
 dev_dependencies:
   flutter_test:

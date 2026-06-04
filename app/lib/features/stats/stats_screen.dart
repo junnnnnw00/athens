@@ -10,9 +10,7 @@ import '../../theme/app_theme.dart';
 
 import '../../i18n.dart';
 
-import '../../widgets/premium_lock_overlay.dart';
 import '../catalog/catalog_service.dart';
-import '../profile/profile_service.dart';
 
 part 'widgets/stats_charts.dart';
 
@@ -48,8 +46,6 @@ class StatsScreen extends ConsumerWidget {
     final p = context.palette;
     final statsAsync = ref.watch(statsProvider);
     final isKo = ref.watch(localeProvider) == AppLanguage.ko;
-    final profileAsync = ref.watch(myProfileProvider);
-    final isPremium = profileAsync.valueOrNull?.isPremium ?? false;
 
     return statsAsync.when(
       data: (stats) {
@@ -350,13 +346,6 @@ class StatsScreen extends ConsumerWidget {
                       ],
                     ],
                   ),
-                  if (!isPremium)
-                    const Positioned.fill(
-                      child: PremiumLockOverlay(
-                        featureName: '상세 취향 통계 분석',
-                        featureDescription: '장르/무드 선호도 차트 및 활동 로그 등 깊이 있는 취향 분석 보고서를 잠금 해제하세요.',
-                      ),
-                    ),
                 ],
               ),
             ],
