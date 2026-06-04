@@ -264,27 +264,6 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
             gap: 10,
           }}>
             {profile.display_name ?? profile.handle}
-            {profile.is_premium && (
-              <span style={{
-                fontSize: 11,
-                fontWeight: 800,
-                color: 'var(--accent-text)',
-                background: 'rgba(86, 208, 141, 0.15)',
-                border: '1px solid rgba(86, 208, 141, 0.3)',
-                borderRadius: 12,
-                padding: '2px 8px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-              }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style={{ marginBottom: 1 }}>
-                  <path d="M12 2L15 8L22 9L17 14L18.5 21L12 17.5L5.5 21L7 14L2 9L9 8L12 2Z" />
-                </svg>
-                Premium
-              </span>
-            )}
           </h1>
           <p style={{
             margin: '4px 0 0',
