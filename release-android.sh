@@ -18,9 +18,11 @@ APK_PATH="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
 PUBSPEC="$APP_DIR/pubspec.yaml"
 
 # --- 1. Bump version in pubspec.yaml ---
-# Compute an integer versionCode from "MAJOR*10000 + MINOR*100 + PATCH"
+# Compute an integer versionCode matching the live scheme: 1_MM_PPP
+# (MAJOR*100000 + MINOR*1000 + PATCH), e.g. 1.5.3 -> 105003. Monotonic so the
+# Play Store / sideload never sees a build-number regression.
 IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+VERSION_CODE=$(( MAJOR * 100000 + MINOR * 1000 + PATCH ))
 
 echo "🔖  Bumping version → $VERSION+$VERSION_CODE"
 sed -i '' "s/^version: .*/version: $VERSION+$VERSION_CODE/" "$PUBSPEC"
