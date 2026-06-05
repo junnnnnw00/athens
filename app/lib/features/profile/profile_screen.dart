@@ -65,8 +65,17 @@ class ProfileScreen extends ConsumerWidget {
               tooltip: context.t('profile_logout', ref: ref),
               onPressed: () async {
                 try {
-                  await Supabase.instance.client.auth.signOut();
-                } catch (_) {}
+                  await Supabase.instance.client.auth
+                      .signOut()
+                      .timeout(const Duration(seconds: 5));
+                } catch (_) {
+                  // Network/timeout — clear the local session anyway so logout
+                  // never hangs (e.g. offline).
+                  try {
+                    await Supabase.instance.client.auth
+                        .signOut(scope: SignOutScope.local);
+                  } catch (_) {}
+                }
                 if (context.mounted) context.go('/auth');
               },
             ),

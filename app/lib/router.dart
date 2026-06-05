@@ -89,11 +89,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final onLanding = state.matchedLocation == '/landing';
 
       if (session == null) {
-        // Returning user with a cached id but no live session (offline / lapsed
-        // token): keep them in the app on their cached local library instead of
-        // bouncing to the landing page.
+        // ONLY while genuinely offline do we keep a returning user in the app on
+        // their cached local library. Online with no session = logged out (or a
+        // lapsed/revoked token) → fall through to landing/auth so login & logout
+        // work normally. (Without the offline gate the cached id would trap the
+        // user in-app as "local-user" and block the login screen.)
         final cachedUid = ref.read(lastKnownUserIdProvider);
-        if (cachedUid != null && cachedUid.isNotEmpty) {
+        final offline = ref.read(isOfflineProvider);
+        if (offline && cachedUid != null && cachedUid.isNotEmpty) {
           if (loggingIn || onLanding) return '/home';
           return null;
         }
