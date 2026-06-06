@@ -116,38 +116,15 @@ class ProfileService {
     return null;
   }
 
-  /// Toggles the user's premium status in the database (for development/testing).
-  Future<void> togglePremium(bool premium) async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw StateError('Not signed in');
-    await _client.from('profiles').update({'is_premium': premium}).eq('id', user.id);
-  }
-
-  /// Called after a successful Google Play purchase verification.
-  ///
-  /// The Edge Function [verify-play-purchase] already sets `is_premium = true`
-  /// in the DB; this method is a client-side confirmation step that re-fetches
-  /// the profile so Riverpod can invalidate it.
-  Future<void> grantPremiumViaIap() async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw StateError('Not signed in');
-    // The edge function already wrote is_premium=true. Just confirm it locally.
-    await _client
-        .from('profiles')
-        .update({'is_premium': true})
-        .eq('id', user.id);
-  }
-
-  /// Redeems a promo code to unlock premium. Returns true if successful, false otherwise.
-  Future<bool> redeemPromoCode(String code) async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw StateError('로그인이 필요합니다.');
-    
-    final response = await _client.rpc(
-      'redeem_promo_code',
-      params: {'input_code': code},
-    );
-    return response as bool? ?? false;
+  /// Permanently deletes the signed-in user's account + all their data via the
+  /// `delete-account` edge function (auth.users delete → cascade). Throws on
+  /// failure so the UI can surface it.
+  Future<void> deleteAccount() async {
+    final res = await _client.functions.invoke('delete-account');
+    if (res.status != 200) {
+      final msg = res.data is Map ? (res.data['error']?.toString() ?? '') : '';
+      throw StateError(msg.isNotEmpty ? msg : '계정 삭제에 실패했어요. 잠시 후 다시 시도해 주세요.');
+    }
   }
 
   /// Updates the editable profile fields. Throws [HandleTakenException] if the

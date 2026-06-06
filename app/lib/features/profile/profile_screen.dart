@@ -308,18 +308,39 @@ class ProfileScreen extends ConsumerWidget {
           if (isLoggedIn)
             _Tile(
                 icon: Icons.delete_forever_rounded,
-                title: '계정 및 데이터 삭제 요청',
+                title: '계정 및 데이터 삭제',
                 subtitle: '계정과 모든 데이터를 영구적으로 삭제합니다',
                 onTap: () async {
-                  final uri = Uri.parse('https://athens.vercel.app/delete-account');
+                  final messenger = ScaffoldMessenger.of(context);
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('계정 삭제'),
+                      content: const Text(
+                        '계정과 모든 평가·데이터가 영구히 삭제됩니다.\n되돌릴 수 없어요. 계속할까요?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('취소'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('삭제', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
                   try {
-                    await launchUrl(
-                      uri,
-                      mode: LaunchMode.externalApplication,
-                    );
-                  } catch (_) {
-                    // Preferred launch mode unsupported here → fall back to default.
-                    await launchUrl(uri);
+                    await ref.read(profileServiceProvider).deleteAccount();
+                    try {
+                      await Supabase.instance.client.auth
+                          .signOut(scope: SignOutScope.local);
+                    } catch (_) {}
+                    if (context.mounted) context.go('/auth');
+                  } catch (e) {
+                    messenger.showSnackBar(SnackBar(content: Text('$e')));
                   }
                 }),
         ],

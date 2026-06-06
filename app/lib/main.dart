@@ -14,6 +14,20 @@ import 'data/repository/library_providers.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Top-level crash capture so field errors aren't silent. No crash-reporting
+  // SDK is wired yet (see PRELAUNCH #3 — Sentry); until then uncaught framework
+  // and async/platform errors are at least surfaced to the logs instead of
+  // vanishing. PlatformDispatcher.onError is the modern catch-all (Flutter 3.3+),
+  // so an explicit runZonedGuarded isn't needed.
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('[crash] ${details.exception}\n${details.stack}');
+  };
+  WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+    debugPrint('[crash] $error\n$stack');
+    return true; // handled — don't also crash the isolate
+  };
+
   if (isSupabaseInitialized) {
     await Supabase.initialize(
       url: supabaseUrl,

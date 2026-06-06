@@ -106,6 +106,7 @@ deploy-functions: ## Deploy edge functions to the linked remote project
 	supabase functions deploy lastfm-proxy --no-verify-jwt
 	supabase functions deploy musicbrainz-proxy --no-verify-jwt
 	supabase functions deploy verify-play-purchase
+	supabase functions deploy delete-account
 
 # ---- SQL lint ----
 .PHONY: sqlfluff

@@ -38,7 +38,13 @@ enable_anonymous_sign_ins = false
 [auth.email]
 enable_signup = true
 double_confirm_changes = true
-enable_confirmations = false
+# Require email verification before a new account is usable (PRELAUNCH #2).
+# NOTE: this local config does NOT change the HOSTED project — flip the same
+# setting in the Supabase dashboard (Auth → Providers → Email → "Confirm email")
+# AND set mailer_autoconfirm = false there. The default Supabase SMTP only sends
+# to team members + rate-limits hard, so configure a custom SMTP provider first
+# (Brevo 300/day or Resend 100/day free). See PRELAUNCH.md.
+enable_confirmations = true
 
 [auth.sms]
 enable_signup = false

@@ -12,55 +12,52 @@ risk, and the fix direction. Check off as resolved.
 
 ## 🔴 Critical — must resolve before store launch
 
-### [ ] 1. Account deletion is "request only" — nothing actually deletes
-- **Evidence:** `web/app/delete-account/page.tsx` inserts a row into
-  `deletion_requests`; `supabase/migrations/0018_add_deletion_requests.sql` has
-  no processor (no cron / edge / trigger). Requests just pile up.
-- **Risk:** Google Play **Data Deletion policy** requires a real deletion path,
-  not an unprocessed queue. Compliance + legal exposure.
-- **Abuse vector:** RLS policy `"Allow public insert to deletion_requests"` lets
-  **anyone insert any email** (the client-side password check is bypassable by
-  calling the table directly) → malicious deletion requests / spam against the
-  table.
-- **Fix:** an authenticated edge function that deletes the **caller's own** data
-  by `auth.uid()` (cascade ratings / comparisons / reviews / follows / profile +
-  `auth.admin.deleteUser`). Lock the `deletion_requests` RLS to authenticated
-  self-inserts (or drop the table in favor of the direct-delete function).
+### [x] 1. Account deletion — RESOLVED (2026-06-07)
+- **Was:** delete-account page only inserted a `deletion_requests` row (no
+  processor); RLS `"Allow public insert"` let anyone insert any email.
+- **Fixed:** authenticated `delete-account` edge function deletes the caller's
+  own `auth.users` row (verified from their JWT, never a body id) → cascades to
+  profile / ratings / comparisons / reviews / follows. In-app delete tile now
+  confirms → calls it → signs out. `deletion_requests` RLS locked to
+  authenticated self-inserts (migration 0025). Deployed with `verify_jwt` on.
 
-### [ ] 2. Email confirmation is OFF (autoconfirm)
-- **Evidence:** `supabase/config.toml` `enable_confirmations = false`;
-  `DECISIONS.md` notes hosted `mailer_autoconfirm = true` (a dev workaround for
-  the free-tier email rate limit).
-- **Risk:** anyone can sign up with **any email they don't own** — no
-  verification. Fake accounts, impersonation, signup spam.
-- **Fix:** enable confirmations on the hosted project + wire a real SMTP
-  provider (e.g. Resend) so confirmation emails actually send. Re-test signup.
+### [~] 2. Email confirmation — config flipped; **needs hosted dashboard action**
+- **Done in code:** `supabase/config.toml` `enable_confirmations = true`.
+- **⚠ YOU must do (hosted, can't be done from code):**
+  1. Sign up an SMTP provider — **Brevo (300/day free)** recommended over Resend
+     (100/day) for launch-day signup bursts. Get SMTP host/user/pass.
+  2. Supabase dashboard → **Auth → SMTP Settings** → enter the provider creds.
+  3. Auth → Providers → Email → enable **"Confirm email"**; turn **off**
+     `mailer_autoconfirm`.
+  4. Test a real signup → confirmation email arrives → account usable only after.
+  - Cost: $0 at ~1000 users (see earlier analysis).
 
-### [ ] 3. No top-level crash handling or reporting
-- **Evidence:** `app/lib/main.dart` has no `runZonedGuarded` /
-  `FlutterError.onError` / `PlatformDispatcher.onError`; no Sentry / Crashlytics
-  dependency anywhere.
-- **Risk:** field crashes die silently with **zero telemetry** — can't diagnose
-  production issues after launch.
-- **Fix:** wrap `runApp` in a guarded zone + set `FlutterError.onError`; add a
-  crash reporter (Sentry free tier is enough). Scrub PII before sending.
+### [x] 3. Crash handling — RESOLVED (partial: reporting TODO)
+- **Fixed:** `main.dart` sets `FlutterError.onError` +
+  `PlatformDispatcher.onError` → uncaught framework/async errors are caught and
+  logged instead of vanishing.
+- **Still optional:** no crash-report SDK yet. To get field telemetry, add Sentry
+  (free tier) — needs a DSN (your account). Wire it into the two handlers.
 
 ---
 
 ## 🟠 High — clean up soon
 
-### [ ] 4. Promo-code → premium is dead code
-- **Evidence:** `app/lib/features/profile/profile_service.dart`
-  `redeemPromoCode()` + `redeem_promo_code` RPC still "unlock premium", but
-  premium was removed (`UserProfile.isPremium` hardcoded `true`).
-- **Risk:** confusing dead path; the RPC may still mutate `is_premium`.
-- **Fix:** remove `redeemPromoCode` + the promo UI; drop/neutralize the RPC and
-  `promo_codes` / `promo_code_redemptions` if unused. Note in DECISIONS.md.
+### [x] 4. Promo-code → premium dead code — RESOLVED (2026-06-07)
+- Removed `redeemPromoCode`, `togglePremium`, `grantPremiumViaIap` from
+  `profile_service.dart` (all 0 call sites). The `redeem_promo_code` RPC +
+  `promo_codes` tables remain in the DB but are now unreferenced (harmless; drop
+  later if desired).
 
-### [ ] 5. Stale docs (docs/internal/BLOCKERS.md)
-- **Evidence:** `docs/internal/BLOCKERS.md` lists Spotify user-connect as an active blocker,
-  but the code has no `connectSpotify` / PKCE paths (removed; verified clean).
-- **Fix:** prune the resolved Spotify-connect blockers; keep only what's true.
+### [x] 5. Stale BLOCKERS.md — RESOLVED (2026-06-07)
+- Rewrote `docs/internal/BLOCKERS.md`: pruned the moot Spotify-connect / APK /
+  Supabase-unverified blockers; only the image-share-export item remains active.
+
+### [x] Bonus: 흰천장 community stats wouldn't open — RESOLVED (2026-06-07)
+- `item_rating_stats` / `snapshot_item_ratings` used `comparisons >= 1`, which
+  dropped valid directly-scored ratings (elo≠1000, 0 duels) → a 3-rater song
+  counted as 2, under the min_n=3 privacy threshold. Filter changed to
+  `comparisons >= 1 OR elo <> 1000` (migration 0024).
 
 ---
 
@@ -70,8 +67,8 @@ risk, and the fix direction. Check off as resolved.
   promo_code_redemptions, ratings, reviews).
 - Web client exposes only `NEXT_PUBLIC_SUPABASE_ANON_KEY` + URL — no secrets.
 - Privacy policy page live, references data deletion + a contact email.
-- In-app account-deletion entry point exists (`profile_screen.dart` → web form);
-  only the *processing* is missing (see #1).
+- In-app account deletion does a real cascade delete via the `delete-account`
+  edge function (see #1, resolved).
 - Empty-state widgets present across home / library.
 - Last.fm / MusicBrainz proxies are cached + method/entity-allowlisted +
   token-bucket rate-limited (deployed 2026-06-06).
