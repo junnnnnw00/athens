@@ -364,3 +364,39 @@ with zero cost. (See chat: youth/student, cost-averse.)
 **Reversibility:** All premium code is recoverable from git history (pre-v1.5.4).
 Re-add `in_app_purchase`, restore the deleted files + `/premium-upgrade` route,
 and revert `isPremium` to read the column. Re-open this proposal before doing so.
+
+---
+
+## Proposal: api_cache table — server-side cache for Last.fm + MusicBrainz proxies (2026-06-06)
+
+**Problem:** `lastfm-proxy` (shared LASTFM_API_KEY, ~5 req/s) and `musicbrainz-proxy`
+(shared User-Agent, **hard 1 req/s**) are the only shared-key upstream bottlenecks.
+(Catalog search is iTunes called **directly from the client per-user-IP** — not a
+shared bottleneck — and the Spotify path is dead code, never invoked.) At ~1000
+users the enrichment / recommendation / recent-tracks calls that route through these
+two proxies would, uncached, risk MusicBrainz throttling/bans during bursts.
+
+**Decision (proposed):** Add a single `api_cache` table and have the two edge
+functions read-through / write-through it. This data (Last.fm tags, MB
+genres/year, tag.getTopTracks) is effectively static, so a long TTL collapses
+repeat lookups of popular catalog to ~0 upstream calls.
+
+- Table: `api_cache(cache_key text primary key, payload jsonb not null, fetched_at timestamptz not null default now())`.
+- RLS: no client access. Only the edge functions (service role) read/write; the
+  anon/auth roles get no grants. Client never touches the table directly.
+- TTL: enforced in the edge function (`now() - fetched_at < interval`), not a cron —
+  Last.fm/MB entries ~90 days. Stale rows are overwritten on next miss.
+- Eviction: bounded naturally (catalog of rated music is finite); a periodic
+  `delete where fetched_at < now() - interval '180 days'` can be added later if needed.
+
+**Why this scope:** caching only the two shared-key proxies covers the real
+bottleneck. iTunes search stays per-IP (no change). No token-bucket limiter for
+now — caching cuts upstream volume ~95%, and residual misses already degrade
+gracefully (client try/catch → empty/fallback). Revisit a limiter only if
+cold-start bursts prove to ban.
+
+**Cost:** $0 within Supabase Postgres; at ~1000 users the function-invocation
+volume pushes onto Supabase **Pro ($25/mo)** regardless of this table.
+
+**Reversibility:** Drop the table + revert the two edge functions to direct
+pass-through (git). Fully reversible, no client/schema coupling.

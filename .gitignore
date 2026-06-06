@@ -33,3 +33,9 @@ CLAUDE.md
 # Supabase local
 supabase/.branches/
 supabase/.temp/
+
+# Build artifacts / local
+*.aab
+app/test/golden/failures/
+.claude/
+mockups & store images/
