@@ -3,9 +3,11 @@ import { isAdminAuthed } from '../auth';
 import { logout } from '../actions';
 import {
   getDashboardStats,
+  getUserList,
   getUserDetail,
   type DashboardStats,
   type UserDetail,
+  type UserRow,
   type ChartPoint,
 } from '../stats';
 import LoginForm from '../LoginForm';
@@ -233,7 +235,7 @@ function UserDetailPanel({
             @{user.handle} · 가입{' '}
             {new Date(user.created_at).toLocaleDateString('ko-KR')}
             {user.is_public ? ' · 공개' : ' · 비공개'}
-            {user.spotify_enabled ? ' · Spotify' : ''}
+            {user.lastfmConnected ? ' · Last.fm' : ''}
           </div>
         </div>
         <a
@@ -339,12 +341,66 @@ function UserDetailPanel({
   );
 }
 
+function pct(part: number, whole: number): string {
+  if (!whole) return '—';
+  return `${fmt1((part / whole) * 100)}%`;
+}
+
+function MiniList({
+  rows,
+}: {
+  rows: { left: string; sub?: string; right: string }[];
+}) {
+  return (
+    <div style={{ border: '1px solid var(--line)', borderRadius: 12, overflow: 'hidden' }}>
+      {rows.length === 0 ? (
+        <div style={{ padding: '16px 18px', fontSize: 13.5, color: 'var(--faint)' }}>없음</div>
+      ) : (
+        rows.map((r, i) => (
+          <div
+            key={i}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              padding: '11px 16px',
+              borderTop: i === 0 ? 'none' : '1px solid var(--line)',
+            }}
+          >
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: 'var(--text)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {r.left}
+              </div>
+              {r.sub && <div style={{ fontSize: 12.5, color: 'var(--faint)' }}>{r.sub}</div>}
+            </div>
+            <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--accent-text)', whiteSpace: 'nowrap' }}>
+              {r.right}
+            </span>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
 function Dashboard({
   stats,
+  users,
   basePath,
   userDetail,
 }: {
   stats: DashboardStats;
+  users: UserRow[];
   basePath: string;
   userDetail: UserDetail | null;
 }) {
@@ -416,6 +472,24 @@ function Dashboard({
 
       {userDetail && <UserDetailPanel user={userDetail} backHref={basePath} />}
 
+      {/* 활성 사용자 — 한눈에 (최상단 강조) */}
+      <SectionTitle>활성 사용자</SectionTitle>
+      <div style={grid}>
+        <StatCard label="DAU" value={fmt(stats.dau)} sub="오늘 듀얼한 유저" accent />
+        <StatCard label="WAU" value={fmt(stats.wau)} sub="최근 7일" accent />
+        <StatCard label="MAU" value={fmt(stats.mau)} sub="최근 30일" accent />
+        <StatCard
+          label="끈끈함 (DAU/MAU)"
+          value={stats.mau ? pct(stats.dau, stats.mau) : '—'}
+          sub="stickiness"
+        />
+        <StatCard
+          label="7일 리텐션"
+          value={pct(stats.retain7d, stats.eligibleRetain)}
+          sub={`${fmt(stats.retain7d)}/${fmt(stats.eligibleRetain)} 복귀`}
+        />
+      </div>
+
       {/* 유저 / 성장 */}
       <SectionTitle>유저 · 성장</SectionTitle>
       <div style={grid}>
@@ -424,44 +498,37 @@ function Dashboard({
         <StatCard label="신규 (7일)" value={`+${fmt(stats.new7d)}`} />
         <StatCard label="신규 (30일)" value={`+${fmt(stats.new30d)}`} />
         <StatCard
-          label="프리미엄"
-          value={stats.premiumUsers === null ? '—' : fmt(stats.premiumUsers)}
-          sub={
-            stats.premiumUsers === null
-              ? '미적용 (0010 마이그레이션)'
-              : stats.totalUsers
-                ? `${fmt1((stats.premiumUsers / stats.totalUsers) * 100)}% 전환`
-                : undefined
-          }
+          label="활성화율"
+          value={pct(stats.activatedUsers, stats.totalUsers)}
+          sub={`${fmt(stats.activatedUsers)}명 평가 시작`}
         />
-        <StatCard label="공개 프로필" value={fmt(stats.publicProfiles)} />
-        <StatCard label="Spotify 연결" value={fmt(stats.spotifyConnected)} />
+        <StatCard
+          label="빈 라이브러리"
+          value={fmt(stats.emptyLibraryUsers)}
+          sub="가입했지만 평가 0"
+        />
+        <StatCard label="공개 프로필" value={fmt(stats.publicProfiles)} sub={pct(stats.publicProfiles, stats.totalUsers)} />
+        <StatCard label="Last.fm 연결" value={fmt(stats.lastfmConnected)} sub={pct(stats.lastfmConnected, stats.totalUsers)} />
+        <StatCard
+          label="삭제 요청 대기"
+          value={fmt(stats.deletionPending)}
+          sub={stats.deletionPending > 0 ? '⚠ 처리 필요' : '없음'}
+          accent={stats.deletionPending > 0}
+        />
       </div>
 
       {/* 참여도 */}
-      <SectionTitle>참여도</SectionTitle>
+      <SectionTitle>참여도 · 콘텐츠</SectionTitle>
       <div style={grid}>
-        <StatCard
-          label="활성 유저 (7일)"
-          value={fmt(stats.activeUsers7d)}
-          sub="최근 7일 평가 갱신 기준"
-          accent
-        />
-        <StatCard label="총 평가" value={fmt(stats.totalRatings)} />
+        <StatCard label="총 평가" value={fmt(stats.totalRatings)} accent />
+        <StatCard label="총 듀얼" value={fmt(stats.totalDuels)} sub="comparisons 실측" />
         <StatCard
           label="유저당 평균 평가"
-          value={fmt1(stats.avgRatingsPerUser)}
+          value={fmt1(stats.activatedUsers ? stats.totalRatings / stats.activatedUsers : 0)}
+          sub="활성 유저 기준"
         />
-        <StatCard
-          label="총 duel"
-          value={fmt(stats.totalDuels)}
-          sub={`평가당 평균 ${fmt1(stats.avgDuelsPerRating)}회`}
-        />
-        <StatCard
-          label="평가 활동 (7일)"
-          value={`+${fmt(stats.ratings7d)}`}
-          sub="갱신된 평가 수"
-        />
+        <StatCard label="듀얼 (7일)" value={`+${fmt(stats.duels7d)}`} />
+        <StatCard label="평가 갱신 (7일)" value={`+${fmt(stats.ratings7d)}`} />
         <StatCard label="총 리뷰" value={fmt(stats.totalReviews)} />
         <StatCard label="카탈로그 아이템" value={fmt(stats.totalItems)} />
       </div>
@@ -478,10 +545,10 @@ function Dashboard({
         <ChartCard title="일별 가입" hint="최근 30일">
           <BarChart data={stats.signupsDaily} />
         </ChartCard>
-        <ChartCard title="일별 평가 활동" hint="최근 30일 · 갱신 기준">
-          <BarChart data={stats.activityDaily} color="var(--accent-text)" />
+        <ChartCard title="일별 듀얼" hint="최근 30일 · 실제 활동">
+          <BarChart data={stats.duelsDaily} color="var(--accent-text)" />
         </ChartCard>
-        <ChartCard title="점수 분포" hint="0–10">
+        <ChartCard title="점수 분포" hint="0–9 구간">
           <BarChart data={stats.scoreDist} />
         </ChartCard>
         <ChartCard title="카탈로그 종류" hint={`총 ${fmt(stats.totalItems)}`}>
@@ -489,8 +556,40 @@ function Dashboard({
         </ChartCard>
       </div>
 
+      {/* Top 아이템 + 최근 가입 */}
+      <SectionTitle>가장 많이 평가된 곡 · 최근 가입</SectionTitle>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: 14,
+        }}
+      >
+        <ChartCard title="글로벌 Top 아이템" hint="평가 수 기준">
+          <MiniList
+            rows={stats.topItems.map((it) => ({
+              left: it.title,
+              sub: `${it.artist || '—'} · ${it.kind} · 평균 ${fmt1(it.avgScore)}`,
+              right: `${fmt(it.ratingCount)}회`,
+            }))}
+          />
+        </ChartCard>
+        <ChartCard title="최근 가입" hint="최신 10명">
+          <MiniList
+            rows={stats.recentSignups.map((s) => ({
+              left: s.display_name || s.handle,
+              sub: `@${s.handle}${s.is_public ? ' · 공개' : ''}`,
+              right: new Date(s.created_at).toLocaleDateString('ko-KR', {
+                month: '2-digit',
+                day: '2-digit',
+              }),
+            }))}
+          />
+        </ChartCard>
+      </div>
+
       {/* 유저 목록 — 행 클릭 시 상세 */}
-      <SectionTitle>유저 ({fmt(stats.users.length)}) · 클릭하면 상세</SectionTitle>
+      <SectionTitle>유저 ({fmt(users.length)}) · 클릭하면 상세</SectionTitle>
       <div
         style={{
           background: 'var(--surface)',
@@ -499,12 +598,12 @@ function Dashboard({
           overflow: 'hidden',
         }}
       >
-        {stats.users.length === 0 ? (
+        {users.length === 0 ? (
           <div style={{ padding: '24px 22px', color: 'var(--faint)', fontSize: 14 }}>
             아직 가입자가 없습니다.
           </div>
         ) : (
-          stats.users.map((u, i) => (
+          users.map((u, i) => (
             <a
               key={u.id}
               href={`${basePath}?user=${u.id}`}
@@ -537,6 +636,20 @@ function Dashboard({
                 <span style={{ fontSize: 13, color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                   평가 {fmt(u.ratingCount)}
                 </span>
+                {u.lastfmConnected && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: 'var(--muted)',
+                      border: '1px solid var(--line)',
+                      padding: '3px 8px',
+                      borderRadius: 999,
+                    }}
+                  >
+                    Last.fm
+                  </span>
+                )}
                 {u.is_public && (
                   <span
                     style={{
@@ -566,7 +679,7 @@ function Dashboard({
       </div>
 
       <p style={{ marginTop: 28, fontSize: 12.5, color: 'var(--faint)' }}>
-        생성: {new Date(stats.generatedAt).toLocaleString('ko-KR')} · 매 요청마다 갱신
+        집계: {new Date(stats.generatedAt).toLocaleString('ko-KR')} · DB 집계 + 60초 캐시
       </p>
     </main>
   );
@@ -624,11 +737,13 @@ export default async function AdminGatePage({
   const { user: userId } = await searchParams;
 
   let stats: DashboardStats | null = null;
+  let users: UserRow[] = [];
   let userDetail: UserDetail | null = null;
   let error: string | null = null;
   try {
-    [stats, userDetail] = await Promise.all([
+    [stats, users, userDetail] = await Promise.all([
       getDashboardStats(),
+      getUserList(),
       userId ? getUserDetail(userId) : Promise.resolve(null),
     ]);
   } catch (e) {
@@ -641,6 +756,7 @@ export default async function AdminGatePage({
       {stats ? (
         <Dashboard
           stats={stats}
+          users={users}
           basePath={`/admin/${gate}`}
           userDetail={userDetail}
         />
