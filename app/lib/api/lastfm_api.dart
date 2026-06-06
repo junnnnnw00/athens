@@ -58,6 +58,15 @@ abstract class LastfmApi {
     required String username,
     int limit = 10,
   });
+
+  /// Top tracks actually tagged with [tag] (a genre or mood, e.g. "shoegaze",
+  /// "melancholy"). This is the correct source for genre-matched recommendations
+  /// — unlike a catalog text-search for the tag word, which just returns tracks
+  /// with that word in the title/artist.
+  Future<List<LastfmRecentTrack>> getTagTopTracks({
+    required String tag,
+    int limit = 30,
+  });
 }
 
 class LastfmApiHttp implements LastfmApi {
@@ -125,6 +134,19 @@ class LastfmApiHttp implements LastfmApi {
       'limit': limit.toString(),
     });
     return parseRecentTracks(data);
+  }
+
+  @override
+  Future<List<LastfmRecentTrack>> getTagTopTracks({
+    required String tag,
+    int limit = 30,
+  }) async {
+    final data = await _raw({
+      'method': 'tag.getTopTracks',
+      'tag': tag,
+      'limit': limit.toString(),
+    });
+    return parseTagTopTracks(data);
   }
 
   static int? _toInt(dynamic v) =>
@@ -263,5 +285,56 @@ class LastfmApiHttp implements LastfmApi {
       return bUts.compareTo(aUts);
     });
     return items;
+  }
+
+  /// Parses a `tag.getTopTracks` payload → ordered track refs (most popular for
+  /// the tag first). Image art is frequently absent here; callers should enrich
+  /// cover art separately if needed.
+  static List<LastfmRecentTrack> parseTagTopTracks(dynamic data) {
+    final json = data is String ? jsonDecode(data) : data;
+    if (json is! Map) return [];
+    final top = json['tracks'];
+    final list = top is Map ? top['track'] : null;
+    final tracks = list is List
+        ? list
+        : list is Map
+            ? [list]
+            : const [];
+
+    final out = <LastfmRecentTrack>[];
+    for (final t in tracks) {
+      if (t is! Map) continue;
+      final name = t['name'] as String? ?? '';
+      final artistMap = t['artist'];
+      final artistName =
+          artistMap is Map ? artistMap['name'] as String? ?? '' : '';
+      if (name.isEmpty || artistName.isEmpty) continue;
+
+      String? imageUrl;
+      final images = t['image'];
+      if (images is List) {
+        final pick = images.firstWhere(
+          (img) => img is Map && img['size'] == 'large',
+          orElse: () => images.isNotEmpty ? images.last : null,
+        );
+        if (pick is Map) {
+          imageUrl = pick['#text'] as String?;
+          if (imageUrl?.isEmpty ?? true) imageUrl = null;
+          if (imageUrl != null &&
+              imageUrl.contains('2a96cbd8b46e442fc41c2b86b821562f')) {
+            imageUrl = null;
+          }
+        }
+      }
+
+      final mbid = t['mbid'] as String? ?? '';
+      out.add(LastfmRecentTrack(
+        title: name,
+        artist: artistName,
+        imageUrl: imageUrl,
+        mbid: mbid.isNotEmpty ? mbid : null,
+      ));
+    }
+    return out;
   }
 }

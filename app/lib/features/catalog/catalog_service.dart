@@ -45,6 +45,18 @@ class CatalogItem {
         tags: tags,
         playedAtUts: playedAtUts,
       );
+
+  CatalogItem copyWithImage(String? imageUrl) => CatalogItem(
+        id: id,
+        kind: kind,
+        title: title,
+        primaryArtist: primaryArtist,
+        imageUrl: imageUrl,
+        sourceId: sourceId,
+        source: source,
+        tags: tags,
+        playedAtUts: playedAtUts,
+      );
 }
 
 class RatedCatalogItem {
@@ -436,6 +448,32 @@ final recommendationsProvider =
 });
 
 // Recently played via Last.fm.
+/// Normalizes a track/artist string for matching across sources, so the same
+/// song scrobbled as "Idioteque", "Idioteque (Remastered)" or "Idioteque - 2011
+/// Remaster" collapses to one identity. Used to (1) dedup repeated Last.fm
+/// scrobbles and (2) hide already-rated tracks from the recent list.
+String normalizeMatchText(String s) {
+  var t = s.toLowerCase().trim();
+  // Drop trailing qualifier in parens/brackets: (Remastered 2011), [Live], etc.
+  t = t.replaceAll(
+      RegExp(r'\s*[\(\[][^\)\]]*\b(remaster|remastered|live|version|edit|mix|deluxe|mono|stereo|feat|featuring|bonus|demo|acoustic|radio)\b[^\)\]]*[\)\]]'),
+      '');
+  // Drop trailing " - 2011 Remaster" / " - Live" style suffixes.
+  t = t.replaceAll(
+      RegExp(r'\s*-\s*[^-]*\b(remaster|remastered|live|version|edit|mix|deluxe|mono|stereo|anniversary)\b.*$'),
+      '');
+  // Drop "feat. X" / "featuring X" tails.
+  t = t.replaceAll(RegExp(r'\s*(feat\.?|featuring|ft\.?)\s.*$'), '');
+  // Strip remaining punctuation, collapse whitespace.
+  t = t.replaceAll(RegExp(r'[^\w\s]', unicode: true), ' ');
+  t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return t;
+}
+
+/// Cross-source identity key for a catalog item (kind + normalized title/artist).
+String catalogMatchKey({required String kind, required String title, String? artist}) =>
+    '${kind}_${normalizeMatchText(title)}_${normalizeMatchText(artist ?? '')}';
+
 final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
   final profile = ref.watch(myProfileProvider).valueOrNull;
   if (profile == null) return [];
@@ -445,15 +483,23 @@ final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
 
   final lastfm = ref.watch(lastfmApiProvider);
   try {
-    final tracks = await lastfm.getRecentTracks(username: username);
-    return tracks.map((t) {
+    // Pull a few extra so dedup still leaves a full list.
+    final tracks = await lastfm.getRecentTracks(username: username, limit: 30);
+    final seen = <String>{};
+    final out = <CatalogItem>[];
+    for (final t in tracks) {
       final artist = t.artist;
       final title = t.title;
+      // Collapse repeated scrobbles of the same song (already sorted
+      // now-playing/recent-first, so the first occurrence is the freshest).
+      final dedupKey = catalogMatchKey(kind: 'track', title: title, artist: artist);
+      if (!seen.add(dedupKey)) continue;
+
       final mbid = t.mbid;
       final sourceId = mbid ?? '${artist}_$title';
       // Keep the id as `source:sourceId` so a later remote sync (which rebuilds
       // ids that way) reconciles to the same row instead of duplicating it.
-      return CatalogItem(
+      out.add(CatalogItem(
         id: 'lastfm:$sourceId',
         kind: 'track',
         title: title,
@@ -462,8 +508,9 @@ final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
         source: 'lastfm',
         sourceId: sourceId,
         playedAtUts: t.playedAtUts,
-      );
-    }).toList();
+      ));
+    }
+    return out;
   } catch (_) {
     return [];
   }

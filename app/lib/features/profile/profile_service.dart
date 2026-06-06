@@ -57,7 +57,7 @@ class ProfileService {
     if (user == null) return null;
     var row = await _client
         .from('profiles')
-        .select('id, handle, display_name, bio, avatar_url, is_public, is_premium, lastfm_username')
+        .select('id, handle, display_name, bio, avatar_url, is_public, lastfm_username')
         .eq('id', user.id)
         .maybeSingle();
 
@@ -82,7 +82,7 @@ class ProfileService {
               'display_name': displayName,
               'is_public': true, // Make public by default so friends can find them
             })
-            .select('id, handle, display_name, bio, avatar_url, is_public, is_premium, lastfm_username')
+            .select('id, handle, display_name, bio, avatar_url, is_public, lastfm_username')
             .single();
         row = newRow;
       } catch (e) {
@@ -96,7 +96,7 @@ class ProfileService {
               'display_name': displayName,
               'is_public': true,
             })
-            .select('id, handle, display_name, bio, avatar_url, is_public, is_premium, lastfm_username')
+            .select('id, handle, display_name, bio, avatar_url, is_public, lastfm_username')
             .single();
         row = newRow;
       }

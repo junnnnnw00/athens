@@ -120,6 +120,13 @@ class _ThrowingLastfmApi implements LastfmApi {
     int limit = 10,
   }) =>
       Future.error(Exception('Last.fm unavailable'));
+
+  @override
+  Future<List<LastfmRecentTrack>> getTagTopTracks({
+    required String tag,
+    int limit = 30,
+  }) =>
+      Future.error(Exception('Last.fm unavailable'));
 }
 
 class _ThrowingMusicBrainzApi implements MusicBrainzApi {

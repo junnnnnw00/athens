@@ -88,6 +88,16 @@ class FakeLastfmApi implements LastfmApi {
       ),
     ];
   }
+
+  @override
+  Future<List<LastfmRecentTrack>> getTagTopTracks({
+    required String tag,
+    int limit = 30,
+  }) async =>
+      const [
+        LastfmRecentTrack(title: 'Fake Tag Track 1', artist: 'Fake Artist'),
+        LastfmRecentTrack(title: 'Fake Tag Track 2', artist: 'Fake Artist 2'),
+      ];
 }
 
 class FakeMusicBrainzApi implements MusicBrainzApi {

@@ -8,6 +8,7 @@ import '../../data/repository/library_providers.dart';
 import '../../domain/score.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
+import '../../api/lastfm_api.dart' show LastfmRecentTrack;
 import '../../widgets/cover_art.dart';
 import '../../widgets/filter_chips.dart';
 import '../../widgets/initial_score_dialog.dart';
@@ -37,49 +38,80 @@ final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, 
     'Indie',
   }.toList();
   
+  final lastfm = ref.watch(lastfmApiProvider);
   final service = ref.watch(catalogServiceProvider);
-  
+
   final ratedItems = ref.watch(ratedItemsProvider);
   final ratedIds = ratedItems.map((e) => e.id).toSet();
-  final ratedKeys = ratedItems.map((r) {
-    final title = r.title.toLowerCase().trim();
-    final artist = (r.primaryArtist ?? '').toLowerCase().trim();
-    return '${r.kind}_${title}_$artist';
-  }).toSet();
+  final ratedKeys = ratedItems
+      .map((r) => catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist))
+      .toSet();
 
-  List<CatalogItem> candidates = const [];
+  // Recommend tracks that are ACTUALLY tagged with the genre/mood via Last.fm
+  // `tag.getTopTracks` — NOT a catalog text-search for the tag word, which only
+  // returns songs that happen to contain the word in their title/artist (the
+  // source of the "doesn't match the tag" recommendations). Walk the candidate
+  // genres until one yields unrated picks.
   var genre = candidateGenres.first;
-  for (final candidateGenre in candidateGenres) {
-    final rawResults = await service.search(candidateGenre, kind: 'track', limit: 30);
-    final results = rawResults.where((item) {
-      final title = item.title.toLowerCase().trim();
-      final g = candidateGenre.toLowerCase().trim();
-      // Filter out low-quality songs where the title is exactly the genre name or
-      // starts with the genre name followed by common punctuation (e.g. "Shoegaze (Edit)", "Shoegaze - Mix")
-      if (title == g) return false;
-      if (title.startsWith('$g (') || title.startsWith('$g -')) return false;
-      return true;
-    }).toList();
+  List<CatalogItem> picks = const [];
+  for (final candidate in candidateGenres) {
+    List<LastfmRecentTrack> tagged;
+    try {
+      tagged = await lastfm.getTagTopTracks(tag: candidate, limit: 50);
+    } catch (_) {
+      tagged = const [];
+    }
+    if (tagged.isEmpty) continue;
 
-    if (results.isNotEmpty) {
-      candidates = results;
-      genre = candidateGenre;
+    final seen = <String>{};
+    final mapped = <CatalogItem>[];
+    for (final t in tagged) {
+      final key = catalogMatchKey(kind: 'track', title: t.title, artist: t.artist);
+      if (!seen.add(key)) continue; // dedup repeated entries
+      if (ratedKeys.contains(key)) continue; // skip already-rated
+      final sourceId = t.mbid ?? '${t.artist}_${t.title}';
+      final item = CatalogItem(
+        id: 'lastfm:$sourceId',
+        kind: 'track',
+        title: t.title,
+        primaryArtist: t.artist,
+        imageUrl: t.imageUrl,
+        source: 'lastfm',
+        sourceId: sourceId,
+      );
+      if (ratedIds.contains(item.id)) continue;
+      mapped.add(item);
+      if (mapped.length >= 5) break;
+    }
+    if (mapped.isNotEmpty) {
+      picks = mapped;
+      genre = candidate;
       break;
     }
   }
 
-  if (candidates.isEmpty) {
+  if (picks.isEmpty) {
     return (genre: genre, items: const <CatalogItem>[]);
   }
 
-  // Filter out already rated items, but fall back to the raw candidate list if
-  // everything in the current genre has already been rated.
-  final unrated = candidates.where((it) {
-    final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
-    return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
-  }).toList();
+  // tag.getTopTracks usually omits artwork — enrich the final picks with a
+  // targeted catalog lookup so rows show real covers, not initials tiles. The
+  // Last.fm id is preserved (only the image is adopted) so a later sync still
+  // reconciles correctly.
+  final enriched = await Future.wait(picks.map((it) async {
+    if (it.imageUrl != null && it.imageUrl!.isNotEmpty) return it;
+    try {
+      final hits = await service.search(
+          '${it.primaryArtist ?? ''} ${it.title}'.trim(),
+          kind: 'track',
+          limit: 1);
+      final img = hits.isNotEmpty ? hits.first.imageUrl : null;
+      if (img != null && img.isNotEmpty) return it.copyWithImage(img);
+    } catch (_) {}
+    return it;
+  }));
 
-  return (genre: genre, items: (unrated.isNotEmpty ? unrated : candidates).take(5).toList());
+  return (genre: genre, items: enriched);
 });
 
 class SearchScreen extends ConsumerStatefulWidget {

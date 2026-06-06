@@ -12,8 +12,15 @@ class UpdateService {
   static const _apiUrl =
       'https://api.github.com/repos/$_owner/$_repo/releases/latest';
 
+  // Memoize per app session so we hit the unauthenticated GitHub Releases API
+  // (60 req/hr/IP) at most once per run — UpdateBanner calls this on every
+  // HomeScreen mount, which would otherwise risk rate-limiting on heavy nav.
+  static Future<UpdateInfo?>? _inflight;
+
   /// Returns [UpdateInfo] if a newer version is available, else null.
-  static Future<UpdateInfo?> checkForUpdate() async {
+  static Future<UpdateInfo?> checkForUpdate() => _inflight ??= _checkForUpdate();
+
+  static Future<UpdateInfo?> _checkForUpdate() async {
     // Check on Android (APK sideloading) and macOS. Skip on web/iOS/linux/windows.
     if (!AppPlatform.supportsInAppUpdate) return null;
 

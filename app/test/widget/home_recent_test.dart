@@ -30,8 +30,10 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    // Recommendations now come from Last.fm tag.getTopTracks (genre-matched),
+    // not a catalog text-search for the tag word. The fake returns tag tracks.
     expect(find.textContaining('추천 트랙'), findsOneWidget);
-    expect(find.textContaining('iTunes Fallback'), findsOneWidget);
+    expect(find.textContaining('Fake Tag Track 1'), findsOneWidget);
   });
 
   testWidgets('home surfaces only unrated recently-played tracks',

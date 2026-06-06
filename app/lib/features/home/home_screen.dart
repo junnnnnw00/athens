@@ -39,11 +39,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final libraryAsync = ref.watch(libraryControllerProvider);
     final ratedItems = ref.watch(ratedItemsProvider);
     final ratedIds = ratedItems.map((e) => e.id).toSet();
-    final ratedKeys = ratedItems.map((r) {
-      final title = r.title.toLowerCase().trim();
-      final artist = (r.primaryArtist ?? '').toLowerCase().trim();
-      return '${r.kind}_${title}_$artist';
-    }).toSet();
+    final ratedKeys = ratedItems
+        .map((r) => catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist))
+        .toSet();
 
     return PopScope(
       canPop: false,
@@ -160,7 +158,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     data: (items) {
                       // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
                       final unrated = items.where((it) {
-                        final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
+                        final key = catalogMatchKey(
+                            kind: it.kind, title: it.title, artist: it.primaryArtist);
                         return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
                       }).toList();
                       return unrated.isEmpty
@@ -180,7 +179,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     error: (_, __) => const SizedBox.shrink(),
                     data: (items) {
                       final unrated = items.where((it) {
-                        final key = '${it.kind}_${it.title.toLowerCase().trim()}_${(it.primaryArtist ?? '').toLowerCase().trim()}';
+                        final key = catalogMatchKey(
+                            kind: it.kind, title: it.title, artist: it.primaryArtist);
                         return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
                       }).toList();
                       if (unrated.isEmpty) return const SizedBox.shrink();
@@ -319,7 +319,11 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
       // Enrichment is best-effort; add without tags on failure.
     }
     await controller.addItem(enriched, startingElo: startingElo);
-    ref.invalidate(recentlyPlayedProvider);
+    // Do NOT invalidate recentlyPlayedProvider here — re-fetching drops the whole
+    // list back into its loading/skeleton state (a spurious spinner the user sees
+    // without acting, made worse by slow Last.fm calls). The just-rated track is
+    // removed reactively by the ratedKeys/ratedIds filter once the library
+    // updates, so the row disappears without a network round-trip.
 
     if (!mounted) return;
     if (hasOpponents) {

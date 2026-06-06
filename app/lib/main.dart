@@ -61,20 +61,13 @@ Future<void> main() async {
     ],
   );
 
-  // Still unknown (offline, lapsed token, never cached) → recover the owner from
-  // the local database so the offline library isn't keyed to the wrong id.
-  if (effectiveUserId == null || effectiveUserId.isEmpty) {
-    try {
-      final owner = await container.read(appDatabaseProvider).mostActiveUserId();
-      if (owner != null && owner.isNotEmpty) {
-        effectiveUserId = owner;
-        container.read(lastKnownUserIdProvider.notifier).state = owner;
-        try {
-          await PlatformStorage.write(key: kLastUserIdKey, value: owner);
-        } catch (_) {}
-      }
-    } catch (_) {}
-  }
+  // NOTE: we deliberately do NOT resurrect an owner id from the local Drift db
+  // when both the live session and the cached id are absent. Login requires a
+  // Supabase session, so a signed-in run always writes `last_user_id`; an absent
+  // cache therefore means the user logged out (which clears it). Recovering the
+  // db owner here would re-key the library to a logged-out user and trap them on
+  // Home as "local-user", blocking the landing/login screen. Genuine offline
+  // returning users keep their cached id and never reach this point.
 
   if (kDevSeed) {
     await seedDevData(container);
