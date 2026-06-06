@@ -39,3 +39,7 @@ supabase/.temp/
 app/test/golden/failures/
 .claude/
 mockups & store images/
+
+# Build artifact — never commit (bloats history)
+athens-macos.zip
+app/build/
