@@ -43,3 +43,7 @@ mockups & store images/
 # Build artifact — never commit (bloats history)
 athens-macos.zip
 app/build/
+
+# IDE / tool local state
+.antigravitycli/
+.omc/project-memory.json

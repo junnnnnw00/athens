@@ -2,7 +2,7 @@
 
 > Reference: the real Podiums app. The aesthetic is **refined minimalism** — clean, high-contrast,
 > spacious, modern. NOT editorial/zine, NOT moody, NOT decorative. The album art carries all the
-> color; the UI chrome stays neutral and quiet. The companion prototype `Athens-prototype.jsx`
+> color; the UI chrome stays neutral and quiet. The companion prototype `docs/internal/Athens-prototype.jsx`
 > embodies this — match its feel. If anything here conflicts with a "make it expressive" instinct,
 > restraint wins.
 

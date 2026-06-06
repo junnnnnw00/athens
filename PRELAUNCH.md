@@ -57,8 +57,8 @@ risk, and the fix direction. Check off as resolved.
 - **Fix:** remove `redeemPromoCode` + the promo UI; drop/neutralize the RPC and
   `promo_codes` / `promo_code_redemptions` if unused. Note in DECISIONS.md.
 
-### [ ] 5. Stale docs (BLOCKERS.md)
-- **Evidence:** `BLOCKERS.md` lists Spotify user-connect as an active blocker,
+### [ ] 5. Stale docs (docs/internal/BLOCKERS.md)
+- **Evidence:** `docs/internal/BLOCKERS.md` lists Spotify user-connect as an active blocker,
   but the code has no `connectSpotify` / PKCE paths (removed; verified clean).
 - **Fix:** prune the resolved Spotify-connect blockers; keep only what's true.
 
@@ -88,7 +88,7 @@ risk, and the fix direction. Check off as resolved.
 ### Features (nice-to-have, post-launch)
 - [ ] **Crash/error reporting** (Sentry free) — see #3; essential for triage.
 - [ ] **First-duel onboarding tutorial** — orient new users ("what is this app").
-- [ ] **Share / image export** — currently hidden via BLOCKERS.md; it's a viral
+- [ ] **Share / image export** — currently hidden (see docs/internal/BLOCKERS.md); it's a viral
   surface. Re-enable once the export is reliable.
 - [ ] **Friend-activity push notifications** — retention.
 - [ ] **Search history / recently searched.**
