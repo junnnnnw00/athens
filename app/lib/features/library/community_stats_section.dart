@@ -241,7 +241,7 @@ class _DistBar extends StatelessWidget {
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: maxY / 3 > 0 ? (maxY / 3).roundToDouble() : 1.0,
+          horizontalInterval: math.max((maxY / 3).roundToDouble(), 1.0),
           getDrawingHorizontalLine: (v) => FlLine(
             color: p.line.withValues(alpha: 0.5),
             strokeWidth: 0.8,
