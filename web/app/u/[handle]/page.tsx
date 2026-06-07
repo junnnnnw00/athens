@@ -18,7 +18,24 @@ async function getProfile(handle: string): Promise<PublicProfile | null> {
     .maybeSingle();
 
   if (error || !data) return null;
-  return data as PublicProfile;
+
+  // Fallback: If lastfm_username is not returned in the view, fetch it from profiles table.
+  let lastfm_username = (data as any).lastfm_username || null;
+  if (!lastfm_username) {
+    const { data: profileRow } = await supabase
+      .from('profiles')
+      .select('lastfm_username')
+      .eq('id', data.id)
+      .maybeSingle();
+    if (profileRow) {
+      lastfm_username = profileRow.lastfm_username;
+    }
+  }
+
+  return {
+    ...data,
+    lastfm_username,
+  } as PublicProfile;
 }
 
 function getInitials(name: string): string {

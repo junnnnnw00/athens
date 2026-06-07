@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 export interface TopItem {
   id: string;
@@ -68,6 +69,7 @@ export interface PublicProfile {
   top_items: TopItem[];
   stats: ProfileStats;
   is_premium?: boolean;
+  lastfm_username?: string | null;
 }
 
 interface ProfileViewProps {
@@ -155,6 +157,73 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
   const [sortBy, setSortBy] = useState<'score' | 'latest'>('score');
   const [activeTab, setActiveTab] = useState<'distribution' | 'genres' | 'moods'>('distribution');
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
+
+  // Main Tab State
+  const [mainTab, setMainTab] = useState<'ratings' | 'history'>('ratings');
+  const [listeningHistory, setListeningHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+  const hasLastfm = !!profile.lastfm_username?.trim();
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mainTab === 'history' && listeningHistory.length === 0 && profile.lastfm_username) {
+      fetchListeningHistory();
+    }
+  }, [mainTab, profile.lastfm_username]);
+
+  async function fetchListeningHistory() {
+    setLoadingHistory(true);
+    setHistoryError(null);
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration is missing');
+      }
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      
+      const query = new URLSearchParams({
+        method: 'user.getRecentTracks',
+        user: profile.lastfm_username?.trim() || '',
+        limit: '30',
+      }).toString();
+
+      const { data, error } = await supabase.functions.invoke(`lastfm-proxy?${query}`);
+
+      if (error) throw error;
+      
+      if (data && data.recenttracks && data.recenttracks.track) {
+        let tracks = data.recenttracks.track;
+        if (!Array.isArray(tracks)) {
+          tracks = [tracks];
+        }
+        setListeningHistory(tracks);
+      } else {
+        setListeningHistory([]);
+      }
+    } catch (err: any) {
+      console.error('Error fetching listening history:', err);
+      setHistoryError(err.message || '청취 기록을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
+  function formatRelativeTime(utsStr?: string): string {
+    if (!utsStr) return '';
+    const uts = parseInt(utsStr, 10);
+    if (isNaN(uts)) return '';
+    
+    const now = Math.floor(Date.now() / 1000);
+    const diff = now - uts;
+    
+    if (diff < 60) return '방금 전';
+    if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+    
+    const date = new Date(uts * 1000);
+    return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  }
 
   const tagPreferences = profile.stats?.tag_preferences ?? [];
 
@@ -389,7 +458,7 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'space-between',
-            height: 100,
+            height: 130,
             paddingTop: 8,
             gap: 6,
           }}>
@@ -459,7 +528,7 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
         )}
 
         {activeTab === 'genres' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             {genrePreferences.length > 0 ? (
               genrePreferences.map((pref) => {
                 const scoreString = pref.avg_score.toFixed(1);
@@ -467,26 +536,22 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                 const barColor = getScoreColor(pref.avg_score);
 
                 return (
-                  <div key={pref.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                      width: 100,
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: 'var(--text)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {pref.name}
+                  <div key={pref.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                        {pref.name}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                        {scoreString}점 <span style={{ fontSize: 11, opacity: 0.6 }}>({pref.count}개)</span>
+                      </span>
                     </div>
                     <div style={{
-                      flex: 1,
-                      height: 8,
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(255,255,255,0.05)',
+                      height: 12,
+                      background: 'var(--line)',
                       borderRadius: 99,
                       overflow: 'hidden',
                       position: 'relative',
+                      width: '100%',
                     }}>
                       <div style={{
                         position: 'absolute',
@@ -496,17 +561,9 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                         width: progressWidth,
                         background: `linear-gradient(to right, var(--accent-soft), ${barColor})`,
                         borderRadius: 99,
-                        boxShadow: `0 0 8px ${barColor}40`,
+                        boxShadow: `0 0 12px ${barColor}30`,
+                        transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
                       }} />
-                    </div>
-                    <div style={{
-                      width: 110,
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: 'var(--muted)',
-                      textAlign: 'right',
-                    }}>
-                      {scoreString}점 ({pref.count}개)
                     </div>
                   </div>
                 );
@@ -527,7 +584,7 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
         )}
 
         {activeTab === 'moods' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             {moodPreferences.length > 0 ? (
               moodPreferences.map((pref) => {
                 const scoreString = pref.avg_score.toFixed(1);
@@ -535,26 +592,22 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                 const barColor = getScoreColor(pref.avg_score);
 
                 return (
-                  <div key={pref.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{
-                      width: 100,
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: 'var(--text)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {pref.name}
+                  <div key={pref.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                        {pref.name}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                        {scoreString}점 <span style={{ fontSize: 11, opacity: 0.6 }}>({pref.count}개)</span>
+                      </span>
                     </div>
                     <div style={{
-                      flex: 1,
-                      height: 8,
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(255,255,255,0.05)',
+                      height: 12,
+                      background: 'var(--line)',
                       borderRadius: 99,
                       overflow: 'hidden',
                       position: 'relative',
+                      width: '100%',
                     }}>
                       <div style={{
                         position: 'absolute',
@@ -564,17 +617,9 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                         width: progressWidth,
                         background: `linear-gradient(to right, var(--accent-soft), ${barColor})`,
                         borderRadius: 99,
-                        boxShadow: `0 0 8px ${barColor}40`,
+                        boxShadow: `0 0 12px ${barColor}30`,
+                        transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)',
                       }} />
-                    </div>
-                    <div style={{
-                      width: 110,
-                      fontSize: 12,
-                      fontWeight: 500,
-                      color: 'var(--muted)',
-                      textAlign: 'right',
-                    }}>
-                      {scoreString}점 ({pref.count}개)
                     </div>
                   </div>
                 );
@@ -595,119 +640,510 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
         )}
       </section>
 
-      {/* Control Panel (Sort & View Mode Toggles) */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 24,
-        gap: 12,
-        flexWrap: 'wrap',
-      }}>
-        {/* Sort Toggles */}
+      {/* Main Tab Selector */}
+      {hasLastfm && (
         <div style={{
           display: 'flex',
           background: 'var(--surface)',
           border: '1px solid var(--line)',
-          borderRadius: 12,
-          padding: 3,
+          borderRadius: 16,
+          padding: 4,
+          marginBottom: 28,
+          boxShadow: '0 4px 12px var(--shadow)',
         }}>
           <button
-            onClick={() => setSortBy('score')}
+            onClick={() => setMainTab('ratings')}
             style={{
-              background: sortBy === 'score' ? 'var(--chip)' : 'transparent',
-              color: sortBy === 'score' ? 'var(--text)' : 'var(--muted)',
+              flex: 1,
+              background: mainTab === 'ratings' ? 'var(--chip)' : 'transparent',
+              color: mainTab === 'ratings' ? 'var(--text)' : 'var(--muted)',
               border: 'none',
-              padding: '6px 12px',
-              borderRadius: 9,
-              fontSize: 13,
-              fontWeight: 600,
+              padding: '12px 16px',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 700,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
-            점수순
+            🎵 평가 리스트 ({profile.top_items.length})
           </button>
           <button
-            onClick={() => setSortBy('latest')}
+            onClick={() => setMainTab('history')}
             style={{
-              background: sortBy === 'latest' ? 'var(--chip)' : 'transparent',
-              color: sortBy === 'latest' ? 'var(--text)' : 'var(--muted)',
+              flex: 1,
+              background: mainTab === 'history' ? 'var(--chip)' : 'transparent',
+              color: mainTab === 'history' ? 'var(--text)' : 'var(--muted)',
               border: 'none',
-              padding: '6px 12px',
-              borderRadius: 9,
-              fontSize: 13,
-              fontWeight: 600,
+              padding: '12px 16px',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 700,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
-            최신순
+            ⏱️ 최근 청취기록
           </button>
         </div>
+      )}
 
-        {/* View Mode Toggles */}
-        <div style={{
-          display: 'flex',
-          background: 'var(--surface)',
-          border: '1px solid var(--line)',
-          borderRadius: 12,
-          padding: 3,
-        }}>
-          <button
-            onClick={() => setViewMode('list')}
-            style={{
-              background: viewMode === 'list' ? 'var(--chip)' : 'transparent',
-              color: viewMode === 'list' ? 'var(--text)' : 'var(--muted)',
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: 9,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            리스트
-          </button>
-          <button
-            onClick={() => setViewMode('cover')}
-            style={{
-              background: viewMode === 'cover' ? 'var(--chip)' : 'transparent',
-              color: viewMode === 'cover' ? 'var(--text)' : 'var(--muted)',
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: 9,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            커버 뷰
-          </button>
-        </div>
-      </div>
+      {(!hasLastfm || mainTab === 'ratings') ? (
+        <>
+          {/* Control Panel (Sort & View Mode Toggles) */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 24,
+            gap: 12,
+            flexWrap: 'wrap',
+          }}>
+            {/* Sort Toggles */}
+            <div style={{
+              display: 'flex',
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 12,
+              padding: 3,
+            }}>
+              <button
+                onClick={() => setSortBy('score')}
+                style={{
+                  background: sortBy === 'score' ? 'var(--chip)' : 'transparent',
+                  color: sortBy === 'score' ? 'var(--text)' : 'var(--muted)',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: 9,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                점수순
+              </button>
+              <button
+                onClick={() => setSortBy('latest')}
+                style={{
+                  background: sortBy === 'latest' ? 'var(--chip)' : 'transparent',
+                  color: sortBy === 'latest' ? 'var(--text)' : 'var(--muted)',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: 9,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                최신순
+              </button>
+            </div>
 
-      {/* List/Cover Content */}
-      {sortedItems.length > 0 && (
+            {/* View Mode Toggles */}
+            <div style={{
+              display: 'flex',
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 12,
+              padding: 3,
+            }}>
+              <button
+                onClick={() => setViewMode('list')}
+                style={{
+                  background: viewMode === 'list' ? 'var(--chip)' : 'transparent',
+                  color: viewMode === 'list' ? 'var(--text)' : 'var(--muted)',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: 9,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                리스트
+              </button>
+              <button
+                onClick={() => setViewMode('cover')}
+                style={{
+                  background: viewMode === 'cover' ? 'var(--chip)' : 'transparent',
+                  color: viewMode === 'cover' ? 'var(--text)' : 'var(--muted)',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: 9,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                커버 뷰
+              </button>
+            </div>
+          </div>
+
+          {/* List/Cover Content */}
+          {sortedItems.length > 0 && (
+            <section>
+              {viewMode === 'list' ? (
+                /* List View Layout */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {sortedItems.map((item, i) => {
+                    const originalRank = profile.top_items.findIndex(it => it.id === item.id);
+                    const rankColor = originalRank === 0
+                      ? '#D4AF37' // Gold
+                      : originalRank === 1
+                      ? '#C0C0C0' // Silver
+                      : originalRank === 2
+                      ? '#CD7F32' // Bronze
+                      : 'var(--faint)';
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="profile-card"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 16,
+                          padding: '12px 16px',
+                          background: 'var(--surface)',
+                          border: '1px solid var(--line)',
+                          borderRadius: 16,
+                          boxShadow: '0 2px 8px var(--shadow)',
+                        }}
+                      >
+                        {/* Rank Badge */}
+                        <div style={{
+                          minWidth: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: originalRank < 3 && originalRank >= 0 ? `${rankColor}15` : 'transparent',
+                          color: rankColor,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 800,
+                          fontSize: originalRank < 3 && originalRank >= 0 ? 14 : 15,
+                        }}>
+                          {originalRank >= 0 ? originalRank + 1 : '-'}
+                        </div>
+
+                        {/* Album Art Cover */}
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.title}
+                            width={56}
+                            height={56}
+                            style={{
+                              borderRadius: 8,
+                              objectFit: 'cover',
+                              boxShadow: '0 4px 12px var(--shadow)',
+                            }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: 8,
+                            background: 'var(--line)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 14,
+                            fontWeight: 700,
+                            color: 'var(--faint)',
+                            boxShadow: '0 4px 12px var(--shadow)',
+                          }}>
+                            {item.title.substring(0, 1).toUpperCase()}
+                          </div>
+                        )}
+
+                        {/* Meta info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontWeight: 700,
+                            fontSize: 15,
+                            color: 'var(--text)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}>
+                            {item.title}
+                          </div>
+                          {item.primary_artist && (
+                            <div style={{
+                              color: 'var(--muted)',
+                              fontSize: 13,
+                              marginTop: 2,
+                              fontWeight: 500,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}>
+                              {item.primary_artist}
+                            </div>
+                          )}
+                          {item.tags && item.tags.length > 0 && (
+                            <div style={{
+                              marginTop: 6,
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: 4,
+                            }}>
+                              {item.tags.slice(0, 2).map((tag) => (
+                                <span
+                                  key={tag.name}
+                                  style={{
+                                    background: 'var(--chip)',
+                                    borderRadius: 6,
+                                    padding: '2px 8px',
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    color: 'var(--muted)',
+                                    border: '1px solid var(--line)',
+                                  }}
+                                >
+                                  {tag.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* SVG ScoreRing */}
+                        <ScoreRing score={item.score} size={44} />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Cover View Grid Layout */
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                  gap: 16,
+                }}>
+                  {sortedItems.map((item) => {
+                    const originalRank = profile.top_items.findIndex(it => it.id === item.id);
+                    const rankColor = originalRank === 0
+                      ? '#D4AF37' // Gold
+                      : originalRank === 1
+                      ? '#C0C0C0' // Silver
+                      : originalRank === 2
+                      ? '#CD7F32' // Bronze
+                      : null;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="profile-card"
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          background: 'var(--surface)',
+                          border: '1px solid var(--line)',
+                          borderRadius: 16,
+                          boxShadow: '0 2px 8px var(--shadow)',
+                          overflow: 'hidden',
+                          position: 'relative',
+                        }}
+                      >
+                        {/* Square Image container with absolute overlays */}
+                        <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
+                          {item.image_url ? (
+                            <img
+                              src={item.image_url}
+                              alt={item.title}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                              }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              background: 'var(--line)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 24,
+                              fontWeight: 700,
+                              color: 'var(--faint)',
+                            }}>
+                              {item.title.substring(0, 1).toUpperCase()}
+                            </div>
+                          )}
+
+                          {/* Rank Overlay Badge (top-left) */}
+                          {originalRank >= 0 && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 8,
+                              left: 8,
+                              width: 24,
+                              height: 24,
+                              borderRadius: '50%',
+                              background: rankColor ? `${rankColor}` : 'rgba(0,0,0,0.6)',
+                              color: rankColor ? '#171614' : '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: 12,
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                              border: rankColor ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                            }}>
+                              {originalRank + 1}
+                            </div>
+                          )}
+
+                          {/* ScoreRing Glassmorphism Overlay (bottom-right) */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 8,
+                            right: 8,
+                            background: 'rgba(0, 0, 0, 0.65)',
+                            backdropFilter: 'blur(6px)',
+                            borderRadius: '50%',
+                            padding: 2,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                          }}>
+                            <ScoreRing score={item.score} size={36} />
+                          </div>
+                        </div>
+
+                        {/* Metadata Box */}
+                        <div style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                          <div style={{
+                            fontWeight: 700,
+                            fontSize: 14,
+                            color: 'var(--text)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}>
+                            {item.title}
+                          </div>
+                          <div style={{
+                            color: 'var(--muted)',
+                            fontSize: 12,
+                            marginTop: 2,
+                            fontWeight: 500,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}>
+                            {item.primary_artist}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+        </>
+      ) : (
+        /* Listening History Content */
         <section>
-          {viewMode === 'list' ? (
-            /* List View Layout */
+          {!profile.lastfm_username ? (
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 20,
+              padding: '40px 24px',
+              textAlign: 'center',
+              color: 'var(--muted)',
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
+                연결된 Last.fm 계정이 없습니다.
+              </div>
+              <p style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+                Athens 앱 설정에서 Last.fm 계정을 연동하면<br />최근 청취기록이 여기에 실시간으로 표시됩니다.
+              </p>
+            </div>
+          ) : loadingHistory ? (
+            /* Skeleton Loading State */
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {sortedItems.map((item, i) => {
-                const originalRank = profile.top_items.findIndex(it => it.id === item.id);
-                const rankColor = originalRank === 0
-                  ? '#D4AF37' // Gold
-                  : originalRank === 1
-                  ? '#C0C0C0' // Silver
-                  : originalRank === 2
-                  ? '#CD7F32' // Bronze
-                  : 'var(--faint)';
+              {Array.from({ length: 6 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 16,
+                    padding: '12px 16px',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--line)',
+                    borderRadius: 16,
+                    opacity: 0.5,
+                  }}
+                >
+                  <div style={{ width: 48, height: 48, borderRadius: 8, background: 'var(--line)' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ width: '60%', height: 14, background: 'var(--line)', borderRadius: 4, marginBottom: 6 }} />
+                    <div style={{ width: '40%', height: 12, background: 'var(--line)', borderRadius: 4 }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : historyError ? (
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 20,
+              padding: '32px 20px',
+              textAlign: 'center',
+              color: 'var(--muted)',
+            }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
+                기록을 가져오지 못했습니다
+              </div>
+              <p style={{ fontSize: 13, marginBottom: 16 }}>{historyError}</p>
+              <button
+                onClick={fetchListeningHistory}
+                style={{
+                  background: 'var(--chip)',
+                  border: '1px solid var(--line)',
+                  borderRadius: 10,
+                  padding: '8px 16px',
+                  color: 'var(--text)',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                다시 시도
+              </button>
+            </div>
+          ) : listeningHistory.length > 0 ? (
+            /* Listening History List */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {listeningHistory.map((track, idx) => {
+                const isNowPlaying = track['@attr']?.nowplaying === 'true';
+                const trackImage = track.image?.[2]?.['#text'] || track.image?.[1]?.['#text'];
+                const artistName = track.artist?.['#text'] || track.artist?.name || 'Unknown Artist';
+                const albumName = track.album?.['#text'];
 
                 return (
                   <div
-                    key={item.id}
+                    key={idx}
                     className="profile-card"
                     style={{
                       display: 'flex',
@@ -718,31 +1154,16 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                       border: '1px solid var(--line)',
                       borderRadius: 16,
                       boxShadow: '0 2px 8px var(--shadow)',
+                      position: 'relative',
                     }}
                   >
-                    {/* Rank Badge */}
-                    <div style={{
-                      minWidth: 28,
-                      height: 28,
-                      borderRadius: '50%',
-                      background: originalRank < 3 && originalRank >= 0 ? `${rankColor}15` : 'transparent',
-                      color: rankColor,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      fontSize: originalRank < 3 && originalRank >= 0 ? 14 : 15,
-                    }}>
-                      {originalRank >= 0 ? originalRank + 1 : '-'}
-                    </div>
-
                     {/* Album Art Cover */}
-                    {item.image_url ? (
+                    {trackImage ? (
                       <img
-                        src={item.image_url}
-                        alt={item.title}
-                        width={56}
-                        height={56}
+                        src={trackImage}
+                        alt={track.name}
+                        width={48}
+                        height={48}
                         style={{
                           borderRadius: 8,
                           objectFit: 'cover',
@@ -751,8 +1172,8 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                       />
                     ) : (
                       <div style={{
-                        width: 56,
-                        height: 56,
+                        width: 48,
+                        height: 48,
                         borderRadius: 8,
                         background: 'var(--line)',
                         display: 'flex',
@@ -763,193 +1184,74 @@ export default function ProfileView({ profile, initials }: ProfileViewProps) {
                         color: 'var(--faint)',
                         boxShadow: '0 4px 12px var(--shadow)',
                       }}>
-                        {item.title.substring(0, 1).toUpperCase()}
+                        🎵
                       </div>
                     )}
 
-                    {/* Meta info */}
+                    {/* Meta Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
-                        fontWeight: 700,
-                        fontSize: 15,
-                        color: 'var(--text)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        flexWrap: 'wrap',
                       }}>
-                        {item.title}
-                      </div>
-                      {item.primary_artist && (
-                        <div style={{
-                          color: 'var(--muted)',
-                          fontSize: 13,
-                          marginTop: 2,
-                          fontWeight: 500,
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: 15,
+                          color: 'var(--text)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                         }}>
-                          {item.primary_artist}
-                        </div>
-                      )}
-                      {item.tags && item.tags.length > 0 && (
-                        <div style={{
-                          marginTop: 6,
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: 4,
-                        }}>
-                          {item.tags.slice(0, 2).map((tag) => (
-                            <span
-                              key={tag.name}
-                              style={{
-                                background: 'var(--chip)',
-                                borderRadius: 6,
-                                padding: '2px 8px',
-                                fontSize: 10,
-                                fontWeight: 600,
-                                color: 'var(--muted)',
-                                border: '1px solid var(--line)',
-                              }}
-                            >
-                              {tag.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* SVG ScoreRing */}
-                    <ScoreRing score={item.score} size={44} />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            /* Cover View Grid Layout */
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-              gap: 16,
-            }}>
-              {sortedItems.map((item) => {
-                const originalRank = profile.top_items.findIndex(it => it.id === item.id);
-                const rankColor = originalRank === 0
-                  ? '#D4AF37' // Gold
-                  : originalRank === 1
-                  ? '#C0C0C0' // Silver
-                  : originalRank === 2
-                  ? '#CD7F32' // Bronze
-                  : null;
-
-                return (
-                  <div
-                    key={item.id}
-                    className="profile-card"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      background: 'var(--surface)',
-                      border: '1px solid var(--line)',
-                      borderRadius: 16,
-                      boxShadow: '0 2px 8px var(--shadow)',
-                      overflow: 'hidden',
-                      position: 'relative',
-                    }}
-                  >
-                    {/* Square Image container with absolute overlays */}
-                    <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
-                      {item.image_url ? (
-                        <img
-                          src={item.image_url}
-                          alt={item.title}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                          }}
-                        />
-                      ) : (
-                        <div style={{
-                          width: '100%',
-                          height: '100%',
-                          background: 'var(--line)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 24,
-                          fontWeight: 700,
-                          color: 'var(--faint)',
-                        }}>
-                          {item.title.substring(0, 1).toUpperCase()}
-                        </div>
-                      )}
-
-                      {/* Rank Overlay Badge (top-left) */}
-                      {originalRank >= 0 && (
-                        <div style={{
-                          position: 'absolute',
-                          top: 8,
-                          left: 8,
-                          width: 24,
-                          height: 24,
-                          borderRadius: '50%',
-                          background: rankColor ? `${rankColor}` : 'rgba(0,0,0,0.6)',
-                          color: rankColor ? '#171614' : '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 800,
-                          fontSize: 12,
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
-                          border: rankColor ? 'none' : '1px solid rgba(255,255,255,0.2)',
-                        }}>
-                          {originalRank + 1}
-                        </div>
-                      )}
-
-                      {/* ScoreRing Glassmorphism Overlay (bottom-right) */}
-                      <div style={{
-                        position: 'absolute',
-                        bottom: 8,
-                        right: 8,
-                        background: 'rgba(0, 0, 0, 0.65)',
-                        backdropFilter: 'blur(6px)',
-                        borderRadius: '50%',
-                        padding: 2,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                      }}>
-                        <ScoreRing score={item.score} size={36} />
-                      </div>
-                    </div>
-
-                    {/* Metadata Box */}
-                    <div style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                      <div style={{
-                        fontWeight: 700,
-                        fontSize: 14,
-                        color: 'var(--text)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}>
-                        {item.title}
+                          {track.name}
+                        </span>
                       </div>
                       <div style={{
                         color: 'var(--muted)',
-                        fontSize: 12,
+                        fontSize: 13,
                         marginTop: 2,
                         fontWeight: 500,
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                       }}>
-                        {item.primary_artist}
+                        {artistName} {albumName && `— ${albumName}`}
                       </div>
+                    </div>
+
+                    {/* Time */}
+                    <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--muted)', flexShrink: 0 }}>
+                      {isNowPlaying ? (
+                        <span style={{ color: 'var(--accent)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            background: 'var(--accent)',
+                            display: 'inline-block',
+                          }} />
+                          재생 중
+                        </span>
+                      ) : (
+                        formatRelativeTime(track.date?.uts)
+                      )}
                     </div>
                   </div>
                 );
               })}
+            </div>
+          ) : (
+            <div style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+              borderRadius: 20,
+              padding: '40px 24px',
+              textAlign: 'center',
+              color: 'var(--muted)',
+              fontSize: 14,
+            }}>
+              최근 청취기록이 비어있습니다.
             </div>
           )}
         </section>

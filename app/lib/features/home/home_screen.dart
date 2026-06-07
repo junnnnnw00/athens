@@ -111,7 +111,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   else
                     const _DuelCallout(onTap: null), // Tap behavior is embedded inside _DuelCallout or can be passed
                   
-                  // 1. Recommended tracks (추천곡)
+                  // 1. Recommended tracks (추천곡) - 가로 스크롤 캐러셀 적용
                   recsAsync.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
@@ -135,10 +135,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ],
                           ),
                           const SizedBox(height: AppSpacing.md),
-                          Column(
-                            children: data.items
-                                .map((it) => _RecentCard(item: it))
-                                .toList(),
+                          SizedBox(
+                            height: 236, // Card height including text padding and rate buttons
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: data.items.length,
+                              itemBuilder: (context, index) {
+                                final it = data.items[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: AppSpacing.md),
+                                  child: _RecommendedCard(item: it),
+                                );
+                              },
+                            ),
                           ),
                         ],
                       );
@@ -162,14 +172,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             kind: it.kind, title: it.title, artist: it.primaryArtist);
                         return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
                       }).toList();
-                      return unrated.isEmpty
-                          ? _RecentEmpty(lastfmEnabled: lastfmEnabled)
-                          : Column(
-                              children: unrated
-                                  .take(10)
-                                  .map((it) => _RecentCard(item: it))
-                                  .toList(),
-                            );
+                      
+                      if (unrated.isEmpty) {
+                        return _RecentEmpty(lastfmEnabled: lastfmEnabled);
+                      }
+                      
+                      final taken = unrated.take(10).toList();
+                      
+                      // 2-row Horizontal Grid Layout
+                      return SizedBox(
+                        height: 148, // Compact height for 2 rows + gap
+                        child: GridView.builder(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: AppSpacing.sm,
+                            crossAxisSpacing: AppSpacing.sm,
+                            childAspectRatio: 64 / 230, // crossAxis/mainAxis height/width ratio
+                          ),
+                          itemCount: taken.length,
+                          itemBuilder: (context, index) {
+                            return _CompactRecentCard(item: taken[index]);
+                          },
+                        ),
+                      );
                     },
                   ),
 
@@ -194,7 +221,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Column(
                             children: unrated
                                 .take(5)
-                                .map((it) => _RecentCard(item: it))
+                                .map((it) => _FriendRecentCard(item: it))
                                 .toList(),
                           ),
                         ],
@@ -518,6 +545,390 @@ class _OnboardingCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RecommendedCard extends ConsumerStatefulWidget {
+  const _RecommendedCard({required this.item});
+  final CatalogItem item;
+
+  @override
+  ConsumerState<_RecommendedCard> createState() => _RecommendedCardState();
+}
+
+class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
+  bool _busy = false;
+
+  Future<void> _rate() async {
+    if (_busy) return;
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final score = await showDialog<double>(
+      context: context,
+      builder: (c) => InitialScoreDialog(
+        title: widget.item.kind == 'track'
+            ? '이 곡은 어땠나요?'
+            : widget.item.kind == 'album'
+                ? '이 앨범은 어땠나요?'
+                : '이 아티스트는 어땠나요?',
+        itemTitle: widget.item.title,
+        itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
+        imageUrl: widget.item.imageUrl,
+        initialValue: 5.0,
+        itemKind: widget.item.kind,
+      ),
+    );
+    if (score == null) return;
+    final startingElo = eloFromScore(score);
+
+    if (!mounted) return;
+    setState(() => _busy = true);
+    final item = widget.item;
+    final service = ref.read(catalogServiceProvider);
+    final controller = ref.read(libraryControllerProvider.notifier);
+    final hasOpponents = ref
+        .read(ratedItemsProvider)
+        .any((i) => i.kind == item.kind && i.id != item.id);
+
+    var enriched = item;
+    try {
+      enriched = item.copyWithTags(await service.enrichTags(item));
+    } catch (_) {}
+    await controller.addItem(enriched, startingElo: startingElo);
+
+    if (!mounted) return;
+    if (hasOpponents) {
+      router.push('/duel/${Uri.encodeComponent(enriched.id)}');
+    } else {
+      setState(() => _busy = false);
+      messenger.showSnackBar(
+        SnackBar(content: Text('"${enriched.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final item = widget.item;
+    return InkWell(
+      onTap: () {
+        context.push('/home/item/${Uri.encodeComponent(item.id)}', extra: item);
+      },
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: Container(
+        width: 148,
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          border: Border.all(color: p.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(AppRadii.card - 1),
+                topRight: Radius.circular(AppRadii.card - 1),
+              ),
+              child: CoverArt(
+                title: item.title,
+                imageUrl: item.imageUrl,
+                size: 146,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 12),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    item.primaryArtist ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: p.muted, fontSize: 10),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm),
+              child: SizedBox(
+                width: double.infinity,
+                height: 26,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
+                  ),
+                  onPressed: _busy ? null : _rate,
+                  child: _busy
+                      ? const SizedBox(
+                          width: 10,
+                          height: 10,
+                          child: CircularProgressIndicator(strokeWidth: 1.5))
+                      : Text(context.t('home_rate', ref: ref), style: const TextStyle(fontSize: 10)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactRecentCard extends ConsumerStatefulWidget {
+  const _CompactRecentCard({required this.item});
+  final CatalogItem item;
+
+  @override
+  ConsumerState<_CompactRecentCard> createState() => _CompactRecentCardState();
+}
+
+class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
+  bool _busy = false;
+
+  Future<void> _rate() async {
+    if (_busy) return;
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final score = await showDialog<double>(
+      context: context,
+      builder: (c) => InitialScoreDialog(
+        title: widget.item.kind == 'track'
+            ? '이 곡은 어땠나요?'
+            : widget.item.kind == 'album'
+                ? '이 앨범은 어땠나요?'
+                : '이 아티스트는 어땠나요?',
+        itemTitle: widget.item.title,
+        itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
+        imageUrl: widget.item.imageUrl,
+        initialValue: 5.0,
+        itemKind: widget.item.kind,
+      ),
+    );
+    if (score == null) return;
+    final startingElo = eloFromScore(score);
+
+    if (!mounted) return;
+    setState(() => _busy = true);
+    final item = widget.item;
+    final service = ref.read(catalogServiceProvider);
+    final controller = ref.read(libraryControllerProvider.notifier);
+    final hasOpponents = ref
+        .read(ratedItemsProvider)
+        .any((i) => i.kind == item.kind && i.id != item.id);
+
+    var enriched = item;
+    try {
+      enriched = item.copyWithTags(await service.enrichTags(item));
+    } catch (_) {}
+    await controller.addItem(enriched, startingElo: startingElo);
+
+    if (!mounted) return;
+    if (hasOpponents) {
+      router.push('/duel/${Uri.encodeComponent(enriched.id)}');
+    } else {
+      setState(() => _busy = false);
+      messenger.showSnackBar(
+        SnackBar(content: Text('"${enriched.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final item = widget.item;
+    return InkWell(
+      onTap: () {
+        context.push('/home/item/${Uri.encodeComponent(item.id)}', extra: item);
+      },
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          border: Border.all(color: p.line),
+        ),
+        child: Row(
+          children: [
+            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 36),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 12),
+                  ),
+                  Text(
+                    item.primaryArtist ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10, color: p.muted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            SizedBox(
+              height: 24,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
+                ),
+                onPressed: _busy ? null : _rate,
+                child: _busy
+                    ? const SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(strokeWidth: 1))
+                    : Text(context.t('home_rate', ref: ref), style: const TextStyle(fontSize: 10)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FriendRecentCard extends ConsumerStatefulWidget {
+  const _FriendRecentCard({required this.item});
+  final CatalogItem item;
+
+  @override
+  ConsumerState<_FriendRecentCard> createState() => _FriendRecentCardState();
+}
+
+class _FriendRecentCardState extends ConsumerState<_FriendRecentCard> {
+  bool _busy = false;
+
+  Future<void> _rate() async {
+    if (_busy) return;
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final score = await showDialog<double>(
+      context: context,
+      builder: (c) => InitialScoreDialog(
+        title: widget.item.kind == 'track'
+            ? '이 곡은 어땠나요?'
+            : widget.item.kind == 'album'
+                ? '이 앨범은 어땠나요?'
+                : '이 아티스트는 어땠나요?',
+        itemTitle: widget.item.title,
+        itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
+        imageUrl: widget.item.imageUrl,
+        initialValue: 5.0,
+        itemKind: widget.item.kind,
+      ),
+    );
+    if (score == null) return;
+    final startingElo = eloFromScore(score);
+
+    if (!mounted) return;
+    setState(() => _busy = true);
+    final item = widget.item;
+    final service = ref.read(catalogServiceProvider);
+    final controller = ref.read(libraryControllerProvider.notifier);
+    final hasOpponents = ref
+        .read(ratedItemsProvider)
+        .any((i) => i.kind == item.kind && i.id != item.id);
+
+    var enriched = item;
+    try {
+      enriched = item.copyWithTags(await service.enrichTags(item));
+    } catch (_) {}
+    await controller.addItem(enriched, startingElo: startingElo);
+
+    if (!mounted) return;
+    if (hasOpponents) {
+      router.push('/duel/${Uri.encodeComponent(enriched.id)}');
+    } else {
+      setState(() => _busy = false);
+      messenger.showSnackBar(
+        SnackBar(content: Text('"${enriched.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final item = widget.item;
+    return InkWell(
+      onTap: () {
+        context.push('/home/item/${Uri.encodeComponent(item.id)}', extra: item);
+      },
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: p.surface,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          border: Border.all(color: p.line),
+        ),
+        child: Row(
+          children: [
+            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 48),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall),
+                  Text(item.primaryArtist ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.people_outline_rounded, size: 12, color: p.accentText),
+                      const SizedBox(width: 4),
+                      Text(
+                        '친구가 평가함',
+                        style: TextStyle(color: p.accentText, fontSize: 10, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            FilledButton(
+              onPressed: _busy ? null : _rate,
+              child: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(context.t('home_rate', ref: ref)),
+            ),
+          ],
+        ),
       ),
     );
   }

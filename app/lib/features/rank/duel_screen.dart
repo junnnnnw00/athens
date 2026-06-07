@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../api/platform.dart';
 import '../../data/repository/library_providers.dart';
 import '../../domain/pair_selector.dart';
 import '../../domain/score.dart';
@@ -150,9 +148,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
   Future<void> _pick(String winnerId) async {
     if (_picked != null || _pair == null) return;
-    if (AppPlatform.isMobile) {
-      HapticFeedback.lightImpact();
-    }
+    HapticFeedback.mediumImpact();
     final (a, b) = _pair!;
     final loserId = winnerId == a.id ? b.id : a.id;
     final winner = winnerId == a.id ? a : b;
@@ -209,7 +205,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   }
 
   Future<void> _undoLastDuel() async {
-    if (AppPlatform.isMobile) HapticFeedback.lightImpact();
+    HapticFeedback.selectionClick();
     await ref.read(libraryControllerProvider.notifier).undoLastDuel();
     if (!mounted) return;
     setState(() {
