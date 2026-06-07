@@ -5,9 +5,9 @@ import ScreenShowcase from "./components/ScreenShowcase";
 import FeatureCards from "./components/FeatureCards";
 
 export const metadata = {
-  title: "Athens — Battle your music",
+  title: "Athens Music Rating & App — Battle your music",
   description:
-    "두 곡 중 더 끌리는 쪽을 고르면 끝. Elo 레이팅이 당신만의 음악 순위를 실시간으로 매깁니다.",
+    "Athens App은 복잡한 별점 리뷰 없이 두 곡 중 더 끌리는 음악을 선택하여 나만의 Athens Music Rating 순위를 매겨주는 Music Rating 서비스입니다. 지금 시작해보세요.",
 };
 
 const RELEASES = "https://github.com/junnnnnw00/athens/releases/latest";
@@ -34,11 +34,10 @@ export default function Home() {
         {/* hero — interactive duel */}
         <section className="lp-hero">
           <div className="lp-hero-copy">
-            <span className="lp-eyebrow">Pairwise Music Rating</span>
+            <span className="lp-eyebrow">Athens Music — Pairwise Music Rating</span>
             <h1 className="lp-h1">Don&apos;t rate music.<br />Choose it.</h1>
             <p className="lp-sub">
-              두 곡 중 더 끌리는 쪽을 고르면 평가 끝. 별점도 리뷰도 없이,
-              Elo가 알아서 당신만의 순위를 매겨요.
+              <strong>Athens App</strong>은 복잡한 별점이나 리뷰 대신, 두 곡 중 더 끌리는 음악을 선택하여 나만의 <strong>Athens Music</strong> 순위를 매기는 직관적인 <strong>Music Rating</strong> 서비스입니다.
             </p>
             <div className="lp-cta-row">
               <Link href="/app" className="lp-btn lp-btn-primary">웹에서 시작하기 →</Link>

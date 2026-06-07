@@ -27,8 +27,11 @@ enabled = true
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000"]
+# Hosted Site URL drives the email-confirmation link. Set the SAME value in the
+# dashboard (Auth → URL Configuration → Site URL) — this local file does not
+# change the hosted project. localhost is only for `supabase start` locally.
+site_url = "https://athens.vercel.app"
+additional_redirect_urls = ["https://athens.vercel.app/**", "athens://**", "http://localhost:3000"]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
