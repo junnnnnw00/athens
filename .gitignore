@@ -47,3 +47,7 @@ app/build/
 # IDE / tool local state
 .antigravitycli/
 .omc/project-memory.json
+
+# Internal agent development docs
+docs/internal/
+
