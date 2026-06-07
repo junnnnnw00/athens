@@ -53,8 +53,8 @@ export default function DuelDemo() {
       setDeckPos((p) => p + 2);
       setPicked(null);
       let next: Nudge = null;
-      if (ws >= 2) next = { text: `🔥 ${winner.title} ${ws}연승!`, kind: "win" };
-      else if (ls <= -2) next = { text: `💀 ${loser.title} ${-ls}연패...`, kind: "loss" };
+      if (ws >= 2) next = { text: `🔥 ${winner.title} on a ${ws}-win streak!`, kind: "win" };
+      else if (ls <= -2) next = { text: `💀 ${loser.title} on a ${-ls}-loss streak...`, kind: "loss" };
       if (next) {
         setNudge(next);
         if (hide.current) clearTimeout(hide.current);
@@ -84,7 +84,7 @@ export default function DuelDemo() {
               onClick={() => pick(side)}
               className={`dd-card${isPicked ? " is-picked" : ""}${isDimmed ? " is-dimmed" : ""}`}
               style={{ backgroundImage: `url(${song.cover})` }}
-              aria-label={`${song.title} — ${song.artist} 선택`}
+              aria-label={`Select ${song.title} by ${song.artist}`}
             >
               <span className="dd-scrim" />
               {isPicked && <span className="dd-check">✓</span>}
@@ -98,8 +98,8 @@ export default function DuelDemo() {
       </div>
 
       <div className="dd-foot">
-        <span className="dd-q">어느 곡이 더 좋아요?</span>
-        <span className="dd-hint">탭해서 골라보세요 →</span>
+        <span className="dd-q">Which song do you prefer?</span>
+        <span className="dd-hint">Tap to choose →</span>
       </div>
     </div>
   );

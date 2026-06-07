@@ -34,8 +34,8 @@ export default function FeatureCards() {
           </div>
         </div>
         <span className="rrr-step">01 — RATE</span>
-        <h3 className="rrr-title">고른다</h3>
-        <p className="rrr-desc">두 곡 중 더 끌리는 쪽을 탭. 그게 끝.</p>
+        <h3 className="rrr-title">Choose</h3>
+        <p className="rrr-desc">Tap the one you prefer. That’s it.</p>
       </div>
 
       {/* RANK — colored bars growing to width, with rank + score */}
@@ -56,8 +56,8 @@ export default function FeatureCards() {
           </div>
         </div>
         <span className="rrr-step">02 — RANK</span>
-        <h3 className="rrr-title">줄 세운다</h3>
-        <p className="rrr-desc">Elo가 매 선택을 반영해 순위를 다시 짜요.</p>
+        <h3 className="rrr-title">Rank</h3>
+        <p className="rrr-desc">Elo algorithm updates your rankings dynamically.</p>
       </div>
 
       {/* REFLECT — taste bars + genre/mood tags */}
@@ -76,8 +76,8 @@ export default function FeatureCards() {
           </div>
         </div>
         <span className="rrr-step">03 — REFLECT</span>
-        <h3 className="rrr-title">들여다본다</h3>
-        <p className="rrr-desc">장르·무드 분포로 내 취향을 읽어줘요.</p>
+        <h3 className="rrr-title">Reflect</h3>
+        <p className="rrr-desc">Explore your taste through genre and mood analysis.</p>
       </div>
     </div>
   );

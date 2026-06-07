@@ -7,7 +7,7 @@ import FeatureCards from "./components/FeatureCards";
 export const metadata = {
   title: "Athens Music Rating & App — Battle your music",
   description:
-    "Athens App은 복잡한 별점 리뷰 없이 두 곡 중 더 끌리는 음악을 선택하여 나만의 Athens Music Rating 순위를 매겨주는 Music Rating 서비스입니다. 지금 시작해보세요.",
+    "Athens is a pairwise music rating app where you choose between two tracks/albums instead of writing complex star reviews. Start ranking your favorites today.",
 };
 
 const RELEASES = "https://github.com/junnnnnw00/athens/releases/latest";
@@ -28,7 +28,7 @@ export default function Home() {
         {/* top bar */}
         <header className="lp-bar">
           <span className="lp-wordmark">Athens</span>
-          <Link href="/app" className="lp-bar-link">앱 열기 →</Link>
+          <Link href="/app" className="lp-bar-link">Open App →</Link>
         </header>
 
         {/* hero — interactive duel */}
@@ -37,12 +37,12 @@ export default function Home() {
             <span className="lp-eyebrow">Athens Music — Pairwise Music Rating</span>
             <h1 className="lp-h1">Don&apos;t rate music.<br />Choose it.</h1>
             <p className="lp-sub">
-              <strong>Athens App</strong>은 복잡한 별점이나 리뷰 대신, 두 곡 중 더 끌리는 음악을 선택하여 나만의 <strong>Athens Music</strong> 순위를 매기는 직관적인 <strong>Music Rating</strong> 서비스입니다.
+              <strong>Athens</strong> is an intuitive <strong>Music Rating</strong> app. Instead of writing complex star reviews, simply choose between two tracks or albums to mathematically calculate your personal <strong>Athens Music</strong> rankings.
             </p>
             <div className="lp-cta-row">
-              <Link href="/app" className="lp-btn lp-btn-primary">웹에서 시작하기 →</Link>
+              <Link href="/app" className="lp-btn lp-btn-primary">Launch Web App →</Link>
               <a href={RELEASES} target="_blank" rel="noreferrer" className="lp-btn lp-btn-ghost">
-                <DownloadIcon /> 앱 다운로드
+                <DownloadIcon /> Download App
               </a>
             </div>
           </div>
@@ -54,20 +54,20 @@ export default function Home() {
 
         {/* real screens showcase */}
         <section className="lp-section">
-          <h2 className="lp-section-title">진짜 앱은 이렇게 생겼어요.</h2>
-          <p className="lp-section-lead">평가 → 순위 → 분석까지, 손에 들고 도는 전부.</p>
+          <h2 className="lp-section-title">What the app looks like.</h2>
+          <p className="lp-section-lead">A complete music rating engine, built for mobile.</p>
           <ScreenShowcase />
         </section>
 
         {/* download */}
         <section className="lp-section lp-cta-end">
-          <h2 className="lp-section-title">어디서나, 같은 서재.</h2>
+          <h2 className="lp-section-title">Anywhere, the same library.</h2>
           <p className="lp-section-lead">
-            오프라인에서 평가해도 기기 간 자동 동기화. 프로필은{" "}
-            <strong style={{ color: "var(--text)" }}>athens.vercel.app/u/handle</strong> 로 공유.
+            Automatic cross-device sync, even when offline. Share your taste with a public profile at{" "}
+            <strong style={{ color: "var(--text)" }}>athens.vercel.app/u/handle</strong>.
           </p>
           <div className="lp-download">
-            <Link href="/app" className="lp-chip lp-chip-primary">웹에서 시작하기 →</Link>
+            <Link href="/app" className="lp-chip lp-chip-primary">Launch Web App →</Link>
             <a href={RELEASES} target="_blank" rel="noreferrer" className="lp-chip"><DownloadIcon /> Android</a>
             <a href={RELEASES} target="_blank" rel="noreferrer" className="lp-chip"><DownloadIcon /> macOS</a>
             <a href={REPO} target="_blank" rel="noreferrer" className="lp-chip">GitHub</a>
@@ -76,11 +76,11 @@ export default function Home() {
 
         {/* footer */}
         <footer className="lp-footer">
-          <Link href="/app">앱 열기</Link>
+          <Link href="/app">Open App</Link>
           <span className="lp-dot">·</span>
-          <span>오픈소스 · MIT</span>
+          <span>Open Source · MIT</span>
           <span className="lp-dot">·</span>
-          <Link href="/privacy">개인정보처리방침</Link>
+          <Link href="/privacy">Privacy Policy</Link>
         </footer>
       </div>
     </>

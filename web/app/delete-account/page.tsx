@@ -108,7 +108,7 @@ export default function DeleteAccount() {
       });
 
       if (authError) {
-        throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.');
+        throw new Error('Invalid email or password.');
       }
 
       // 2. Store the verified deletion request
@@ -124,7 +124,7 @@ export default function DeleteAccount() {
       setSuccess(true);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || '요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      setError(err.message || 'An error occurred while processing your request. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -134,17 +134,17 @@ export default function DeleteAccount() {
     <main style={containerStyle}>
       {!success ? (
         <div style={cardStyle}>
-          <h1 style={titleStyle}>계정 및 데이터 삭제 요청</h1>
+          <h1 style={titleStyle}>Account & Data Deletion Request</h1>
           <p style={subtitleStyle}>
-            본인 인증을 위해 가입하신 이메일과 비밀번호를 입력해 주세요.
+            Please enter your registered email and password to verify your identity.
           </p>
 
-          <h2 style={sectionTitleStyle}>삭제되는 데이터 범위:</h2>
+          <h2 style={sectionTitleStyle}>Scope of data to be deleted:</h2>
           <ul style={listStyle}>
-            <li>로그인 계정 정보 (이메일 및 인증 정보)</li>
-            <li>앱 내 모든 앨범/곡 평가 및 듀얼 대결 내역</li>
-            <li>공개 프로필 정보 및 취향 통계 보고서</li>
-            <li>연동된 Last.fm 계정 정보</li>
+            <li>Login credentials (email & authentication data)</li>
+            <li>All ratings (tracks/albums/artists) and pairwise duel history</li>
+            <li>Public profile details and taste statistics report</li>
+            <li>Linked Last.fm account connection details</li>
           </ul>
 
           <div
@@ -159,12 +159,12 @@ export default function DeleteAccount() {
               marginBottom: 24,
             }}
           >
-            ⚠️ <strong>주의:</strong> 계정 및 데이터 삭제가 완료되면 복구할 수 없습니다.
+            ⚠️ <strong>Warning:</strong> Once account and data deletion is complete, it cannot be restored.
           </div>
 
           <form onSubmit={handleSubmit}>
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#e4e4e7' }}>
-              가입하신 이메일 주소
+              Registered Email Address
             </label>
             <input
               type="email"
@@ -177,7 +177,7 @@ export default function DeleteAccount() {
             />
 
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#e4e4e7' }}>
-              비밀번호
+              Password
             </label>
             <input
               type="password"
@@ -204,7 +204,7 @@ export default function DeleteAccount() {
               }}
               disabled={loading}
             >
-              {loading ? '요청 전송 중...' : '계정 및 데이터 삭제 요청'}
+              {loading ? 'Submitting request...' : 'Request Account & Data Deletion'}
             </button>
           </form>
         </div>
@@ -236,10 +236,10 @@ export default function DeleteAccount() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h1 style={titleStyle}>요청이 접수되었습니다</h1>
+          <h1 style={titleStyle}>Request Submitted</h1>
           <p style={{ ...subtitleStyle, marginBottom: 0, marginTop: 8 }}>
-            입력하신 이메일(<strong>{email}</strong>)의 계정 및 관련 데이터 삭제 요청이 완료되었습니다.<br />
-            보안 및 확인 절차를 거쳐 <strong>영업일 기준 2~3일 이내</strong>에 데이터가 안전하게 파기됩니다.
+            Your request to delete the account and associated data for <strong>{email}</strong> has been received.<br />
+            After verification, all data will be permanently destroyed <strong>within 2–3 business days</strong>.
           </p>
         </div>
       )}
