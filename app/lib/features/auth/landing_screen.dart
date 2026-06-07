@@ -1,18 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
+import '../../i18n.dart';
 
 /// First-launch landing. Mirrors the web landing: a true-black hero built around
 /// an interactive duel — tap a card to pick, per-song win/loss streaks surface
 /// as a transient nudge (same rule as the in-app Rate tab).
-class LandingScreen extends StatefulWidget {
+class LandingScreen extends ConsumerStatefulWidget {
   const LandingScreen({super.key});
 
   @override
-  State<LandingScreen> createState() => _LandingScreenState();
+  ConsumerState<LandingScreen> createState() => _LandingScreenState();
 }
 
 class _Song {
@@ -33,7 +35,7 @@ const _deck = <_Song>[
   _Song('Innuendo', 'Queen', 'assets/landing/covers/innuendo.jpg'),
 ];
 
-class _LandingScreenState extends State<LandingScreen> {
+class _LandingScreenState extends ConsumerState<LandingScreen> {
   int _deckPos = 0;
   int? _picked; // 0 | 1 | null
   final Map<String, int> _streaks = {}; // +win streak / -loss streak per title
@@ -81,10 +83,10 @@ class _LandingScreenState extends State<LandingScreen> {
         _deckPos += 2;
         _picked = null;
         if (ws >= 2) {
-          _nudge = '🔥 ${winner.title} $ws연승!';
+          _nudge = context.t('duel_win_streak', args: [winner.title, '$ws'], ref: ref);
           _nudgeLoss = false;
         } else if (ls <= -2) {
-          _nudge = '💀 ${loser.title} ${-ls}연패...';
+          _nudge = context.t('duel_loss_streak', args: [loser.title, '${-ls}'], ref: ref);
           _nudgeLoss = true;
         }
       });
@@ -170,7 +172,7 @@ class _LandingScreenState extends State<LandingScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                '두 곡 중 더 끌리는 쪽을 고르면 평가 끝.\nElo가 알아서 순위를 매겨요.',
+                context.t('landing_desc', ref: ref),
                 style: TextStyle(
                   fontSize: 15.5,
                   height: 1.5,
@@ -230,9 +232,9 @@ class _LandingScreenState extends State<LandingScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('어느 곡이 더 좋아요?',
+                  Text(context.t('landing_question', ref: ref),
                       style: TextStyle(fontSize: 14, color: p.text, fontWeight: FontWeight.w700)),
-                  Text('탭해서 골라보세요 →',
+                  Text(context.t('landing_tap_hint', ref: ref),
                       style: TextStyle(fontSize: 12.5, color: p.faint)),
                 ],
               ),
@@ -254,7 +256,7 @@ class _LandingScreenState extends State<LandingScreen> {
                   elevation: 0,
                 ),
                 child: Text(
-                  '시작하기',
+                  context.t('landing_start', ref: ref),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -266,7 +268,7 @@ class _LandingScreenState extends State<LandingScreen> {
               const SizedBox(height: AppSpacing.xs),
               TextButton(
                 onPressed: () => context.go('/auth'),
-                child: Text('이미 계정이 있어요 →',
+                child: Text(context.t('landing_have_account', ref: ref),
                     style: TextStyle(fontSize: 14, color: p.muted, fontWeight: FontWeight.w600)),
               ),
               const SizedBox(height: AppSpacing.md),

@@ -57,9 +57,9 @@ void main() {
     expect(find.textContaining('iTunes Fallback'), findsOneWidget);
 
     // Add the first result.
-    await tester.tap(find.text('추가').first);
+    await tester.tap(find.text('Add').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('확인'));
+    await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
 
     final container = ProviderScope.containerOf(
@@ -95,12 +95,12 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('#Rock 취향 저격 곡'), findsOneWidget);
+    expect(find.textContaining('Personalized #Rock Picks'), findsOneWidget);
 
     await tester.tap(find.textContaining('#Jazz'));
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('#Jazz 취향 저격 곡'), findsOneWidget);
+    expect(find.textContaining('Personalized #Jazz Picks'), findsOneWidget);
   });
 }

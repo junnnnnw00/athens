@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../api/supabase.dart';
 import '../../data/repository/library_providers.dart';
+import '../../i18n.dart';
 
 /// The signed-in user's profile row from Supabase `profiles`.
 class UserProfile {
@@ -106,12 +107,12 @@ class ProfileService {
   }
 
   /// Validates a handle: 3–20 chars, lowercase letters/digits/underscore.
-  static String? validateHandle(String handle) {
+  static String? validateHandle(String handle, AppLanguage lang) {
     final h = handle.trim();
-    if (h.length < 3) return '핸들은 3자 이상이어야 해요';
-    if (h.length > 20) return '핸들은 20자 이하여야 해요';
+    if (h.length < 3) return I18n.get('edit_handle_too_short', lang);
+    if (h.length > 20) return I18n.get('edit_handle_too_long', lang);
     if (!RegExp(r'^[a-z0-9_]+$').hasMatch(h)) {
-      return '소문자, 숫자, 밑줄(_)만 쓸 수 있어요';
+      return I18n.get('edit_handle_invalid_chars', lang);
     }
     return null;
   }
@@ -119,11 +120,11 @@ class ProfileService {
   /// Permanently deletes the signed-in user's account + all their data via the
   /// `delete-account` edge function (auth.users delete → cascade). Throws on
   /// failure so the UI can surface it.
-  Future<void> deleteAccount() async {
+  Future<void> deleteAccount(AppLanguage lang) async {
     final res = await _client.functions.invoke('delete-account');
     if (res.status != 200) {
       final msg = res.data is Map ? (res.data['error']?.toString() ?? '') : '';
-      throw StateError(msg.isNotEmpty ? msg : '계정 삭제에 실패했어요. 잠시 후 다시 시도해 주세요.');
+      throw StateError(msg.isNotEmpty ? msg : I18n.get('edit_delete_account_failed', lang));
     }
   }
 

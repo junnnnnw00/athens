@@ -12,6 +12,7 @@ import '../../widgets/score_ring.dart';
 import '../../widgets/initial_score_dialog.dart';
 import 'community_stats_section.dart';
 import 'item_info_cache.dart';
+import '../../i18n.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
   const ItemDetailScreen({super.key, required this.itemId, this.catalogItem});
@@ -66,10 +67,10 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       context: context,
       builder: (c) => InitialScoreDialog(
         title: item.kind == 'track'
-            ? '이 곡은 어땠나요?'
+            ? context.t('rate_prompt_track', ref: ref)
             : item.kind == 'album'
-                ? '이 앨범은 어땠나요?'
-                : '이 아티스트는 어땠나요?',
+                ? context.t('rate_prompt_album', ref: ref)
+                : context.t('rate_prompt_artist', ref: ref),
         itemTitle: item.title,
         itemArtist: item.kind == 'artist' ? null : item.primaryArtist,
         imageUrl: item.imageUrl,
@@ -93,14 +94,14 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('라이브러리에서 삭제할까요?'),
-        content: const Text('이 항목의 평가와 비교 기록이 모두 사라져요.'),
+        title: Text(context.t('lib_delete_confirm_title', ref: ref)),
+        content: Text(context.t('lib_delete_confirm_desc', ref: ref)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(c, false),
-              child: const Text('취소')),
+              child: Text(context.t('lib_cancel', ref: ref))),
           FilledButton(
-              onPressed: () => Navigator.pop(c, true), child: const Text('삭제')),
+              onPressed: () => Navigator.pop(c, true), child: Text(context.t('lib_delete', ref: ref))),
         ],
       ),
     );
@@ -126,10 +127,10 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       context: context,
       builder: (c) => InitialScoreDialog(
         title: item.kind == 'track'
-            ? '이 곡은 어땠나요?'
+            ? context.t('rate_prompt_track', ref: ref)
             : item.kind == 'album'
-                ? '이 앨범은 어땠나요?'
-                : '이 아티스트는 어땠나요?',
+                ? context.t('rate_prompt_album', ref: ref)
+                : context.t('rate_prompt_artist', ref: ref),
         itemTitle: item.title,
         itemArtist: item.kind == 'artist' ? null : item.primaryArtist,
         imageUrl: item.imageUrl,
@@ -141,6 +142,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final startingElo = eloFromScore(score);
 
     if (!mounted) return;
+    final toastMsg = context.t('home_added_toast', args: [item.title], ref: ref);
     setState(() => _busy = true);
 
     final service = ref.read(catalogServiceProvider);
@@ -163,7 +165,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     } else {
       if (mounted) setState(() => _busy = false);
       messenger.showSnackBar(
-        SnackBar(content: Text('"${enrichedItem.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+        SnackBar(content: Text(toastMsg)),
       );
     }
   }
@@ -178,7 +180,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     if (isUnrated && widget.catalogItem == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text('항목을 찾을 수 없어요.')),
+        body: Center(child: Text(context.t('lib_item_not_found', ref: ref))),
       );
     }
 
@@ -208,20 +210,20 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     if (v == 'delete') _confirmDelete();
                   },
                   itemBuilder: (c) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'replace',
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.refresh_rounded),
-                        title: Text('재배치고사'),
+                        leading: const Icon(Icons.refresh_rounded),
+                        title: Text(context.t('lib_placement_test', ref: ref)),
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
-                        leading: Icon(Icons.delete_outline_rounded),
-                        title: Text('삭제'),
+                        leading: const Icon(Icons.delete_outline_rounded),
+                        title: Text(context.t('lib_delete', ref: ref)),
                       ),
                     ),
                   ],
@@ -284,7 +286,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
           if (!isUnrated)
             Row(
               children: [
-                _Stat(label: '듀얼', value: '${item.comparisons}'),
+                _Stat(label: context.t('lib_duels', ref: ref), value: '${item.comparisons}'),
                 const SizedBox(width: AppSpacing.xl),
                 _Stat(label: 'Elo', value: item.elo.toStringAsFixed(0)),
               ],
@@ -297,13 +299,13 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                 borderRadius: BorderRadius.circular(AppRadii.card),
               ),
               child: Text(
-                '아직 라이브러리에 추가되지 않은 항목입니다.',
+                context.t('lib_unrated_message', ref: ref),
                 style: TextStyle(color: p.muted, fontSize: 13),
               ),
             ),
           if (displayTags.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
-            Text('태그', style: Theme.of(context).textTheme.titleSmall),
+            Text(context.t('lib_tags', ref: ref), style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: 6,
@@ -318,7 +320,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
           ),
           const SizedBox(height: AppSpacing.xxl),
           if (!isUnrated) ...[
-            Text('리뷰', style: Theme.of(context).textTheme.titleMedium),
+            Text(context.t('lib_review', ref: ref), style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.sm),
             if (_editing)
               Column(
@@ -330,7 +332,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     autofocus: true,
                     style: Theme.of(context).textTheme.bodyMedium,
                     decoration: InputDecoration(
-                      hintText: '이 음악에 대한 생각을 적어보세요…',
+                      hintText: context.t('lib_review_hint', ref: ref),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppRadii.card),
                         borderSide: BorderSide(color: p.line),
@@ -348,7 +350,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                       TextButton(
                         onPressed:
                             _saving ? null : () => setState(() => _editing = false),
-                        child: const Text('취소'),
+                        child: Text(context.t('lib_cancel', ref: ref)),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       FilledButton(
@@ -359,7 +361,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                                 height: 14,
                                 child:
                                     CircularProgressIndicator(strokeWidth: 2))
-                            : const Text('저장'),
+                            : Text(context.t('lib_save', ref: ref)),
                       ),
                     ],
                   ),
@@ -378,7 +380,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                   ),
                   child: Text(
                     _reviewController.text.isEmpty
-                        ? '탭해서 리뷰 작성…'
+                        ? context.t('lib_write_review_hint', ref: ref)
                         : _reviewController.text,
                     style: TextStyle(
                       color: _reviewController.text.isEmpty ? p.faint : p.text,
@@ -404,7 +406,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                           ),
                         )
                       : const Icon(Icons.add_rounded),
-                  label: const Text('라이브러리에 추가'),
+                  label: Text(context.t('lib_add_to_library', ref: ref)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: p.accentText,
                     side: BorderSide(color: p.accent, width: 1.5),
@@ -502,10 +504,10 @@ class _InfoSection extends ConsumerWidget {
 
         final stats = <String>[];
         if (info.listeners != null) {
-          stats.add('청취자 ${_formatNumber(info.listeners!)}');
+          stats.add(context.t('lib_listeners_count', args: [_formatNumber(info.listeners!)], ref: ref));
         }
         if (info.playcount != null) {
-          stats.add('재생수 ${_formatNumber(info.playcount!)}');
+          stats.add(context.t('lib_play_count', args: [_formatNumber(info.playcount!)], ref: ref));
         }
 
         return Column(
@@ -514,7 +516,7 @@ class _InfoSection extends ConsumerWidget {
             // Info genres (especially useful for unrated items without DB tags)
             if (info.genres.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.xl),
-              Text('장르', style: Theme.of(context).textTheme.titleSmall),
+              Text(context.t('lib_genres_label', ref: ref), style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: 6,
@@ -567,7 +569,7 @@ class _InfoSection extends ConsumerWidget {
             // Artist top tracks
             if (kind == 'artist' && info.topTracks.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.xl),
-              Text('인기 트랙', style: Theme.of(context).textTheme.titleSmall),
+              Text(context.t('lib_popular_tracks', ref: ref), style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: AppSpacing.sm),
               ListView.builder(
                 shrinkWrap: true,

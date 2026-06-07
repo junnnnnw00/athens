@@ -1,23 +1,24 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/platform.dart';
-
 import '../api/update_service.dart';
+import '../i18n.dart';
 
 /// A dismissible banner shown at the top of the home screen when a new
 /// APK version is available on GitHub Releases.
-class UpdateBanner extends StatefulWidget {
+class UpdateBanner extends ConsumerStatefulWidget {
   const UpdateBanner({super.key});
 
   @override
-  State<UpdateBanner> createState() => _UpdateBannerState();
+  ConsumerState<UpdateBanner> createState() => _UpdateBannerState();
 }
 
-class _UpdateBannerState extends State<UpdateBanner>
+class _UpdateBannerState extends ConsumerState<UpdateBanner>
     with SingleTickerProviderStateMixin {
   UpdateInfo? _info;
   bool _dismissed = false;
@@ -63,12 +64,13 @@ class _UpdateBannerState extends State<UpdateBanner>
           throw Exception('Failed to download update: ${response.statusCode}');
         }
         final bytes = response.bodyBytes;
+        final lang = ref.read(localeProvider);
         // Sanity-check the ZIP magic ("PK\x03\x04") so a stray HTML/redirect
         // page doesn't get fed to unzip with a cryptic error.
         if (bytes.length < 4 ||
             bytes[0] != 0x50 ||
             bytes[1] != 0x4B) {
-          throw Exception('다운로드한 파일이 올바른 업데이트 패키지가 아니에요. 잠시 후 다시 시도해 주세요.');
+          throw Exception(I18n.get('update_invalid_package', lang));
         }
         await File(zipPath).writeAsBytes(bytes);
 
@@ -108,9 +110,10 @@ class _UpdateBannerState extends State<UpdateBanner>
         exit(0);
       } catch (e) {
         if (mounted) {
+          final lang = ref.read(localeProvider);
           setState(() => _updating = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('업데이트 설치 실패: $e')),
+            SnackBar(content: Text(I18n.get('update_failed_toast', lang, [e.toString()]))),
           );
         }
       }
@@ -176,7 +179,7 @@ class _UpdateBannerState extends State<UpdateBanner>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '새 버전 ${_info!.latestVersion} 출시!',
+                      context.t('update_available', args: [_info!.latestVersion], ref: ref),
                       style: TextStyle(
                         fontWeight: FontWeight.w700,
                         color: cs.onPrimaryContainer,
@@ -184,7 +187,7 @@ class _UpdateBannerState extends State<UpdateBanner>
                       ),
                     ),
                     Text(
-                      _updating ? '업데이트 설치 중...' : '현재 ${_info!.currentVersion} → 업데이트 다운로드',
+                      _updating ? context.t('update_installing', ref: ref) : context.t('update_download_desc', args: [_info!.currentVersion], ref: ref),
                       style: TextStyle(
                         color: cs.onPrimaryContainer.withValues(alpha: 0.7),
                         fontSize: 11,
@@ -214,7 +217,7 @@ class _UpdateBannerState extends State<UpdateBanner>
                         textStyle: const TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w700),
                       ),
-                      child: const Text('업데이트'),
+                      child: Text(context.t('update_btn', ref: ref)),
                     ),
               const SizedBox(width: 4),
               IconButton(

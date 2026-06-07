@@ -52,9 +52,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
           _lastBackPressTime = now;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('뒤로가기 버튼을 한 번 더 누르면 앱이 종료됩니다.'),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: Text(context.t('home_back_exit', ref: ref)),
+              duration: const Duration(seconds: 2),
             ),
           );
         } else {
@@ -120,8 +120,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       
                       final isDefault = ref.read(statsProvider).valueOrNull?.genrePreferences.isEmpty ?? true;
                       final title = isDefault 
-                          ? '지금 가장 핫한 #${data.genre} 추천 트랙'
-                          : '자주 듣는 #${data.genre} 취향 저격 곡';
+                          ? context.t('home_recs_hot', args: [data.genre], ref: ref)
+                          : context.t('home_recs_personalized', args: [data.genre], ref: ref);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +216,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: AppSpacing.xxl),
-                          const Text('친구들이 평가한 음악', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Text(context.t('home_friends_rated', ref: ref), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                           const SizedBox(height: AppSpacing.md),
                           Column(
                             children: unrated
@@ -314,10 +314,10 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
       context: context,
       builder: (c) => InitialScoreDialog(
         title: widget.item.kind == 'track'
-            ? '이 곡은 어땠나요?'
+            ? context.t('rate_prompt_track', ref: ref)
             : widget.item.kind == 'album'
-                ? '이 앨범은 어땠나요?'
-                : '이 아티스트는 어땠나요?',
+                ? context.t('rate_prompt_album', ref: ref)
+                : context.t('rate_prompt_artist', ref: ref),
         itemTitle: widget.item.title,
         itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
         imageUrl: widget.item.imageUrl,
@@ -358,7 +358,7 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
     } else {
       setState(() => _busy = false);
       messenger.showSnackBar(
-        SnackBar(content: Text('"${enriched.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+        SnackBar(content: Text(context.t('home_added_toast', args: [enriched.title], ref: ref))),
       );
     }
   }
@@ -442,8 +442,8 @@ class _RecentEmpty extends ConsumerWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             lastfmEnabled
-                ? '최근 들은 음악을 모두 평가했습니다! 🎉\n음악을 들으면 여기에 나타납니다.'
-                : (message ?? 'Last.fm을 연동하면 최근 들은 곡이 여기에 나타나요.'),
+                ? context.t('home_recent_all_rated', ref: ref)
+                : (message ?? context.t('home_recent_connect_lastfm', ref: ref)),
             textAlign: TextAlign.center,
             style: TextStyle(color: p.muted, height: 1.4),
           ),
@@ -451,7 +451,7 @@ class _RecentEmpty extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             OutlinedButton(
               onPressed: () => context.go('/profile/edit'),
-              child: const Text('Last.fm 연동하기'),
+              child: Text(context.t('home_connect_lastfm_btn', ref: ref)),
             ),
           ],
         ],
@@ -460,22 +460,22 @@ class _RecentEmpty extends ConsumerWidget {
   }
 }
 
-class _OnboardingCard extends StatelessWidget {
+class _OnboardingCard extends ConsumerWidget {
   const _OnboardingCard({required this.currentCount});
   final int currentCount;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final progress = (currentCount / 3).clamp(0.0, 1.0);
     
     String statusText = '';
     if (currentCount == 0) {
-      statusText = '좋아하는 첫 번째 노래를 검색하고 별점을 주세요. 🎧';
+      statusText = context.t('onboarding_status_0', ref: ref);
     } else if (currentCount == 1) {
-      statusText = '좋은 시작입니다! 2곡만 더 담으면 첫 번째 듀얼을 붙일 수 있어요.';
+      statusText = context.t('onboarding_status_1', ref: ref);
     } else if (currentCount == 2) {
-      statusText = '이제 딱 한 곡 남았어요! 한 곡만 더 추가하고 듀얼 매치를 완성해 보세요.';
+      statusText = context.t('onboarding_status_2', ref: ref);
     }
 
     return Container(
@@ -494,7 +494,7 @@ class _OnboardingCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  '내 취향 랭킹 시작하기 ($currentCount/3)',
+                  context.t('onboarding_title', args: ['$currentCount'], ref: ref),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -505,7 +505,7 @@ class _OnboardingCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
-            '곡 보관함이 완성되면 1:1 월드컵 듀얼을 시작하고, 내 음악 취향에 대한 상세한 분석 리포트를 얻을 수 있어요.',
+            context.t('onboarding_desc', ref: ref),
             style: TextStyle(color: p.muted, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -534,7 +534,7 @@ class _OnboardingCard extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: () => context.go('/search'),
             icon: const Icon(Icons.search_rounded, size: 18),
-            label: const Text('노래 찾으러 가기'),
+            label: Text(context.t('onboarding_search_btn', ref: ref)),
             style: ElevatedButton.styleFrom(
               backgroundColor: p.accentSoft,
               foregroundColor: p.accentText,
@@ -569,10 +569,10 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
       context: context,
       builder: (c) => InitialScoreDialog(
         title: widget.item.kind == 'track'
-            ? '이 곡은 어땠나요?'
+            ? context.t('rate_prompt_track', ref: ref)
             : widget.item.kind == 'album'
-                ? '이 앨범은 어땠나요?'
-                : '이 아티스트는 어땠나요?',
+                ? context.t('rate_prompt_album', ref: ref)
+                : context.t('rate_prompt_artist', ref: ref),
         itemTitle: widget.item.title,
         itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
         imageUrl: widget.item.imageUrl,
@@ -604,7 +604,7 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
     } else {
       setState(() => _busy = false);
       messenger.showSnackBar(
-        SnackBar(content: Text('"${enriched.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+        SnackBar(content: Text(context.t('home_added_toast', args: [enriched.title], ref: ref))),
       );
     }
   }
@@ -707,10 +707,10 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
       context: context,
       builder: (c) => InitialScoreDialog(
         title: widget.item.kind == 'track'
-            ? '이 곡은 어땠나요?'
+            ? context.t('rate_prompt_track', ref: ref)
             : widget.item.kind == 'album'
-                ? '이 앨범은 어땠나요?'
-                : '이 아티스트는 어땠나요?',
+                ? context.t('rate_prompt_album', ref: ref)
+                : context.t('rate_prompt_artist', ref: ref),
         itemTitle: widget.item.title,
         itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
         imageUrl: widget.item.imageUrl,
@@ -742,7 +742,7 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
     } else {
       setState(() => _busy = false);
       messenger.showSnackBar(
-        SnackBar(content: Text('"${enriched.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+        SnackBar(content: Text(context.t('home_added_toast', args: [enriched.title], ref: ref))),
       );
     }
   }
@@ -830,10 +830,10 @@ class _FriendRecentCardState extends ConsumerState<_FriendRecentCard> {
       context: context,
       builder: (c) => InitialScoreDialog(
         title: widget.item.kind == 'track'
-            ? '이 곡은 어땠나요?'
+            ? context.t('rate_prompt_track', ref: ref)
             : widget.item.kind == 'album'
-                ? '이 앨범은 어땠나요?'
-                : '이 아티스트는 어땠나요?',
+                ? context.t('rate_prompt_album', ref: ref)
+                : context.t('rate_prompt_artist', ref: ref),
         itemTitle: widget.item.title,
         itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
         imageUrl: widget.item.imageUrl,
@@ -865,7 +865,7 @@ class _FriendRecentCardState extends ConsumerState<_FriendRecentCard> {
     } else {
       setState(() => _busy = false);
       messenger.showSnackBar(
-        SnackBar(content: Text('"${enriched.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+        SnackBar(content: Text(context.t('home_added_toast', args: [enriched.title], ref: ref))),
       );
     }
   }
@@ -909,7 +909,7 @@ class _FriendRecentCardState extends ConsumerState<_FriendRecentCard> {
                       Icon(Icons.people_outline_rounded, size: 12, color: p.accentText),
                       const SizedBox(width: 4),
                       Text(
-                        '친구가 평가함',
+                        context.t('home_friend_rated_label', ref: ref),
                         style: TextStyle(color: p.accentText, fontSize: 10, fontWeight: FontWeight.w600),
                       ),
                     ],

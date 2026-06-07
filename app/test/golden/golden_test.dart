@@ -13,6 +13,7 @@ import 'package:athens/features/share/share_screen.dart';
 import 'package:athens/features/stats/stats_screen.dart';
 import 'package:athens/features/catalog/catalog_service.dart';
 import 'package:athens/theme/app_theme.dart';
+import 'package:athens/i18n.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,6 +61,7 @@ void main() {
 
   Future<ProviderContainer> seededContainer(TestHarness h) async {
     final c = h.container();
+    c.read(localeProvider.notifier).state = AppLanguage.ko;
     await c.read(libraryControllerProvider.future);
     await seedDevData(c);
     return c;
@@ -155,7 +157,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(body: ShareCard.top5(items: items.take(5).toList())),
+      home: Scaffold(body: ShareCard.top5(items: items.take(5).toList(), lang: AppLanguage.ko)),
     ));
     await tester.pumpAndSettle();
     await expectLater(

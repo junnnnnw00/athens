@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/cover_art.dart';
 import '../stats/community_stats_service.dart';
+import '../../i18n.dart';
 
 /// Community rating statistics for one item, shown on the detail screen:
 /// average + distribution + community trend (all accounts), the signed-in
@@ -37,12 +38,12 @@ class CommunityStatsSection extends ConsumerWidget {
   }
 }
 
-class _Content extends StatelessWidget {
+class _Content extends ConsumerWidget {
   const _Content({required this.data});
   final CommunityItemData data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final stats = data.stats;
 
@@ -63,7 +64,7 @@ class _Content extends StatelessWidget {
         const SizedBox(height: AppSpacing.xxl),
 
         if (showCommunity) ...[
-          Text('커뮤니티 평가', style: Theme.of(context).textTheme.titleMedium),
+          Text(context.t('community_rating', ref: ref), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.md),
           // Headline: average + rater count.
           Row(
@@ -83,14 +84,14 @@ class _Content extends StatelessWidget {
                     Text('/ 10', style: TextStyle(color: p.muted, fontSize: 14)),
               ),
               const Spacer(),
-              Text('${stats.count}명 평가',
+              Text(context.t('community_rated_count', args: ['${stats.count}'], ref: ref),
                   style: TextStyle(color: p.muted, fontSize: 13)),
             ],
           ),
 
           // Score distribution.
           const SizedBox(height: AppSpacing.xl),
-          Text('점수 분포', style: Theme.of(context).textTheme.titleSmall),
+          Text(context.t('stats_distribution', ref: ref), style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.md),
           SizedBox(
             height: 140,
@@ -100,7 +101,7 @@ class _Content extends StatelessWidget {
           // Community average over time.
           if (data.trend.length >= 2) ...[
             const SizedBox(height: AppSpacing.xl),
-            Text('평균 점수 추이', style: Theme.of(context).textTheme.titleSmall),
+            Text(context.t('average_score_trend', ref: ref), style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: AppSpacing.md),
             SizedBox(
               height: 150,
@@ -112,7 +113,7 @@ class _Content extends StatelessWidget {
                 minY: 0,
                 maxY: 10,
                 yInterval: 2,
-                tooltipValue: (v) => '${v.toStringAsFixed(1)}점',
+                tooltipValue: (v) => context.t('score_suffix', args: [v.toStringAsFixed(1)], ref: ref),
               ),
             ),
           ],
@@ -122,7 +123,7 @@ class _Content extends StatelessWidget {
         // 0–10 score, so small movements stay visible).
         if (showOwnTrend) ...[
           if (showCommunity) const SizedBox(height: AppSpacing.xl),
-          Text('내 Elo 변화', style: Theme.of(context).textTheme.titleMedium),
+          Text(context.t('my_elo_trend', ref: ref), style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.md),
           _OwnEloChart(points: data.ownTrend, color: p.accentText),
         ],
@@ -130,7 +131,7 @@ class _Content extends StatelessWidget {
         // Reviews from public accounts.
         if (showReviews) ...[
           const SizedBox(height: AppSpacing.xxl),
-          Text('다른 사람들의 리뷰',
+          Text(context.t('others_reviews', ref: ref),
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: AppSpacing.md),
           for (final r in data.reviews) _ReviewCard(review: r),
@@ -206,12 +207,12 @@ class _ReviewCard extends StatelessWidget {
 }
 
 /// Score-distribution bar chart (10 buckets, 0–10).
-class _DistBar extends StatelessWidget {
+class _DistBar extends ConsumerWidget {
   const _DistBar({required this.buckets});
   final List<ScoreBucket> buckets;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final maxY =
         buckets.fold<int>(0, (m, b) => b.count > m ? b.count : m).toDouble();
@@ -223,12 +224,12 @@ class _DistBar extends StatelessWidget {
             getTooltipColor: (_) => p.surface2,
             tooltipBorder: BorderSide(color: p.line),
             getTooltipItem: (group, gi, rod, ri) => BarTooltipItem(
-              '${buckets[gi].label}점\n',
+              context.t('score_points', args: [buckets[gi].label], ref: ref),
               TextStyle(
                   color: p.text, fontWeight: FontWeight.bold, fontSize: 11),
               children: [
                 TextSpan(
-                  text: '${buckets[gi].count}명',
+                  text: context.t('people_count', args: ['${buckets[gi].count}'], ref: ref),
                   style: TextStyle(
                       color: p.accentText,
                       fontWeight: FontWeight.bold,
@@ -308,13 +309,13 @@ class _DistBar extends StatelessWidget {
 
 /// The user's own Elo history. Auto-scales the Y axis to the Elo range so even
 /// small swings are visible, then defers to [_TrendLine] for rendering.
-class _OwnEloChart extends StatelessWidget {
+class _OwnEloChart extends ConsumerWidget {
   const _OwnEloChart({required this.points, required this.color});
   final List<({DateTime t, double elo})> points;
   final Color color;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ys = points.map((e) => e.elo);
     final lo = ys.reduce(math.min);
     final hi = ys.reduce(math.max);
@@ -361,7 +362,7 @@ class _OwnEloChart extends StatelessWidget {
 
 /// Generic time-series line chart. Y axis bounds + value formatting are supplied
 /// by the caller so it can render either a 0–10 score or a raw Elo series.
-class _TrendLine extends StatelessWidget {
+class _TrendLine extends ConsumerWidget {
   const _TrendLine({
     required this.points,
     required this.color,
@@ -381,7 +382,7 @@ class _TrendLine extends StatelessWidget {
   final int labelDecimals;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     String axisLabel(DateTime d) => '${d.month}/${d.day}';
     return LineChart(
@@ -395,7 +396,7 @@ class _TrendLine extends StatelessWidget {
             getTooltipItems: (spots) => spots.map((s) {
               final d = points[s.x.toInt()].t;
               return LineTooltipItem(
-                '${d.month}월 ${d.day}일\n',
+                context.t('date_format_tooltip', args: ['${d.month}', '${d.day}'], ref: ref),
                 TextStyle(
                     color: p.text, fontWeight: FontWeight.bold, fontSize: 11),
                 children: [

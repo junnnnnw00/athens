@@ -45,7 +45,6 @@ class StatsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final statsAsync = ref.watch(statsProvider);
-    final isKo = ref.watch(localeProvider) == AppLanguage.ko;
 
     return statsAsync.when(
       data: (stats) {
@@ -111,10 +110,10 @@ class StatsScreen extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  _BigStat(value: '$total${isKo ? '개' : ''}', label: context.t('stats_rated_items', ref: ref)),
+                  _BigStat(value: context.t('stats_items_unit', args: [total.toString()], ref: ref), label: context.t('stats_rated_items', ref: ref)),
                   const SizedBox(width: AppSpacing.xxl),
                   _BigStat(
-                      value: '$totalComparisons${isKo ? '개' : ''}',
+                      value: context.t('stats_comparisons_unit', args: [totalComparisons.toString()], ref: ref),
                       label: context.t('stats_comparisons', ref: ref),
                       accent: true),
                 ],
@@ -128,27 +127,27 @@ class StatsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // 1. Insights Report Grid
-                      _SectionTitle(isKo ? '💡 나의 음악 취향 분석 리포트' : '💡 Music Taste Insights'),
+                      _SectionTitle(context.t('stats_insights_title', ref: ref)),
                       const SizedBox(height: AppSpacing.md),
                       Row(
                         children: [
                           Expanded(
                             child: _InsightCard(
-                              title: isKo ? '평균 점수' : 'Average Score',
-                              value: '${stats.averageScore.toStringAsFixed(1)}점',
+                              title: context.t('stats_avg_score_label', ref: ref),
+                              value: context.t('stats_avg_score_value', args: [stats.averageScore.toStringAsFixed(1)], ref: ref),
                               icon: Icons.star_rounded,
                               iconColor: Colors.amber,
-                              description: isKo ? '내 라이브러리 전체 평균' : 'Your library average',
+                              description: context.t('stats_avg_score_desc', ref: ref),
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: _InsightCard(
-                              title: isKo ? '최다 듀얼 곡' : 'Most Dueling Item',
+                              title: context.t('stats_most_dueled_label', ref: ref),
                               value: mostComparedItem != null ? mostComparedItem.title : '-',
                               icon: Icons.local_fire_department_rounded,
                               iconColor: Colors.orange,
-                              description: mostComparedItem != null ? '${mostComparedItem.comparisons}회 격돌' : '-',
+                              description: mostComparedItem != null ? context.t('stats_most_dueled_desc', args: [mostComparedItem.comparisons.toString()], ref: ref) : '-',
                             ),
                           ),
                         ],
@@ -158,24 +157,24 @@ class StatsScreen extends ConsumerWidget {
                         children: [
                           Expanded(
                             child: _InsightCard(
-                              title: isKo ? '원픽 장르' : 'Favorite Genre',
+                              title: context.t('stats_top_genre_label', ref: ref),
                               value: stats.genrePreferences.isNotEmpty ? stats.genrePreferences.first.name : '-',
                               icon: Icons.music_note_rounded,
                               iconColor: Colors.purple,
                               description: stats.genrePreferences.isNotEmpty 
-                                  ? '평균 ${stats.genrePreferences.first.averageScore.toStringAsFixed(1)}점' 
+                                  ? context.t('stats_top_genre_desc', args: [stats.genrePreferences.first.averageScore.toStringAsFixed(1)], ref: ref) 
                                   : '-',
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: _InsightCard(
-                              title: isKo ? '선호 분위기' : 'Favorite Mood',
+                              title: context.t('stats_top_mood_label', ref: ref),
                               value: stats.moodPreferences.isNotEmpty ? stats.moodPreferences.first.name : '-',
                               icon: Icons.wb_sunny_rounded,
                               iconColor: Colors.teal,
                               description: stats.moodPreferences.isNotEmpty 
-                                  ? '평균 ${stats.moodPreferences.first.averageScore.toStringAsFixed(1)}점' 
+                                  ? context.t('stats_top_mood_desc', args: [stats.moodPreferences.first.averageScore.toStringAsFixed(1)], ref: ref) 
                                   : '-',
                             ),
                           ),
@@ -194,7 +193,7 @@ class StatsScreen extends ConsumerWidget {
 
                       // 3. Top Favorites List
                       if (topItemsWithMetadata.isNotEmpty) ...[
-                        _SectionTitle(isKo ? '🏆 나의 원픽 음악 Top 5' : '🏆 My Top 5 Favorites'),
+                        _SectionTitle(context.t('stats_top_favorites_title', ref: ref)),
                         const SizedBox(height: AppSpacing.md),
                         ListView.separated(
                           shrinkWrap: true,
@@ -273,7 +272,7 @@ class StatsScreen extends ConsumerWidget {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
-                                        '${data.item.score.toStringAsFixed(1)}점',
+                                        context.t('stats_score_suffix', args: [data.item.score.toStringAsFixed(1)], ref: ref),
                                         style: TextStyle(
                                           color: p.accentText,
                                           fontWeight: FontWeight.bold,
@@ -281,7 +280,7 @@ class StatsScreen extends ConsumerWidget {
                                         ),
                                       ),
                                       Text(
-                                        '${data.item.comparisons}회 대결',
+                                        context.t('stats_duels_count', args: [data.item.comparisons.toString()], ref: ref),
                                         style: TextStyle(color: p.muted, fontSize: 10),
                                       ),
                                     ],
@@ -299,19 +298,19 @@ class StatsScreen extends ConsumerWidget {
                         _SectionTitle(context.t('stats_genres', ref: ref)),
                         const SizedBox(height: AppSpacing.sm),
                         ...stats.topGenres.take(5).map((t) =>
-                            _TagBar(tag: t, max: stats.topGenres.first.count, isKo: isKo)),
+                            _TagBar(tag: t, max: stats.topGenres.first.count)),
                       ],
                       const SizedBox(height: AppSpacing.xxl),
                       _SectionTitle(context.t('stats_genre_preference', ref: ref)),
                       const SizedBox(height: AppSpacing.sm),
                       if (stats.genrePreferences.isNotEmpty)
                         ...stats.genrePreferences.take(5).map((p) =>
-                            _PreferenceBar(pref: p, isKo: isKo))
+                            _PreferenceBar(pref: p))
                       else
                         Padding(
                           padding: const EdgeInsets.only(top: AppSpacing.xs),
                           child: Text(
-                            context.t('stats_preference_not_enough', ref: ref),
+                             context.t('stats_preference_not_enough', ref: ref),
                             style: TextStyle(color: p.muted, fontSize: 14),
                           ),
                         ),
@@ -320,19 +319,19 @@ class StatsScreen extends ConsumerWidget {
                         _SectionTitle(context.t('stats_moods', ref: ref)),
                         const SizedBox(height: AppSpacing.sm),
                         ...stats.topMoods.take(5).map((t) =>
-                            _TagBar(tag: t, max: stats.topMoods.first.count, isKo: isKo)),
+                            _TagBar(tag: t, max: stats.topMoods.first.count)),
                       ],
                       const SizedBox(height: AppSpacing.xxl),
                       _SectionTitle(context.t('stats_mood_preference', ref: ref)),
                       const SizedBox(height: AppSpacing.sm),
                       if (stats.moodPreferences.isNotEmpty)
                         ...stats.moodPreferences.take(5).map((p) =>
-                            _PreferenceBar(pref: p, isKo: isKo))
+                            _PreferenceBar(pref: p))
                       else
                         Padding(
                           padding: const EdgeInsets.only(top: AppSpacing.xs),
                           child: Text(
-                            context.t('stats_preference_not_enough', ref: ref),
+                             context.t('stats_preference_not_enough', ref: ref),
                             style: TextStyle(color: p.muted, fontSize: 14),
                           ),
                         ),

@@ -136,14 +136,12 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
   Future<void> _add() async {
     final router = GoRouter.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    final addedToast = context.t('home_added_toast', args: [widget.item.title], ref: ref);
+    final dialogTitle = context.t('rate_prompt_${widget.item.kind}', ref: ref);
     final score = await showDialog<double>(
       context: context,
       builder: (c) => InitialScoreDialog(
-        title: widget.item.kind == 'track'
-            ? '이 곡은 어땠나요?'
-            : widget.item.kind == 'album'
-                ? '이 앨범은 어땠나요?'
-                : '이 아티스트는 어땠나요?',
+        title: dialogTitle,
         itemTitle: widget.item.title,
         itemArtist: widget.item.kind == 'artist' ? null : widget.item.primaryArtist,
         imageUrl: widget.item.imageUrl,
@@ -180,7 +178,7 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
     } else {
       if (mounted) setState(() => _busy = false);
       messenger.showSnackBar(
-        SnackBar(content: Text('"${item.title}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요')),
+        SnackBar(content: Text(addedToast)),
       );
     }
   }
@@ -216,8 +214,8 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
                       style: Theme.of(context).textTheme.titleSmall),
                   Text(
                       widget.item.kind == 'artist'
-                          ? '아티스트'
-                          : '${_kindHeaders[widget.item.kind] ?? ''} · ${widget.item.primaryArtist ?? ''}',
+                          ? context.t('search_artist', ref: ref)
+                          : '${context.t('search_${widget.item.kind}', ref: ref)} · ${widget.item.primaryArtist ?? ''}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall),
@@ -235,7 +233,7 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('추가'),
+                    : Text(context.t('search_add', ref: ref)),
               ),
           ],
         ),
@@ -346,7 +344,7 @@ class _SearchRecommendations extends ConsumerWidget {
                             Icon(Icons.auto_awesome_rounded, color: p.accent, size: 20),
                             const SizedBox(width: AppSpacing.sm),
                             Text(
-                              '나의 음악 취향 분석 엔진',
+                              context.t('search_taste_engine_title', ref: ref),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
@@ -357,7 +355,7 @@ class _SearchRecommendations extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
-                          '곡을 평가(듀얼)하여 추가하면, 나의 취향 장르 분석 결과가 실시간으로 반영되어 추천곡 목록이 지속적으로 업데이트됩니다.',
+                          context.t('search_taste_engine_desc', ref: ref),
                           style: TextStyle(
                             fontSize: 12,
                             color: p.muted,
@@ -372,7 +370,7 @@ class _SearchRecommendations extends ConsumerWidget {
                               context.push('/duel');
                             },
                             icon: const Icon(Icons.bolt_rounded, size: 16),
-                            label: const Text('지금 취향 분석하러 가기'),
+                            label: Text(context.t('search_go_analyze', ref: ref)),
                             style: FilledButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                             ),
@@ -403,7 +401,7 @@ class _SearchRecommendations extends ConsumerWidget {
                           Icon(Icons.query_stats_rounded, color: p.accent, size: 20),
                           const SizedBox(width: AppSpacing.sm),
                           Text(
-                            '실시간 장르 분석 결과',
+                            context.t('search_realtime_genres', ref: ref),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -423,7 +421,7 @@ class _SearchRecommendations extends ConsumerWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '실시간 갱신 중',
+                                context.t('search_updating_live', ref: ref),
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: p.accent,
@@ -436,7 +434,7 @@ class _SearchRecommendations extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
-                        '듀얼 평가 결과로 산출된 장르 선호도 순위입니다. 가장 선호하는 장르의 곡이 하단에 추천됩니다.',
+                        context.t('search_genre_desc', ref: ref),
                         style: TextStyle(
                           fontSize: 12,
                           color: p.muted,
@@ -510,8 +508,8 @@ class _SearchRecommendations extends ConsumerWidget {
             final isDefault = ref.read(statsProvider).valueOrNull?.genrePreferences.isEmpty ?? true;
             final activeGenre = ref.watch(selectedGenreProvider) ?? data.genre;
             final title = isDefault 
-                ? '지금 가장 핫한 #${data.genre} 추천 트랙'
-                : '자주 듣는 #$activeGenre 취향 저격 곡';
+                ? context.t('home_recs_hot', args: [data.genre], ref: ref)
+                : context.t('home_recs_personalized', args: [activeGenre], ref: ref);
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,

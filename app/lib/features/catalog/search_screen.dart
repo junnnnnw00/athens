@@ -14,16 +14,11 @@ import '../../widgets/filter_chips.dart';
 import '../../widgets/initial_score_dialog.dart';
 import '../stats/stats_screen.dart';
 import 'catalog_service.dart';
+import '../../i18n.dart';
 
 part 'widgets/search_widgets.dart';
 
-const _kindLabels = {
-  '전체': 'all',
-  '곡': 'track',
-  '앨범': 'album',
-  '아티스트': 'artist',
-};
-const _kindHeaders = {'track': '곡', 'album': '앨범', 'artist': '아티스트'};
+
 
 final selectedGenreProvider = StateProvider<String?>((ref) => null);
 
@@ -152,8 +147,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   Widget build(BuildContext context) {
     final query = ref.watch(searchQueryProvider);
     final kind = ref.watch(searchKindProvider);
+    
+    final kindLabels = {
+      context.t('search_all', ref: ref): 'all',
+      context.t('search_track', ref: ref): 'track',
+      context.t('search_album', ref: ref): 'album',
+      context.t('search_artist', ref: ref): 'artist',
+    };
     final selectedLabel =
-        _kindLabels.entries.firstWhere((e) => e.value == kind).key;
+        kindLabels.entries.firstWhere((e) => e.value == kind).key;
 
     return Scaffold(
       appBar: AppBar(
@@ -162,15 +164,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         // can and otherwise returns to Home.
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          tooltip: '뒤로',
+          tooltip: context.t('search_back_tooltip', ref: ref),
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/home'),
         ),
         title: TextField(
           autofocus: true,
           style: Theme.of(context).textTheme.bodyLarge,
-          decoration: const InputDecoration(
-            hintText: '트랙, 앨범, 아티스트 검색…',
+          decoration: InputDecoration(
+            hintText: context.t('search_hint', ref: ref),
             border: InputBorder.none,
           ),
           onChanged: _onSearchChanged,
@@ -181,11 +183,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             padding: const EdgeInsets.fromLTRB(
                 AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.sm),
             child: FilterChips(
-              options: _kindLabels.keys.toList(),
+              options: kindLabels.keys.toList(),
               selected: selectedLabel,
               onSelect: (label) => ref
                   .read(searchKindProvider.notifier)
-                  .state = _kindLabels[label]!,
+                  .state = kindLabels[label]!,
             ),
           ),
         ),
@@ -210,11 +212,11 @@ class _SearchBody extends ConsumerWidget {
     if (s.loading) return const _SearchSkeleton();
     if (s.error) {
       return _Hint(
-          icon: Icons.cloud_off_rounded, text: '검색에 실패했어요. 네트워크를 확인하세요.');
+          icon: Icons.cloud_off_rounded, text: context.t('search_error', ref: ref));
     }
     if (s.items.isEmpty) {
       return _Hint(
-          icon: Icons.sentiment_dissatisfied_rounded, text: '결과가 없어요');
+          icon: Icons.sentiment_dissatisfied_rounded, text: context.t('search_no_results', ref: ref));
     }
 
     // Group by kind, ordered 곡 → 앨범 → 아티스트, with section headers.
@@ -223,7 +225,7 @@ class _SearchBody extends ConsumerWidget {
     for (final k in order) {
       final group = s.items.where((i) => i.kind == k).toList();
       if (group.isEmpty) continue;
-      rows.add(_SectionHeader(label: _kindHeaders[k]!, count: group.length));
+      rows.add(_SectionHeader(label: context.t('search_$k', ref: ref), count: group.length));
       for (final item in group) {
         rows.add(_ResultRow(item: item, added: addedIds.contains(item.id)));
         rows.add(Divider(height: 1, color: p.line, indent: AppSpacing.xl));
@@ -243,7 +245,7 @@ class _SearchBody extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${_kindHeaders[k]} 카테고리에서 더보기',
+                    context.t('search_category_more', args: [context.t('search_$k', ref: ref)], ref: ref),
                     style: TextStyle(
                       color: p.accentText,
                       fontSize: 14,
@@ -274,7 +276,7 @@ class _SearchBody extends ConsumerWidget {
                   child: OutlinedButton(
                     onPressed: () =>
                         ref.read(searchControllerProvider.notifier).loadMore(),
-                    child: const Text('더 보기'),
+                    child: Text(context.t('search_more', ref: ref)),
                   ),
                 ),
               ),

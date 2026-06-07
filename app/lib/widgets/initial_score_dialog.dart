@@ -1,10 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/tokens.dart';
 import '../theme/app_theme.dart';
 import '../widgets/score_ring.dart';
+import '../i18n.dart';
 
-class InitialScoreDialog extends StatefulWidget {
+class InitialScoreDialog extends ConsumerStatefulWidget {
   const InitialScoreDialog({
     super.key,
     required this.title,
@@ -23,10 +25,10 @@ class InitialScoreDialog extends StatefulWidget {
   final String itemKind;
 
   @override
-  State<InitialScoreDialog> createState() => _InitialScoreDialogState();
+  ConsumerState<InitialScoreDialog> createState() => _InitialScoreDialogState();
 }
 
-class _InitialScoreDialogState extends State<InitialScoreDialog> {
+class _InitialScoreDialogState extends ConsumerState<InitialScoreDialog> {
   late double _score;
 
   @override
@@ -35,16 +37,16 @@ class _InitialScoreDialogState extends State<InitialScoreDialog> {
     _score = widget.initialValue;
   }
 
-  String get _kindLabel {
+  String _kindLabel(WidgetRef ref) {
     switch (widget.itemKind) {
       case 'track':
-        return '곡';
+        return context.t('search_track', ref: ref);
       case 'album':
-        return '앨범';
+        return context.t('search_album', ref: ref);
       case 'artist':
-        return '아티스트';
+        return context.t('search_artist', ref: ref);
       default:
-        return '항목';
+        return context.t('dialog_kind_item', ref: ref);
     }
   }
 
@@ -60,13 +62,13 @@ class _InitialScoreDialogState extends State<InitialScoreDialog> {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '초기 배치 점수 설정',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          Text(
+            context.t('dialog_set_initial_score', ref: ref),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
           ),
           const SizedBox(height: 6),
           Text(
-            '“제가 지금 생각하기에 이 $_kindLabel은 이정도예요.”',
+            context.t('dialog_opinion_prompt', args: [_kindLabel(ref)], ref: ref),
             style: TextStyle(
               color: p.muted,
               fontSize: 13,
@@ -186,7 +188,7 @@ class _InitialScoreDialogState extends State<InitialScoreDialog> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '이 점수를 바탕으로 대략적인 첫 위치를 잡습니다. 확인 후, 다른 $_kindLabel들과 배틀(1대1 비교)을 치르며 더 정확한 최종 순위를 정하게 됩니다.',
+                      context.t('dialog_guide_notice', args: [_kindLabel(ref)], ref: ref),
                       style: TextStyle(
                         color: p.text.withAlpha(200),
                         fontSize: 11.5,
@@ -204,14 +206,14 @@ class _InitialScoreDialogState extends State<InitialScoreDialog> {
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: Text(
-            '취소',
+            context.t('dialog_cancel', ref: ref),
             style: TextStyle(color: p.muted, fontWeight: FontWeight.bold),
           ),
         ),
         TextButton(
           onPressed: () => Navigator.pop(context, _score),
           child: Text(
-            '확인',
+            context.t('dialog_confirm', ref: ref),
             style: TextStyle(color: p.accentText, fontWeight: FontWeight.bold),
           ),
         ),

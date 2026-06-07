@@ -286,12 +286,8 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
     final (a, b) = pair;
     final title = _placement
-        ? (lang == AppLanguage.ko
-            ? '새로 추가한 ${_localizedKindLabel(a.kind, lang)}, 어느 쪽이 더 좋아요?'
-            : 'Which ${_localizedKindLabel(a.kind, lang)} do you prefer for the new one?')
-        : (lang == AppLanguage.ko
-            ? '어떤 ${_localizedKindLabel(_kind!, lang)}이 더 좋아요?'
-            : 'Which ${_localizedKindLabel(_kind!, lang)} do you prefer?');
+        ? context.t('duel_placement_question', args: [_localizedKindLabel(a.kind, lang)], ref: ref)
+        : context.t('duel_question_kind', args: [_localizedKindLabel(_kind!, lang)], ref: ref);
     final canUndo = !_placement && ref.watch(canUndoDuelProvider);
     return Scaffold(
       appBar: AppBar(
@@ -424,19 +420,19 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   }
 }
 
-class _PlacementProgress extends StatelessWidget {
+class _PlacementProgress extends ConsumerWidget {
   const _PlacementProgress({required this.round, required this.target});
   final int round;
   final int target;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final value = target == 0 ? 0.0 : (round / target).clamp(0.0, 1.0);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('순위 정하는 중 · ${round + 1}/$target',
+        Text(context.t('duel_assigning_rank', args: ['${round + 1}', '$target'], ref: ref),
             style: Theme.of(context)
                 .textTheme
                 .labelMedium
@@ -542,9 +538,11 @@ class _PlacementDone extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(AppRadii.pill),
                             ),
                             child: Text(
-                              lang == AppLanguage.ko
-                                  ? '${_localizedKindLabel(item.kind, lang)} ${sameKind.length}개 중 $rank위'
-                                  : 'Rank $rank of ${sameKind.length} ${_localizedKindLabel(item.kind, lang, plural: true)}',
+                              context.t('duel_placement_rank', args: [
+                                _localizedKindLabel(item.kind, lang, plural: true),
+                                '${sameKind.length}',
+                                '$rank',
+                              ], ref: ref),
                               style: TextStyle(
                                 color: p.accentText,
                                 fontWeight: FontWeight.bold,

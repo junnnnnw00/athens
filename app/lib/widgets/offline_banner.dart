@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/repository/library_providers.dart';
 import '../theme/tokens.dart';
 import '../theme/app_theme.dart';
+import '../i18n.dart';
 
 /// Slim strip shown app-wide (by the shell) when the device is offline. Sits
 /// under the status bar and communicates that the saved library still works
@@ -17,8 +18,8 @@ class OfflineBanner extends ConsumerWidget {
     final p = context.palette;
     final pending = ref.watch(pendingSyncProvider);
     final text = pending > 0
-        ? '오프라인 — 변경 $pending개는 온라인 시 동기화돼요'
-        : '오프라인 — 저장된 라이브러리는 그대로 이용할 수 있어요';
+        ? context.t('offline_sync_pending', args: [pending.toString()], ref: ref)
+        : context.t('offline_local_only', ref: ref);
     return Material(
       color: p.surface2,
       child: SafeArea(

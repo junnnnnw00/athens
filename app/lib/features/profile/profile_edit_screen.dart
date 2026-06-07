@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import 'profile_service.dart';
+import '../../i18n.dart';
 
 class ProfileEditScreen extends ConsumerStatefulWidget {
   const ProfileEditScreen({super.key});
@@ -48,6 +49,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   Future<void> _pickAndUploadImage() async {
     final messenger = ScaffoldMessenger.of(context);
+    final chooseMsg = context.t('edit_choose_gallery', ref: ref);
+    final deleteMsg = context.t('edit_delete_photo', ref: ref);
+    final uploadSuccessMsg = context.t('edit_uploaded_toast', ref: ref);
+    final uploadFailedPrefix = context.t('edit_upload_failed', ref: ref);
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (context) => SafeArea(
@@ -56,13 +61,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('갤러리에서 선택'),
+              title: Text(chooseMsg),
               onTap: () => Navigator.pop(context, 'pick'),
             ),
             if (_avatarUrl != null && _avatarUrl!.isNotEmpty)
               ListTile(
                 leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                title: const Text('사진 삭제', style: TextStyle(color: Colors.red)),
+                title: Text(deleteMsg, style: const TextStyle(color: Colors.red)),
                 onTap: () => Navigator.pop(context, 'delete'),
               ),
           ],
@@ -106,17 +111,18 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         _avatarUrl = url;
         _uploadingImage = false;
       });
-      messenger.showSnackBar(const SnackBar(content: Text('프로필 사진 업로드됨')));
+      messenger.showSnackBar(SnackBar(content: Text(uploadSuccessMsg)));
     } catch (e) {
       setState(() {
         _uploadingImage = false;
-        _error = '이미지 업로드 실패: $e';
+        _error = '$uploadFailedPrefix$e';
       });
     }
   }
 
   Future<void> _save() async {
-    final handleErr = ProfileService.validateHandle(_handle.text);
+    final lang = ref.read(localeProvider);
+    final handleErr = ProfileService.validateHandle(_handle.text, lang);
     if (handleErr != null) {
       setState(() => _error = handleErr);
       return;
@@ -130,6 +136,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final router = GoRouter.of(context);
     final service = ref.read(profileServiceProvider);
     final container = ProviderScope.containerOf(context);
+    final savedMsg = context.t('edit_saved_toast', ref: ref);
+    final handleTakenMsg = context.t('edit_handle_taken', ref: ref);
+    final saveFailedPattern = context.t('edit_save_failed', ref: ref);
     try {
       await service.updateProfile(
         handle: _handle.text,
@@ -141,7 +150,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       );
       container.invalidate(myProfileProvider);
       messenger.showSnackBar(
-        const SnackBar(content: Text('프로필 저장됨')),
+        SnackBar(content: Text(savedMsg)),
       );
       if (router.canPop()) {
         router.pop();
@@ -149,9 +158,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         router.go('/profile');
       }
     } on HandleTakenException {
-      if (mounted) setState(() => _error = '이미 사용 중인 핸들이에요');
+      if (mounted) setState(() => _error = handleTakenMsg);
     } catch (e) {
-      if (mounted) setState(() => _error = '저장 실패: $e');
+      if (mounted) setState(() => _error = saveFailedPattern.replaceAll('{0}', '$e'));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -163,13 +172,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final async = ref.watch(myProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('프로필 편집')),
+      appBar: AppBar(title: Text(context.t('edit_title', ref: ref))),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('불러오기 실패: $e')),
+        error: (e, _) => Center(child: Text(context.t('edit_load_failed', args: ['$e'], ref: ref))),
         data: (profile) {
           if (profile == null) {
-            return const Center(child: Text('로그인이 필요해요.'));
+            return Center(child: Text(context.t('edit_login_required', ref: ref)));
           }
           _hydrate(profile);
           return ListView(
@@ -239,7 +248,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     TextButton.icon(
                       onPressed: _uploadingImage ? null : _pickAndUploadImage,
                       icon: const Icon(Icons.photo_library_outlined, size: 16),
-                      label: const Text('프로필 사진 변경'),
+                      label: Text(context.t('edit_change_photo', ref: ref)),
                       style: TextButton.styleFrom(
                         foregroundColor: p.accentText,
                       ),
@@ -248,38 +257,38 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              _Label('핸들'),
+              _Label(context.t('edit_handle_label', ref: ref)),
               TextField(
                 controller: _handle,
                 decoration: InputDecoration(
                   prefixText: '@',
                   hintText: 'lowercase_handle',
-                  helperText: '공개 프로필 주소: /u/<핸들>',
+                  helperText: context.t('edit_public_url_hint', ref: ref),
                 ),
                 autocorrect: false,
                 enableSuggestions: false,
               ),
               const SizedBox(height: AppSpacing.lg),
-              _Label('표시 이름'),
+              _Label(context.t('edit_display_name', ref: ref)),
               TextField(
                 controller: _displayName,
-                decoration: const InputDecoration(hintText: '예: 준우'),
+                decoration: InputDecoration(hintText: context.t('edit_display_name_hint', ref: ref)),
               ),
               const SizedBox(height: AppSpacing.lg),
-              _Label('소개'),
+              _Label(context.t('edit_bio', ref: ref)),
               TextField(
                 controller: _bio,
                 maxLines: 3,
                 maxLength: 160,
-                decoration: const InputDecoration(hintText: '한 줄 소개'),
+                decoration: InputDecoration(hintText: context.t('edit_bio_hint', ref: ref)),
               ),
               const SizedBox(height: AppSpacing.lg),
-              _Label('Last.fm 사용자명 (청취 기록 연동)'),
+              _Label(context.t('edit_lastfm_label', ref: ref)),
               TextField(
                 controller: _lastfmUsername,
-                decoration: const InputDecoration(
-                  hintText: 'Last.fm 아이디를 입력하세요',
-                  helperText: 'Spotify, YouTube Music 등을 연동한 Last.fm 아이디',
+                decoration: InputDecoration(
+                  hintText: context.t('edit_lastfm_hint', ref: ref),
+                  helperText: context.t('edit_lastfm_helper', ref: ref),
                 ),
                 autocorrect: false,
                 enableSuggestions: false,
@@ -295,11 +304,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                   activeThumbColor: p.accent,
                   contentPadding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.lg),
-                  title: const Text('공개 프로필'),
+                  title: Text(context.t('edit_public_profile_title', ref: ref)),
                   subtitle: Text(
                     _isPublic
-                        ? '누구나 웹에서 내 순위를 볼 수 있어요'
-                        : '나만 볼 수 있어요',
+                        ? context.t('edit_public_desc_on', ref: ref)
+                        : context.t('edit_public_desc_off', ref: ref),
                     style: TextStyle(color: p.muted, fontSize: 12.5),
                   ),
                   onChanged: (v) => setState(() => _isPublic = v),
@@ -321,7 +330,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('저장'),
+                      : Text(context.t('lib_save', ref: ref)),
                 ),
               ),
             ],

@@ -1,29 +1,30 @@
 import 'package:athens/features/profile/profile_service.dart';
+import 'package:athens/i18n.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('ProfileService.validateHandle', () {
     test('accepts a valid lowercase handle', () {
-      expect(ProfileService.validateHandle('junwoo_00'), isNull);
+      expect(ProfileService.validateHandle('junwoo_00', AppLanguage.en), isNull);
     });
 
     test('rejects too short', () {
-      expect(ProfileService.validateHandle('ab'), isNotNull);
+      expect(ProfileService.validateHandle('ab', AppLanguage.en), isNotNull);
     });
 
     test('rejects too long (>20)', () {
-      expect(ProfileService.validateHandle('a' * 21), isNotNull);
+      expect(ProfileService.validateHandle('a' * 21, AppLanguage.en), isNotNull);
     });
 
     test('rejects uppercase and symbols', () {
-      expect(ProfileService.validateHandle('JunWoo'), isNotNull);
-      expect(ProfileService.validateHandle('jun woo'), isNotNull);
-      expect(ProfileService.validateHandle('jun-woo'), isNotNull);
-      expect(ProfileService.validateHandle('jun.woo'), isNotNull);
+      expect(ProfileService.validateHandle('JunWoo', AppLanguage.en), isNotNull);
+      expect(ProfileService.validateHandle('jun woo', AppLanguage.en), isNotNull);
+      expect(ProfileService.validateHandle('jun-woo', AppLanguage.en), isNotNull);
+      expect(ProfileService.validateHandle('jun.woo', AppLanguage.en), isNotNull);
     });
 
     test('accepts digits and underscores', () {
-      expect(ProfileService.validateHandle('a_1_b_2'), isNull);
+      expect(ProfileService.validateHandle('a_1_b_2', AppLanguage.en), isNull);
     });
   });
 

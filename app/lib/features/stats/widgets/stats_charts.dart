@@ -92,12 +92,12 @@ class _InsightCard extends StatelessWidget {
   }
 }
 
-class _ScoreDistributionChart extends StatelessWidget {
+class _ScoreDistributionChart extends ConsumerWidget {
   const _ScoreDistributionChart({required this.buckets});
   final List<ScoreBucket> buckets;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final maxY =
         buckets.fold<int>(0, (m, b) => b.count > m ? b.count : m).toDouble();
@@ -113,11 +113,11 @@ class _ScoreDistributionChart extends StatelessWidget {
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               final bucket = buckets[groupIndex];
               return BarTooltipItem(
-                '${bucket.label}점\n',
+                '${bucket.label}${context.t('stats_score_suffix_short', ref: ref)}\n',
                 TextStyle(color: p.text, fontWeight: FontWeight.bold, fontSize: 11),
                 children: [
                   TextSpan(
-                    text: '${bucket.count}곡',
+                    text: context.t('stats_tracks_count', args: [bucket.count.toString()], ref: ref),
                     style: TextStyle(color: p.accentText, fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ],
@@ -195,14 +195,13 @@ class _ScoreDistributionChart extends StatelessWidget {
   }
 }
 
-class _TagBar extends StatelessWidget {
-  const _TagBar({required this.tag, required this.max, required this.isKo});
+class _TagBar extends ConsumerWidget {
+  const _TagBar({required this.tag, required this.max});
   final TagCount tag;
   final int max;
-  final bool isKo;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final fraction = max == 0 ? 0.0 : tag.count / max;
     return Padding(
@@ -228,23 +227,22 @@ class _TagBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          Text('${tag.count}${isKo ? '개' : ''}', style: TextStyle(color: p.muted)),
+          Text(context.t('stats_count_unit', args: [tag.count.toString()], ref: ref), style: TextStyle(color: p.muted)),
         ],
       ),
     );
   }
 }
 
-class _PreferenceBar extends StatelessWidget {
-  const _PreferenceBar({required this.pref, required this.isKo});
+class _PreferenceBar extends ConsumerWidget {
+  const _PreferenceBar({required this.pref});
   final TagPreference pref;
-  final bool isKo;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final scoreString = pref.averageScore.toStringAsFixed(1);
-    final countSuffix = isKo ? '${pref.count}개' : '${pref.count} items';
+    final countSuffix = context.t('stats_items_count_suffix', args: [pref.count.toString()], ref: ref);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
@@ -268,7 +266,7 @@ class _PreferenceBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          Text(isKo ? '$scoreString점 ($countSuffix)' : '$scoreString ($countSuffix)',
+          Text(context.t('stats_score_and_count', args: [scoreString, countSuffix], ref: ref),
               style: TextStyle(color: p.muted, fontSize: 12)),
         ],
       ),
@@ -276,12 +274,12 @@ class _PreferenceBar extends StatelessWidget {
   }
 }
 
-class _ActivityChart extends StatelessWidget {
+class _ActivityChart extends ConsumerWidget {
   const _ActivityChart({required this.activity});
   final List<ActivityPoint> activity;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final maxY = activity
         .fold<int>(0, (m, a) => a.comparisons > m ? a.comparisons : m)
@@ -298,11 +296,11 @@ class _ActivityChart extends StatelessWidget {
               return touchedSpots.map((spot) {
                 final date = activity[spot.x.toInt()].date;
                 return LineTooltipItem(
-                  '${date.month}월 ${date.day}일\n',
+                  context.t('date_format_tooltip', args: [date.month.toString(), date.day.toString()], ref: ref),
                   TextStyle(color: p.text, fontWeight: FontWeight.bold, fontSize: 11),
                   children: [
                     TextSpan(
-                      text: '${spot.y.toInt()}회 비교',
+                      text: context.t('stats_comparisons_count', args: [spot.y.toInt().toString()], ref: ref),
                       style: TextStyle(color: p.accentText, fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                   ],

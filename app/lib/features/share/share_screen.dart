@@ -11,6 +11,7 @@ import '../../domain/score.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/cover_art.dart';
 import '../catalog/catalog_service.dart';
+import '../../i18n.dart';
 
 enum ShareTemplate { top5, tasteSnapshot }
 
@@ -26,16 +27,17 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   ShareTemplate _template = ShareTemplate.top5;
   bool _sharing = false;
 
-  Widget _card(List<RatedCatalogItem> items) => switch (_template) {
-        ShareTemplate.top5 => ShareCard.top5(items: items.take(5).toList()),
-        ShareTemplate.tasteSnapshot => ShareCard.taste(items: items),
+  Widget _card(List<RatedCatalogItem> items, AppLanguage lang) => switch (_template) {
+        ShareTemplate.top5 => ShareCard.top5(items: items.take(5).toList(), lang: lang),
+        ShareTemplate.tasteSnapshot => ShareCard.taste(items: items, lang: lang),
       };
 
   Future<void> _share(List<RatedCatalogItem> items) async {
+    final lang = ref.read(localeProvider);
     setState(() => _sharing = true);
     try {
       final bytes = await _controller.captureFromWidget(
-        _card(items),
+        _card(items, lang),
         pixelRatio: 3,
         targetSize: const Size(1080, 1920),
       );
@@ -43,7 +45,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       final file = File('${dir.path}/athens_share.png');
       await file.writeAsBytes(bytes);
       await Share.shareXFiles([XFile(file.path)],
-          text: 'Athens에서 내 음악 취향 보기');
+          text: I18n.get('share_text', lang));
     } finally {
       if (mounted) setState(() => _sharing = false);
     }
@@ -52,9 +54,10 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   @override
   Widget build(BuildContext context) {
     final items = ref.watch(ratedItemsProvider);
+    final lang = ref.watch(localeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('공유하기')),
+      appBar: AppBar(title: Text(context.t('share_title', ref: ref))),
       body: Column(
         children: [
           Padding(
@@ -76,7 +79,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                 child: SizedBox(
                   width: 360,
                   height: 640,
-                  child: _card(items),
+                  child: _card(items, lang),
                 ),
               ),
             ),
@@ -92,7 +95,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('공유'),
+                    : Text(context.t('share_button', ref: ref)),
                 onPressed:
                     _sharing || items.isEmpty ? null : () => _share(items),
               ),
@@ -107,15 +110,16 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 /// Self-contained share card — does NOT read from context (it is captured off
 /// the widget tree), so all colours/fonts are explicit.
 class ShareCard extends StatelessWidget {
-  const ShareCard._({required this.items, required this.taste});
+  const ShareCard._({required this.items, required this.taste, required this.lang});
 
-  factory ShareCard.top5({required List<RatedCatalogItem> items}) =>
-      ShareCard._(items: items, taste: false);
-  factory ShareCard.taste({required List<RatedCatalogItem> items}) =>
-      ShareCard._(items: items, taste: true);
+  factory ShareCard.top5({required List<RatedCatalogItem> items, required AppLanguage lang}) =>
+      ShareCard._(items: items, taste: false, lang: lang);
+  factory ShareCard.taste({required List<RatedCatalogItem> items, required AppLanguage lang}) =>
+      ShareCard._(items: items, taste: true, lang: lang);
 
   final List<RatedCatalogItem> items;
   final bool taste;
+  final AppLanguage lang;
 
   static const _p = AppPalette.dark;
 
@@ -138,7 +142,7 @@ class ShareCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(taste ? '내 취향' : '내 Top 5', style: _t(46, FontWeight.w800, _p.text)),
+            Text(taste ? I18n.get('share_card_taste', lang) : I18n.get('share_card_top5', lang), style: _t(46, FontWeight.w800, _p.text)),
             const SizedBox(height: 4),
             Text('on Athens', style: _t(22, FontWeight.w600, _p.accentText)),
             const SizedBox(height: 40),
@@ -222,7 +226,7 @@ class ShareCard extends StatelessWidget {
           ],
         ),
         const Spacer(),
-        Text('${items.length}개 평가',
+        Text(I18n.get('share_card_ratings_count', lang, [items.length.toString()]),
             style: _t(20, FontWeight.w600, _p.muted)),
       ],
     );

@@ -163,12 +163,12 @@ class ProfileScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '개발용 데모 데이터 주입',
+                            context.t('profile_demo_title', ref: ref),
                             style: Theme.of(context).textTheme.titleSmall,
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '18개 명반 평가 + 153개 듀얼 내역을 생성합니다.',
+                            context.t('profile_demo_desc', ref: ref),
                             style: TextStyle(color: p.muted, fontSize: 11),
                           ),
                         ],
@@ -186,6 +186,8 @@ class ProfileScreen extends ConsumerWidget {
                         minimumSize: const Size(60, 32),
                       ),
                       onPressed: () async {
+                        final successMsg = context.t('profile_demo_success', ref: ref);
+                        final failedMsg = context.t('profile_demo_failed', ref: ref);
                         showDialog(
                           context: context,
                           barrierDismissible: false,
@@ -206,19 +208,19 @@ class ProfileScreen extends ConsumerWidget {
                             });
 
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('데모 데이터 주입 완료!')),
+                              SnackBar(content: Text(successMsg)),
                             );
                           }
                         } catch (e) {
                           if (context.mounted) {
                             Navigator.pop(context); // Close loading dialog
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('데이터 주입 실패: $e')),
+                              SnackBar(content: Text(failedMsg.replaceAll('{0}', '$e'))),
                             );
                           }
                         }
                       },
-                      child: const Text('주입', style: TextStyle(fontSize: 12)),
+                      child: Text(context.t('profile_demo_inject_btn', ref: ref), style: const TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
@@ -260,8 +262,8 @@ class ProfileScreen extends ConsumerWidget {
           if (isLoggedIn)
             _Tile(
                 icon: Icons.people_rounded,
-                title: '친구 목록 및 검색',
-                subtitle: '친구들의 음악 취향과 나의 매칭률 확인',
+                title: context.t('profile_friends_title', ref: ref),
+                subtitle: context.t('profile_friends_desc', ref: ref),
                 onTap: () => context.push('/friends')),
           _Tile(
               icon: Icons.library_music_rounded,
@@ -274,10 +276,10 @@ class ProfileScreen extends ConsumerWidget {
 
           _Tile(
               icon: Icons.music_note_rounded,
-              title: 'Last.fm 연동',
+              title: context.t('profile_lastfm_title', ref: ref),
               subtitle: profile?.lastfmUsername != null && profile!.lastfmUsername!.trim().isNotEmpty
-                  ? '연동 완료 (@${profile.lastfmUsername})'
-                  : 'Last.fm 계정 연동하여 재생 기록 가져오기',
+                  ? context.t('profile_lastfm_connected', args: [profile.lastfmUsername!], ref: ref)
+                  : context.t('profile_lastfm_connect_desc', ref: ref),
               onTap: () => context.push('/profile/edit')),
           _Tile(
               icon: Icons.language_rounded,
@@ -308,32 +310,34 @@ class ProfileScreen extends ConsumerWidget {
           if (isLoggedIn)
             _Tile(
                 icon: Icons.delete_forever_rounded,
-                title: '계정 및 데이터 삭제',
-                subtitle: '계정과 모든 데이터를 영구적으로 삭제합니다',
+                title: context.t('profile_delete_account_title', ref: ref),
+                subtitle: context.t('profile_delete_account_desc', ref: ref),
                 onTap: () async {
+                  final deleteTitle = context.t('profile_delete_account_confirm_title', ref: ref);
+                  final deleteDesc = context.t('profile_delete_account_confirm_desc', ref: ref);
+                  final cancelText = context.t('lib_cancel', ref: ref);
+                  final deleteText = context.t('lib_delete', ref: ref);
                   final messenger = ScaffoldMessenger.of(context);
                   final confirmed = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      title: const Text('계정 삭제'),
-                      content: const Text(
-                        '계정과 모든 평가·데이터가 영구히 삭제됩니다.\n되돌릴 수 없어요. 계속할까요?',
-                      ),
+                      title: Text(deleteTitle),
+                      content: Text(deleteDesc),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('취소'),
+                          child: Text(cancelText),
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('삭제', style: TextStyle(color: Colors.red)),
+                          child: Text(deleteText, style: const TextStyle(color: Colors.red)),
                         ),
                       ],
                     ),
                   );
                   if (confirmed != true) return;
                   try {
-                    await ref.read(profileServiceProvider).deleteAccount();
+                    await ref.read(profileServiceProvider).deleteAccount(ref.read(localeProvider));
                     try {
                       await Supabase.instance.client.auth
                           .signOut(scope: SignOutScope.local);
@@ -423,7 +427,7 @@ class _PublicProfileCard extends ConsumerWidget {
           if (isPublic) ...[
             IconButton(
               icon: Icon(Icons.open_in_new_rounded, size: 18, color: p.accentText),
-              tooltip: '프로필 보기',
+              tooltip: context.t('profile_view_tooltip', ref: ref),
               onPressed: () async {
                 final uri = Uri.parse(url);
                 try {

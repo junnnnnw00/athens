@@ -87,20 +87,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   Widget _sortAction(LibrarySort sort, AppLanguage lang) {
-    final ko = lang == AppLanguage.ko;
     return PopupMenuButton<LibrarySort>(
       icon: Icon(Icons.sort_rounded,
           color: sort == LibrarySort.rank ? null : context.palette.accent),
-      tooltip: ko ? '정렬' : 'Sort',
+      tooltip: context.t('lib_sort_tooltip', ref: ref),
       initialValue: sort,
       onSelected: (s) => ref.read(_librarySortProvider.notifier).state = s,
       itemBuilder: (c) => [
-        _sortMenuItem(LibrarySort.rank, ko ? '랭킹순' : 'By rank', sort),
+        _sortMenuItem(LibrarySort.rank, context.t('lib_sort_rank', ref: ref), sort),
         _sortMenuItem(
-            LibrarySort.recent, ko ? '최근 평가순' : 'Recently rated', sort),
-        _sortMenuItem(LibrarySort.alpha, ko ? '가나다순' : 'Alphabetical', sort),
+            LibrarySort.recent, context.t('lib_sort_recent', ref: ref), sort),
+        _sortMenuItem(LibrarySort.alpha, context.t('lib_sort_alpha', ref: ref), sort),
         _sortMenuItem(
-            LibrarySort.mostDueled, ko ? '듀얼 많은순' : 'Most dueled', sort),
+            LibrarySort.mostDueled, context.t('lib_sort_most_dueled', ref: ref), sort),
       ],
     );
   }
@@ -227,7 +226,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         leading: _searchOpen
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
-                tooltip: lang == AppLanguage.ko ? '닫기' : 'Close',
+                tooltip: context.t('lib_close_tooltip', ref: ref),
                 onPressed: _closeSearch,
               )
             : null,
@@ -241,9 +240,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
                 decoration: InputDecoration(
                   isCollapsed: true,
-                  hintText: lang == AppLanguage.ko
-                      ? '내 라이브러리 검색…'
-                      : 'Search your library…',
+                  hintText: context.t('lib_search_hint', ref: ref),
                   border: InputBorder.none,
                 ),
               )
@@ -252,7 +249,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ? [
                 if (_searchController.text.isNotEmpty)
                   IconButton(
-                    tooltip: lang == AppLanguage.ko ? '지우기' : 'Clear',
+                    tooltip: context.t('lib_clear_tooltip', ref: ref),
                     icon: const Icon(Icons.close_rounded),
                     onPressed: () {
                       _searchController.clear();
@@ -264,16 +261,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ]
             : [
                 IconButton(
-                  tooltip: lang == AppLanguage.ko ? '검색' : 'Search',
+                  tooltip: context.t('lib_search_tooltip', ref: ref),
                   icon: const Icon(Icons.search_rounded),
                   onPressed: _openSearch,
                 ),
                 _sortAction(sort, lang),
                 if (pending > 0)
                   IconButton(
-                    tooltip: lang == AppLanguage.ko
-                        ? '동기화 대기 $pending개 · 탭하여 동기화'
-                        : '$pending pending · tap to sync',
+                    tooltip: context.t('lib_sync_tooltip', args: ['$pending'], ref: ref),
                     icon: Badge(
                       label: Text('$pending'),
                       child: const Icon(Icons.cloud_upload_outlined),
@@ -385,13 +380,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 }
 
-class _LibraryRow extends StatelessWidget {
+class _LibraryRow extends ConsumerWidget {
   const _LibraryRow({required this.rank, required this.item});
   final int rank;
   final RatedCatalogItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final score = scoreFromElo(item.elo);
     return InkWell(
@@ -423,7 +418,7 @@ class _LibraryRow extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          '${_kindLabel(item.kind)} · ${item.primaryArtist ?? '—'}',
+                          '${context.t('search_${item.kind}', ref: ref)} · ${item.primaryArtist ?? '—'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall,
@@ -457,12 +452,6 @@ class _LibraryRow extends StatelessWidget {
       ),
     );
   }
-
-  String _kindLabel(String kind) => switch (kind) {
-        'album' => 'Album',
-        'artist' => 'Artist',
-        _ => 'Track',
-      };
 }
 
 class _MiniTag extends StatelessWidget {
@@ -495,10 +484,10 @@ class _MiniTag extends StatelessWidget {
   }
 }
 
-class _LibraryEmpty extends StatelessWidget {
+class _LibraryEmpty extends ConsumerWidget {
   const _LibraryEmpty();
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     return Center(
       child: Padding(
@@ -508,16 +497,16 @@ class _LibraryEmpty extends StatelessWidget {
           children: [
             Icon(Icons.library_music_outlined, size: 56, color: p.faint),
             const SizedBox(height: AppSpacing.lg),
-            Text('아직 평가한 음악이 없어요',
+            Text(context.t('lib_no_rated_title', ref: ref),
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.sm),
-            Text('검색해서 음악을 추가하고 듀얼을 시작하세요.',
+            Text(context.t('lib_no_rated_desc', ref: ref),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: p.muted)),
             const SizedBox(height: AppSpacing.xl),
             FilledButton(
               onPressed: () => context.go('/search'),
-              child: const Text('음악 검색'),
+              child: Text(context.t('lib_search_music', ref: ref)),
             ),
           ],
         ),
@@ -526,11 +515,11 @@ class _LibraryEmpty extends StatelessWidget {
   }
 }
 
-class _LibraryError extends StatelessWidget {
+class _LibraryError extends ConsumerWidget {
   const _LibraryError({required this.message});
   final String message;
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     return Center(
       child: Padding(
@@ -540,7 +529,7 @@ class _LibraryError extends StatelessWidget {
           children: [
             Icon(Icons.error_outline_rounded, size: 48, color: p.muted),
             const SizedBox(height: AppSpacing.md),
-            Text('라이브러리를 불러오지 못했어요',
+            Text(context.t('lib_load_error', ref: ref),
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: AppSpacing.xs),
             Text(message,

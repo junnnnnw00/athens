@@ -32,7 +32,7 @@ void main() {
 
     // Recommendations now come from Last.fm tag.getTopTracks (genre-matched),
     // not a catalog text-search for the tag word. The fake returns tag tracks.
-    expect(find.textContaining('추천 트랙'), findsOneWidget);
+    expect(find.textContaining('Tracks'), findsOneWidget);
     expect(find.textContaining('Fake Tag Track 1'), findsOneWidget);
   });
 
@@ -82,6 +82,6 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Last.fm 연동하기'), findsOneWidget);
+    expect(find.text('Connect Last.fm'), findsOneWidget);
   });
 }
