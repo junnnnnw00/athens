@@ -3,6 +3,7 @@ import AuthRedirectHandler from "./components/AuthRedirectHandler";
 import DuelDemo from "./components/DuelDemo";
 import ScreenShowcase from "./components/ScreenShowcase";
 import FeatureCards from "./components/FeatureCards";
+import SubscribeForm from "./components/SubscribeForm";
 
 export const metadata = {
   title: "Athens Music Rating & App — Battle your music",
@@ -74,6 +75,15 @@ export default function Home() {
           <h2 className="lp-section-title">What the app looks like.</h2>
           <p className="lp-section-lead">A complete music rating engine, built for mobile.</p>
           <ScreenShowcase />
+        </section>
+
+        {/* pre-launch subscription */}
+        <section className="lp-section lp-subscribe-section">
+          <h2 className="lp-section-title">Get notified when we launch.</h2>
+          <p className="lp-section-lead" style={{ maxWidth: '480px' }}>
+            Subscribe to our pre-launch newsletter to receive launch updates and a special promo code when we go live on June 30th.
+          </p>
+          <SubscribeForm />
         </section>
 
         {/* download */}
