@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Hanken_Grotesk, Geist_Mono } from "next/font/google";
+import KofiWidget from "./components/KofiWidget";
 import "./globals.css";
 
 // Display + UI per DESIGN.md (clean grotesque, avoids generic Inter feel).
@@ -45,7 +46,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className={`${hanken.variable} ${geistMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <KofiWidget />
+      </body>
     </html>
   );
 }

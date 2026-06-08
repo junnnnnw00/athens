@@ -45,6 +45,22 @@ export default function Home() {
                 <DownloadIcon /> Download App
               </a>
             </div>
+            <div style={{ marginTop: '24px', display: 'inline-block' }}>
+              <a 
+                href="https://www.producthunt.com/products/athens?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-athens" 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1166056&amp;theme=neutral&amp;t=1780878078773" 
+                  alt="Athens - Battle your music, stack your taste | Product Hunt" 
+                  width="250" 
+                  height="54" 
+                  style={{ width: "250px", height: "54px" }} 
+                />
+              </a>
+            </div>
           </div>
           <DuelDemo />
         </section>
