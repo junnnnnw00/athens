@@ -5,15 +5,21 @@ import Script from "next/script";
 export default function KofiWidget() {
   return (
     <Script 
-      src="https://storage.ko-fi.com/cdn/widget/Widget_2.js" 
+      src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js" 
       strategy="lazyOnload"
       onLoad={() => {
         // @ts-ignore
-        if (typeof kofiwidget2 !== 'undefined') {
-          // @ts-ignore
-          kofiwidget2.init('Support me on Ko-fi', '#74E0A4', 'C3V820LKKR');
-          // @ts-ignore
-          kofiwidget2.draw();
+        if (typeof kofiWidgetOverlay !== 'undefined') {
+          // Prevent duplicates on hot-reload / hydration
+          if (!document.querySelector('.floatingchat-container-wrap')) {
+            // @ts-ignore
+            kofiWidgetOverlay.draw('C3V820LKKR', {
+              'type': 'floating-chat',
+              'floating-chat.donateButton.text': 'Support me on Ko-fi',
+              'floating-chat.donateButton.background-color': '#f57873',
+              'floating-chat.donateButton.text-color': '#fff'
+            });
+          }
         }
       }}
     />
