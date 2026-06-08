@@ -665,5 +665,51 @@ a {
   .ss-item { padding: 12px 0 12px 16px; }
   .ss-item-en { font-size: 17px; }
   .lp-footer { justify-content: center; }
+  .lp-badge-row { justify-content: center; }
 }
+
+/* --- inline badges (Product Hunt & Ko-fi) --- */
+.lp-badge-row {
+  margin-top: 28px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.lp-kofi-btn {
+  background-color: #f57873;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 54px;
+  padding: 0 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  font-weight: 700;
+  font-size: 15px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+  font-family: var(--font-hanken), sans-serif;
+  text-decoration: none;
+}
+.lp-kofi-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  opacity: 0.95;
+}
+.lp-kofi-btn:active {
+  transform: translateY(0);
+}
+.lp-ph-badge {
+  display: inline-block;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.lp-ph-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
 
