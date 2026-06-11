@@ -11,9 +11,10 @@ import '../../domain/score.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/cover_art.dart';
 import '../catalog/catalog_service.dart';
+import '../profile/profile_service.dart';
 import '../../i18n.dart';
 
-enum ShareTemplate { top5, tasteSnapshot }
+enum ShareTemplate { top5, topster, tasteSnapshot }
 
 class ShareScreen extends ConsumerStatefulWidget {
   const ShareScreen({super.key});
@@ -27,10 +28,25 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   ShareTemplate _template = ShareTemplate.top5;
   bool _sharing = false;
 
-  Widget _card(List<RatedCatalogItem> items, AppLanguage lang) => switch (_template) {
-        ShareTemplate.top5 => ShareCard.top5(items: items.take(5).toList(), lang: lang),
-        ShareTemplate.tasteSnapshot => ShareCard.taste(items: items, lang: lang),
-      };
+  Widget _card(List<RatedCatalogItem> items, AppLanguage lang) {
+    final handle = ref.read(myProfileProvider).valueOrNull?.handle;
+    return switch (_template) {
+      ShareTemplate.top5 =>
+          ShareCard.top5(items: items.take(5).toList(), lang: lang, handle: handle),
+      ShareTemplate.topster =>
+          ShareCard.topster(items: _topsterItems(items), lang: lang, handle: handle),
+      ShareTemplate.tasteSnapshot =>
+          ShareCard.taste(items: items, lang: lang, handle: handle),
+    };
+  }
+
+  /// Topster = 3×3 grid of the highest-rated covers. Albums first (the
+  /// classic topster is an album chart); pad with tracks/artists if needed.
+  static List<RatedCatalogItem> _topsterItems(List<RatedCatalogItem> items) {
+    final albums = items.where((i) => i.kind == 'album').toList();
+    final rest = items.where((i) => i.kind != 'album').toList();
+    return [...albums, ...rest].take(9).toList();
+  }
 
   Future<void> _share(List<RatedCatalogItem> items) async {
     final lang = ref.read(localeProvider);
@@ -66,8 +82,9 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
               segments: const [
                 ButtonSegment(value: ShareTemplate.top5, label: Text('Top 5')),
                 ButtonSegment(
-                    value: ShareTemplate.tasteSnapshot,
-                    label: Text('Taste Snapshot')),
+                    value: ShareTemplate.topster, label: Text('Topster')),
+                ButtonSegment(
+                    value: ShareTemplate.tasteSnapshot, label: Text('Taste')),
               ],
               selected: {_template},
               onSelectionChanged: (s) => setState(() => _template = s.first),
@@ -110,16 +127,33 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 /// Self-contained share card — does NOT read from context (it is captured off
 /// the widget tree), so all colours/fonts are explicit.
 class ShareCard extends StatelessWidget {
-  const ShareCard._({required this.items, required this.taste, required this.lang});
+  const ShareCard._(
+      {required this.items,
+      required this.template,
+      required this.lang,
+      this.handle});
 
-  factory ShareCard.top5({required List<RatedCatalogItem> items, required AppLanguage lang}) =>
-      ShareCard._(items: items, taste: false, lang: lang);
-  factory ShareCard.taste({required List<RatedCatalogItem> items, required AppLanguage lang}) =>
-      ShareCard._(items: items, taste: true, lang: lang);
+  factory ShareCard.top5(
+          {required List<RatedCatalogItem> items,
+          required AppLanguage lang,
+          String? handle}) =>
+      ShareCard._(items: items, template: ShareTemplate.top5, lang: lang, handle: handle);
+  factory ShareCard.taste(
+          {required List<RatedCatalogItem> items,
+          required AppLanguage lang,
+          String? handle}) =>
+      ShareCard._(
+          items: items, template: ShareTemplate.tasteSnapshot, lang: lang, handle: handle);
+  factory ShareCard.topster(
+          {required List<RatedCatalogItem> items,
+          required AppLanguage lang,
+          String? handle}) =>
+      ShareCard._(items: items, template: ShareTemplate.topster, lang: lang, handle: handle);
 
   final List<RatedCatalogItem> items;
-  final bool taste;
+  final ShareTemplate template;
   final AppLanguage lang;
+  final String? handle;
 
   static const _p = AppPalette.dark;
 
@@ -132,6 +166,12 @@ class ShareCard extends StatelessWidget {
         letterSpacing: -0.3,
       );
 
+  String get _title => switch (template) {
+        ShareTemplate.top5 => I18n.get('share_card_top5', lang),
+        ShareTemplate.topster => 'Topster',
+        ShareTemplate.tasteSnapshot => I18n.get('share_card_taste', lang),
+      };
+
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
@@ -142,15 +182,71 @@ class ShareCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(taste ? I18n.get('share_card_taste', lang) : I18n.get('share_card_top5', lang), style: _t(46, FontWeight.w800, _p.text)),
+            Text(_title, style: _t(46, FontWeight.w800, _p.text)),
             const SizedBox(height: 4),
-            Text('on Athens', style: _t(22, FontWeight.w600, _p.accentText)),
+            Text(
+                handle != null && handle!.isNotEmpty
+                    ? '@$handle · Athens'
+                    : 'on Athens',
+                style: _t(22, FontWeight.w600, _p.accentText)),
             const SizedBox(height: 40),
-            Expanded(child: taste ? _tasteBody() : _top5Body()),
+            Expanded(
+              child: switch (template) {
+                ShareTemplate.top5 => _top5Body(),
+                ShareTemplate.topster => _topsterBody(),
+                ShareTemplate.tasteSnapshot => _tasteBody(),
+              },
+            ),
           ],
         ),
       ),
     );
+  }
+
+  /// Minimal 3×3 album-art chart. Pure grid — no scores, no text rows.
+  Widget _topsterBody() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var row = 0; row < 3; row++) ...[
+          if (row > 0) const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var col = 0; col < 3; col++) ...[
+                if (col > 0) const SizedBox(width: 12),
+                Expanded(
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: _gridCell(row * 3 + col),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+        const SizedBox(height: 28),
+        // Caption: ranked titles, small and muted — readable but secondary.
+        for (var i = 0; i < items.length && i < 9; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              '${i + 1}  ${items[i].title} — ${items[i].primaryArtist ?? ''}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _t(15, FontWeight.w500, _p.muted),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _gridCell(int index) {
+    if (index >= items.length) {
+      return Container(color: _p.surface2);
+    }
+    final it = items[index];
+    return CoverArtStatic(title: it.title, imageUrl: it.imageUrl, size: 320);
   }
 
   Widget _top5Body() {

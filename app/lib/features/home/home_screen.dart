@@ -93,33 +93,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   await ref.read(friendsRecentRatingsProvider.future);
                 } catch (_) {}
               },
+              // Horizontal carousels bleed to the screen edge (no horizontal
+              // padding on the outer list) so cards scroll past the viewport
+              // edge instead of being clipped at an inset boundary. Non-carousel
+              // children carry their own horizontal padding.
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm,
-                    AppSpacing.xl, AppLayout.scrollBottomInset(context)),
+                padding: EdgeInsets.fromLTRB(
+                    0, AppSpacing.sm, 0, AppLayout.scrollBottomInset(context)),
                 children: [
-                  Text(context.t('home_title', ref: ref),
-                      style: Theme.of(context).textTheme.headlineSmall),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                    child: Text(context.t('home_title', ref: ref),
+                        style: Theme.of(context).textTheme.headlineSmall),
+                  ),
                   const SizedBox(height: AppSpacing.lg),
                   // Don't decide onboarding vs. duel until the library has
                   // actually loaded — otherwise the "취향 찾기" card flashes on a
                   // cold (esp. offline) start before local data resolves.
                   if (!libraryAsync.hasValue)
                     const SizedBox.shrink()
-                  else if (ratedItems.length < 3)
-                    _OnboardingCard(currentCount: ratedItems.length)
                   else
-                    const _DuelCallout(onTap: null), // Tap behavior is embedded inside _DuelCallout or can be passed
-                  
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                      child: ratedItems.length < 3
+                          ? _OnboardingCard(currentCount: ratedItems.length)
+                          : const _DuelCallout(onTap: null),
+                    ),
+
                   // 1. Recommended tracks (추천곡) - 가로 스크롤 캐러셀 적용
                   recsAsync.when(
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
                     data: (data) {
                       if (data.items.isEmpty) return const SizedBox.shrink();
-                      
+
                       final isDefault = ref.read(statsProvider).valueOrNull?.genrePreferences.isEmpty ?? true;
-                      final title = isDefault 
+                      final title = isDefault
                           ? context.t('home_recs_hot', args: [data.genre], ref: ref)
                           : context.t('home_recs_personalized', args: [data.genre], ref: ref);
 
@@ -127,19 +137,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: AppSpacing.xxl),
-                          Row(
-                            children: [
-                              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              const SizedBox(width: AppSpacing.xs),
-                              Icon(Icons.auto_awesome_rounded, color: p.accent, size: 16),
-                            ],
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.titleMedium),
+                                ),
+                                const SizedBox(width: AppSpacing.xs),
+                                Icon(Icons.auto_awesome_rounded, color: p.accent, size: 16),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: AppSpacing.md),
                           SizedBox(
-                            height: 236, // Card height including text padding and rate buttons
+                            height: 258, // Card height including text padding and rate buttons
                             child: ListView.builder(
                               scrollDirection: Axis.horizontal,
                               physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                               itemCount: data.items.length,
                               itemBuilder: (context, index) {
                                 final it = data.items[index];
@@ -156,14 +175,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
 
                   const SizedBox(height: AppSpacing.xxl),
-                  Text(context.t('home_recent', ref: ref),
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                    child: Text(context.t('home_recent', ref: ref),
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
                   const SizedBox(height: AppSpacing.md),
                   recentAsync.when(
-                    loading: () => _skeletonList(p),
-                    error: (e, _) => _RecentEmpty(
-                      message: context.t('home_recent_error', ref: ref),
-                      lastfmEnabled: lastfmEnabled,
+                    loading: () => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                      child: _skeletonList(p),
+                    ),
+                    error: (e, _) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                      child: _RecentEmpty(
+                        message: context.t('home_recent_error', ref: ref),
+                        lastfmEnabled: lastfmEnabled,
+                      ),
                     ),
                     data: (items) {
                       // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
@@ -172,24 +200,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             kind: it.kind, title: it.title, artist: it.primaryArtist);
                         return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
                       }).toList();
-                      
+
                       if (unrated.isEmpty) {
-                        return _RecentEmpty(lastfmEnabled: lastfmEnabled);
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                          child: _RecentEmpty(lastfmEnabled: lastfmEnabled),
+                        );
                       }
-                      
+
                       final taken = unrated.take(10).toList();
-                      
+
                       // 2-row Horizontal Grid Layout
                       return SizedBox(
-                        height: 148, // Compact height for 2 rows + gap
+                        height: 188, // 2 rows + gap
                         child: GridView.builder(
                           scrollDirection: Axis.horizontal,
                           physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
                             mainAxisSpacing: AppSpacing.sm,
                             crossAxisSpacing: AppSpacing.sm,
-                            childAspectRatio: 64 / 230, // crossAxis/mainAxis height/width ratio
+                            childAspectRatio: 90 / 280, // crossAxis/mainAxis height/width ratio
                           ),
                           itemCount: taken.length,
                           itemBuilder: (context, index) {
@@ -212,19 +244,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       }).toList();
                       if (unrated.isEmpty) return const SizedBox.shrink();
 
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: AppSpacing.xxl),
-                          Text(context.t('home_friends_rated', ref: ref), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: AppSpacing.md),
-                          Column(
-                            children: unrated
-                                .take(5)
-                                .map((it) => _FriendRecentCard(item: it))
-                                .toList(),
-                          ),
-                        ],
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: AppSpacing.xxl),
+                            Text(context.t('home_friends_rated', ref: ref),
+                                style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: AppSpacing.md),
+                            Column(
+                              children: unrated
+                                  .take(5)
+                                  .map((it) => _FriendRecentCard(item: it))
+                                  .toList(),
+                            ),
+                          ],
+                        ),
                       );
                     },
                   ),
@@ -619,7 +655,7 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
       },
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: Container(
-        width: 148,
+        width: 164,
         decoration: BoxDecoration(
           color: p.surface,
           borderRadius: BorderRadius.circular(AppRadii.card),
@@ -636,7 +672,7 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
               child: CoverArt(
                 title: item.title,
                 imageUrl: item.imageUrl,
-                size: 146,
+                size: 162,
               ),
             ),
             Padding(
@@ -648,14 +684,14 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 12),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 13.5),
                   ),
                   const SizedBox(height: 1),
                   Text(
                     item.primaryArtist ?? '',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: p.muted, fontSize: 10),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: p.muted, fontSize: 11.5),
                   ),
                 ],
               ),
@@ -665,7 +701,7 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
               padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm),
               child: SizedBox(
                 width: double.infinity,
-                height: 26,
+                height: 30,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
                     padding: EdgeInsets.zero,
@@ -674,10 +710,10 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
                   onPressed: _busy ? null : _rate,
                   child: _busy
                       ? const SizedBox(
-                          width: 10,
-                          height: 10,
+                          width: 12,
+                          height: 12,
                           child: CircularProgressIndicator(strokeWidth: 1.5))
-                      : Text(context.t('home_rate', ref: ref), style: const TextStyle(fontSize: 10)),
+                      : Text(context.t('home_rate', ref: ref), style: const TextStyle(fontSize: 12)),
                 ),
               ),
             ),
@@ -757,7 +793,7 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
       },
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         decoration: BoxDecoration(
           color: p.surface,
           borderRadius: BorderRadius.circular(AppRadii.card),
@@ -765,8 +801,8 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
         ),
         child: Row(
           children: [
-            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 36),
-            const SizedBox(width: AppSpacing.sm),
+            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 52),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -776,32 +812,33 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
                     item.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 12),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 14),
                   ),
+                  const SizedBox(height: 2),
                   Text(
                     item.primaryArtist ?? '',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10, color: p.muted),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12, color: p.muted),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: AppSpacing.xs),
+            const SizedBox(width: AppSpacing.sm),
             SizedBox(
-              height: 24,
+              height: 30,
               child: FilledButton(
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
                 ),
                 onPressed: _busy ? null : _rate,
                 child: _busy
                     ? const SizedBox(
-                        width: 10,
-                        height: 10,
+                        width: 12,
+                        height: 12,
                         child: CircularProgressIndicator(strokeWidth: 1))
-                    : Text(context.t('home_rate', ref: ref), style: const TextStyle(fontSize: 10)),
+                    : Text(context.t('home_rate', ref: ref), style: const TextStyle(fontSize: 12)),
               ),
             ),
           ],

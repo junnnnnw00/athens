@@ -154,21 +154,21 @@ abstract final class AppTheme {
       titleLarge: TextStyle(
           fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -0.2, color: p.text),
       titleMedium: TextStyle(
-          fontSize: 16.5, fontWeight: FontWeight.w800, letterSpacing: -0.2, color: p.text),
+          fontSize: 17.5, fontWeight: FontWeight.w800, letterSpacing: -0.2, color: p.text),
       titleSmall: TextStyle(
-          fontSize: 14, fontWeight: FontWeight.w700, color: p.text),
+          fontSize: 15, fontWeight: FontWeight.w700, color: p.text),
       bodyLarge: TextStyle(
-          fontSize: 15, fontWeight: FontWeight.w500, color: p.text),
+          fontSize: 16, fontWeight: FontWeight.w500, color: p.text),
       bodyMedium: TextStyle(
-          fontSize: 14, fontWeight: FontWeight.w500, color: p.text),
+          fontSize: 15, fontWeight: FontWeight.w500, color: p.text),
       bodySmall: TextStyle(
-          fontSize: 13, fontWeight: FontWeight.w500, color: p.muted),
+          fontSize: 14, fontWeight: FontWeight.w500, color: p.muted),
       labelLarge: TextStyle(
-          fontSize: 14, fontWeight: FontWeight.w700, color: p.text),
+          fontSize: 15, fontWeight: FontWeight.w700, color: p.text),
       labelMedium: TextStyle(
-          fontSize: 13, fontWeight: FontWeight.w600, color: p.muted),
+          fontSize: 13.5, fontWeight: FontWeight.w600, color: p.muted),
       labelSmall: TextStyle(
-          fontSize: 11, fontWeight: FontWeight.w600, color: p.muted),
+          fontSize: 12, fontWeight: FontWeight.w600, color: p.muted),
     );
   }
 }

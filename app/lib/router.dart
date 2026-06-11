@@ -161,6 +161,11 @@ StatefulShellRoute buildAppShellRoute() => StatefulShellRoute.indexedStack(
                 GoRoute(
                     path: 'edit',
                     builder: (c, s) => const ProfileEditScreen()),
+                // Share also lives in the Me branch so pushing it from the
+                // Me tab doesn't switch the active tab to Home.
+                GoRoute(
+                    path: 'share',
+                    builder: (c, s) => const ShareScreen()),
               ],
             ),
             GoRoute(

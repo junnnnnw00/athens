@@ -12,6 +12,7 @@ import '../../widgets/score_ring.dart';
 import '../../widgets/initial_score_dialog.dart';
 import 'community_stats_section.dart';
 import 'item_info_cache.dart';
+import '../share/review_share.dart';
 import '../../i18n.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
@@ -320,7 +321,31 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
           ),
           const SizedBox(height: AppSpacing.xxl),
           if (!isUnrated) ...[
-            Text(context.t('lib_review', ref: ref), style: Theme.of(context).textTheme.titleMedium),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(context.t('lib_review', ref: ref),
+                      style: Theme.of(context).textTheme.titleMedium),
+                ),
+                // Export the review as an Instagram-story image. Only shown
+                // once a review exists — an empty card has nothing to say.
+                if (!_editing && _reviewController.text.trim().isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.ios_share_rounded, size: 20),
+                    tooltip: context.t('lib_share_review', ref: ref),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => showReviewShareSheet(
+                      context,
+                      ref,
+                      title: title,
+                      artist: primaryArtist,
+                      imageUrl: imageUrl,
+                      score: score,
+                      review: _reviewController.text.trim(),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: AppSpacing.sm),
             if (_editing)
               Column(

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data/repository/library_providers.dart';
 import '../../domain/score.dart';
 import '../catalog/catalog_service.dart';
 import '../profile/profile_service.dart';
@@ -246,15 +247,17 @@ class FriendsService {
         .eq('following_id', followingId);
   }
 
-  /// Get the list of profiles of friends (users the current user is following).
+  /// Get the list of profiles of friends (users the current user is following),
+  /// most recently added first.
   Future<List<UserProfile>> getFriends() async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
     final rows = await _client
         .from('follows')
-        .select('following:profiles!follows_following_id_fkey(id, handle, display_name, bio, avatar_url, is_public,  is_premium)')
-        .eq('follower_id', user.id);
+        .select('created_at, following:profiles!follows_following_id_fkey(id, handle, display_name, bio, avatar_url, is_public,  is_premium)')
+        .eq('follower_id', user.id)
+        .order('created_at', ascending: false);
 
     return rows
         .map((r) => r['following'])
@@ -614,4 +617,13 @@ final followersProvider = FutureProvider.autoDispose<List<UserProfile>>((ref) as
 /// Friends' recent ratings provider
 final friendsRecentRatingsProvider = FutureProvider.autoDispose<List<CatalogItem>>((ref) async {
   return ref.watch(friendsServiceProvider).getFriendsRecentRatings();
+});
+
+/// Cached per-user taste match. One network round-trip per user per library
+/// change — list rows and sorting both watch this instead of issuing their own
+/// FutureBuilder fetches on every rebuild.
+final friendMatchProvider = FutureProvider.autoDispose
+    .family<FriendMatchResult, String>((ref, userId) async {
+  final myRatings = ref.watch(ratedItemsProvider);
+  return ref.watch(friendsServiceProvider).calculateMatch(userId, myRatings);
 });

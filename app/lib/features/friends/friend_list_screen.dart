@@ -8,6 +8,8 @@ import '../profile/profile_service.dart';
 import 'friends_service.dart';
 import '../../data/repository/library_providers.dart';
 
+enum _FriendSort { recent, match }
+
 class FriendListScreen extends ConsumerStatefulWidget {
   const FriendListScreen({super.key});
 
@@ -20,6 +22,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
   List<UserProfile> _searchResults = [];
   bool _isSearching = false;
   bool _isLoadingSearch = false;
+  _FriendSort _sort = _FriendSort.recent;
 
   @override
   void dispose() {
@@ -64,8 +67,6 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
     final p = context.palette;
     final friendsAsync = ref.watch(friendsProvider);
     final followersAsync = ref.watch(followersProvider);
-    final myProfileAsync = ref.watch(myProfileProvider);
-    final isPremium = myProfileAsync.valueOrNull?.isPremium ?? false;
 
     // Build a set of followed friend IDs for quick lookup in search results
     final followedIds = friendsAsync.valueOrNull?.map((f) => f.id).toSet() ?? {};
@@ -73,7 +74,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('친구 목록 및 검색'),
+        title: const Text('친구'),
       ),
       body: Column(
         children: [
@@ -117,7 +118,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
           Expanded(
             child: _isSearching
                 ? _buildSearchResults(followedIds)
-                : _buildFriendsList(friendsAsync, followersAsync, isPremium, followedIds, followerIds),
+                : _buildFriendsList(friendsAsync, followersAsync, followedIds, followerIds),
           ),
         ],
       ),
@@ -156,7 +157,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(top: 2),
-                child: _buildAvatar(user),
+                child: _buildAvatar(user, 44),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -204,50 +205,42 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                             style: TextStyle(color: p.faint, fontSize: 11),
                           );
                         }
-
-                        return FutureBuilder<FriendMatchResult>(
-                          future: ref.read(friendsServiceProvider).calculateMatch(user.id, myRatings),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 2),
-                                child: SizedBox(
-                                  width: 10,
-                                  height: 10,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 1.5,
-                                    color: p.accent,
-                                  ),
+                        final matchAsync = ref.watch(friendMatchProvider(user.id));
+                        return matchAsync.when(
+                          loading: () => Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: SizedBox(
+                              width: 10,
+                              height: 10,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: p.accent,
+                              ),
+                            ),
+                          ),
+                          error: (_, __) => const SizedBox.shrink(),
+                          data: (match) => Row(
+                            children: [
+                              Icon(Icons.bolt_rounded, size: 13, color: p.accentText),
+                              const SizedBox(width: 2),
+                              Text(
+                                '일치율 ${match.matchPercentage.toStringAsFixed(0)}%',
+                                style: TextStyle(
+                                  color: p.accentText,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              );
-                            }
-                            if (snapshot.hasError || !snapshot.hasData) {
-                              return const SizedBox.shrink();
-                            }
-                            final match = snapshot.data!;
-                            return Row(
-                              children: [
-                                Icon(Icons.bolt_rounded, size: 13, color: p.accentText),
-                                const SizedBox(width: 2),
-                                Text(
-                                  '일치율 ${match.matchPercentage.toStringAsFixed(0)}%',
-                                  style: TextStyle(
-                                    color: p.accentText,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '•  공통 ${match.commonCount}곡',
+                                style: TextStyle(
+                                  color: p.faint,
+                                  fontSize: 11,
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '•  공통 ${match.commonCount}곡',
-                                  style: TextStyle(
-                                    color: p.faint,
-                                    fontSize: 11,
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                              ),
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -278,10 +271,23 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
     );
   }
 
+  /// Friends ordered by the active sort. Recent = server order (follows
+  /// created_at desc). Match = by cached match percentage; rows still loading
+  /// sink to the bottom and the list reorders as results arrive.
+  List<UserProfile> _sortedFriends(List<UserProfile> friends) {
+    if (_sort == _FriendSort.recent) return friends;
+    final sorted = [...friends];
+    sorted.sort((a, b) {
+      final am = ref.watch(friendMatchProvider(a.id)).valueOrNull?.matchPercentage ?? -1;
+      final bm = ref.watch(friendMatchProvider(b.id)).valueOrNull?.matchPercentage ?? -1;
+      return bm.compareTo(am);
+    });
+    return sorted;
+  }
+
   Widget _buildFriendsList(
     AsyncValue<List<UserProfile>> friendsAsync,
     AsyncValue<List<UserProfile>> followersAsync,
-    bool isPremium,
     Set<String> followedIds,
     Set<String> followerIds,
   ) {
@@ -313,219 +319,199 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
           ),
         ),
         data: (friends) {
-        final followers = followersAsync.valueOrNull ?? [];
-        final followBackRecommendations = followers.where((f) => !followedIds.contains(f.id)).toList();
+          final followers = followersAsync.valueOrNull ?? [];
+          final followBackRecommendations =
+              followers.where((f) => !followedIds.contains(f.id)).toList();
 
-        final recommendationsWidget = <Widget>[];
-        if (followBackRecommendations.isNotEmpty) {
-          recommendationsWidget.addAll([
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.sm),
-              child: Text(
-                '나를 팔로우하는 사람 추천',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: p.accentText,
+          final recommendationsWidget = <Widget>[];
+          if (followBackRecommendations.isNotEmpty) {
+            recommendationsWidget.addAll([
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.sm),
+                child: Text(
+                  '나를 팔로우하는 사람',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: p.accentText,
+                  ),
                 ),
               ),
-            ),
-            ...followBackRecommendations.map((user) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.xs),
-              child: Row(
-                children: [
-                  _buildAvatar(user),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              ...followBackRecommendations.map((user) => Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xl, vertical: AppSpacing.xs),
+                    child: Row(
                       children: [
-                        Text(
-                          user.displayName ?? user.handle,
-                          style: Theme.of(context).textTheme.titleSmall,
+                        _buildAvatar(user, 44),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Text(
+                            user.displayName ?? user.handle,
+                            style: Theme.of(context).textTheme.titleSmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const SizedBox(height: 2),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: p.accent,
+                            foregroundColor: p.bg,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadii.pill),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            minimumSize: const Size(60, 32),
+                          ),
+                          onPressed: () => _toggleFollow(user.id, false),
+                          child: const Text('맞팔로우',
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  )),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
+                child: Divider(height: 1, color: p.line),
+              ),
+            ]);
+          }
+
+          if (friends.isEmpty) {
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                  0, AppSpacing.md, 0, AppLayout.scrollBottomInset(context)),
+              children: [
+                ...recommendationsWidget,
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.xxl),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.people_outline_rounded, size: 48, color: p.faint),
+                        const SizedBox(height: AppSpacing.md),
                         Text(
-                          '나를 팔로우하고 있습니다',
-                          style: TextStyle(color: p.muted, fontSize: 11),
+                          '아직 등록된 친구가 없어요',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          '위 검색창에서 친구의 핸들을 입력해 추가해 보세요.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: p.muted, fontSize: 13),
                         ),
                       ],
                     ),
                   ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: p.accent,
-                      foregroundColor: p.bg,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      minimumSize: const Size(60, 32),
-                    ),
-                    onPressed: () => _toggleFollow(user.id, false),
-                    child: const Text('맞팔로우', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            )),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
-              child: Divider(height: 1, color: p.line),
-            ),
-          ]);
-        }
+                ),
+              ],
+            );
+          }
 
-        if (friends.isEmpty) {
+          final sortedFriends = _sortedFriends(friends);
+
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(0, AppSpacing.md, 0,
-                AppLayout.scrollBottomInset(context)),
+            padding: EdgeInsets.fromLTRB(
+                0, AppSpacing.md, 0, AppLayout.scrollBottomInset(context)),
             children: [
               ...recommendationsWidget,
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.xxl),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.people_outline_rounded, size: 48, color: p.faint),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        '아직 등록된 친구가 없어요',
-                        style: Theme.of(context).textTheme.titleMedium,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xl, AppSpacing.sm, AppSpacing.lg, AppSpacing.sm),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '친구 ${friends.length}',
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        '위 검색창에서 친구의 핸들을 입력해 추가해 보세요.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: p.muted, fontSize: 13),
+                    ),
+                    PopupMenuButton<_FriendSort>(
+                      initialValue: _sort,
+                      onSelected: (v) => setState(() => _sort = v),
+                      color: p.surface2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadii.card),
+                        side: BorderSide(color: p.line),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-
-        return ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(0, AppSpacing.md, 0,
-              AppLayout.scrollBottomInset(context)),
-          children: [
-            ...recommendationsWidget,
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.sm),
-              child: Text(
-                '친구 목록 (${friends.length})',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: p.text,
-                ),
-              ),
-            ),
-            ...friends.map((friend) {
-              final isMutual = followerIds.contains(friend.id);
-              return InkWell(
-                onTap: () => context.go('/friends/compare/${friend.id}'),
-                borderRadius: BorderRadius.circular(AppRadii.card),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.xl),
-                  child: Row(
-                    children: [
-                      _buildAvatar(friend),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      itemBuilder: (c) => [
+                        PopupMenuItem(
+                          value: _FriendSort.recent,
+                          child: Text('최근 추가순',
+                              style: TextStyle(color: p.text, fontSize: 14)),
+                        ),
+                        PopupMenuItem(
+                          value: _FriendSort.match,
+                          child: Text('매칭률순',
+                              style: TextStyle(color: p.text, fontSize: 14)),
+                        ),
+                      ],
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs, vertical: AppSpacing.xs),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    friend.displayName ?? friend.handle,
-                                    style: Theme.of(context).textTheme.titleSmall,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (isMutual) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                    decoration: BoxDecoration(
-                                      color: p.accentSoft,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: p.accent.withValues(alpha: 0.3), width: 0.8),
-                                    ),
-                                    child: Text(
-                                      'Mutual',
-                                      style: TextStyle(
-                                        color: p.accentText,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 2),
+                            Icon(Icons.swap_vert_rounded, size: 16, color: p.muted),
+                            const SizedBox(width: 4),
                             Text(
-                              '@${friend.handle}',
-                              style: TextStyle(color: p.muted, fontSize: 12),
+                              _sort == _FriendSort.recent ? '최근 추가순' : '매칭률순',
+                              style: TextStyle(color: p.muted, fontSize: 12.5),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      _buildMatchBadge(friend.id, isPremium),
-                      const SizedBox(width: AppSpacing.xs),
-                      IconButton(
-                        icon: Icon(Icons.delete_outline_rounded, size: 20, color: p.muted),
-                        tooltip: '친구 삭제',
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('친구 삭제'),
-                              content: Text('${friend.displayName ?? friend.handle}님을 친구 목록에서 삭제하시겠습니까?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text('취소', style: TextStyle(color: p.text)),
-                                ),
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                    _toggleFollow(friend.id, true);
-                                  },
-                                  child: const Text('삭제', style: TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      Icon(Icons.chevron_right_rounded, color: p.faint),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              );
-            }),
-          ],
-        );
-      },
-    ),
+              ),
+              ...sortedFriends.map((friend) => _FriendCard(
+                    friend: friend,
+                    isMutual: followerIds.contains(friend.id),
+                    onTap: () => context.go('/friends/compare/${friend.id}'),
+                    onDelete: () => _confirmDelete(friend),
+                  )),
+            ],
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildAvatar(UserProfile user) {
+  void _confirmDelete(UserProfile friend) {
+    final p = context.palette;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('친구 삭제'),
+        content: Text('${friend.displayName ?? friend.handle}님을 친구 목록에서 삭제하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('취소', style: TextStyle(color: p.text)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _toggleFollow(friend.id, true);
+            },
+            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar(UserProfile user, double size) {
     final p = context.palette;
     return Container(
-      width: 44,
-      height: 44,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: p.surface2,
         shape: BoxShape.circle,
@@ -533,53 +519,17 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
       ),
       child: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
           ? ClipRRect(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(size / 2),
               child: Image.network(
                 user.avatarUrl!,
-                width: 44,
-                height: 44,
+                width: size,
+                height: size,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Icon(Icons.person_rounded, color: p.muted, size: 22),
+                errorBuilder: (_, __, ___) =>
+                    Icon(Icons.person_rounded, color: p.muted, size: size / 2),
               ),
             )
-          : Icon(Icons.person_rounded, color: p.muted, size: 22),
-    );
-  }
-
-  Widget _buildMatchBadge(String friendId, bool isPremium) {
-    final p = context.palette;
-
-    return Consumer(
-      builder: (context, ref, _) {
-        final myRatings = ref.watch(ratedItemsProvider);
-        return FutureBuilder<FriendMatchResult>(
-          future: ref.read(friendsServiceProvider).calculateMatch(friendId, myRatings),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Text('...', style: TextStyle(color: p.muted, fontSize: 12));
-            }
-            if (snapshot.hasError || !snapshot.hasData) {
-              return const SizedBox.shrink();
-            }
-            final match = snapshot.data!;
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: p.accentSoft,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-              ),
-              child: Text(
-                '${match.matchPercentage.toStringAsFixed(0)}% Match',
-                style: TextStyle(
-                  color: p.accentText,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            );
-          },
-        );
-      },
+          : Icon(Icons.person_rounded, color: p.muted, size: size / 2),
     );
   }
 
@@ -607,5 +557,145 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
         );
       }
     }
+  }
+}
+
+/// Roomy friend card: avatar + name + match badge only. Tap → comparison,
+/// long-press → delete dialog (clutter like inline delete buttons removed).
+class _FriendCard extends ConsumerWidget {
+  const _FriendCard({
+    required this.friend,
+    required this.isMutual,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  final UserProfile friend;
+  final bool isMutual;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xl, vertical: AppSpacing.xs + 2),
+      child: Material(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(AppRadii.card),
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onDelete,
+          borderRadius: BorderRadius.circular(AppRadii.card),
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadii.card),
+              border: Border.all(color: p.line),
+            ),
+            child: Row(
+              children: [
+                _Avatar(friend: friend, size: 52),
+                const SizedBox(width: AppSpacing.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              friend.displayName ?? friend.handle,
+                              style: Theme.of(context).textTheme.titleSmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isMutual) ...[
+                            const SizedBox(width: 6),
+                            Icon(Icons.sync_alt_rounded,
+                                size: 14, color: p.accentText),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '@${friend.handle}',
+                        style: TextStyle(color: p.muted, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                _MatchBadge(friendId: friend.id),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.friend, required this.size});
+  final UserProfile friend;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: p.surface2,
+        shape: BoxShape.circle,
+        border: Border.all(color: p.line),
+      ),
+      child: friend.avatarUrl != null && friend.avatarUrl!.isNotEmpty
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(size / 2),
+              child: Image.network(
+                friend.avatarUrl!,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Icon(Icons.person_rounded, color: p.muted, size: size / 2),
+              ),
+            )
+          : Icon(Icons.person_rounded, color: p.muted, size: size / 2),
+    );
+  }
+}
+
+class _MatchBadge extends ConsumerWidget {
+  const _MatchBadge({required this.friendId});
+  final String friendId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final matchAsync = ref.watch(friendMatchProvider(friendId));
+    return matchAsync.when(
+      loading: () => Text('...', style: TextStyle(color: p.muted, fontSize: 12)),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (match) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: p.accentSoft,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+        ),
+        child: Text(
+          '${match.matchPercentage.toStringAsFixed(0)}%',
+          style: TextStyle(
+            color: p.accentText,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
   }
 }

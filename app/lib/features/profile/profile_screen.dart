@@ -261,21 +261,25 @@ class ProfileScreen extends ConsumerWidget {
                 onTap: () => context.push('/profile/edit')),
           if (isLoggedIn)
             _Tile(
-                icon: Icons.people_rounded,
+                icon: Icons.people_outline_rounded,
                 title: context.t('profile_friends_title', ref: ref),
                 subtitle: context.t('profile_friends_desc', ref: ref),
                 onTap: () => context.push('/friends')),
           _Tile(
-              icon: Icons.library_music_rounded,
+              icon: Icons.library_music_outlined,
               title: context.t('profile_library', ref: ref),
               onTap: () => context.go('/library')),
           _Tile(
-              icon: Icons.insights_rounded,
+              icon: Icons.bar_chart_rounded,
               title: context.t('profile_stats', ref: ref),
               onTap: () => context.push('/stats')),
-
           _Tile(
-              icon: Icons.music_note_rounded,
+              icon: Icons.ios_share_rounded,
+              title: context.t('profile_share', ref: ref),
+              subtitle: context.t('profile_share_desc', ref: ref),
+              onTap: () => context.push('/profile/share')),
+          _Tile(
+              icon: Icons.music_note_outlined,
               title: context.t('profile_lastfm_title', ref: ref),
               subtitle: profile?.lastfmUsername != null && profile!.lastfmUsername!.trim().isNotEmpty
                   ? context.t('profile_lastfm_connected', args: [profile.lastfmUsername!], ref: ref)
@@ -309,7 +313,7 @@ class ProfileScreen extends ConsumerWidget {
               }),
           if (isLoggedIn)
             _Tile(
-                icon: Icons.delete_forever_rounded,
+                icon: Icons.delete_outline_rounded,
                 title: context.t('profile_delete_account_title', ref: ref),
                 subtitle: context.t('profile_delete_account_desc', ref: ref),
                 onTap: () async {
