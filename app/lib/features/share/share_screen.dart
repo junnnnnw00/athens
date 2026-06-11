@@ -106,10 +106,14 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
+                // Render the card at its full design size and let FittedBox
+                // scale it down — rendering small and keeping 1080-based px
+                // values overflows.
                 child: FittedBox(
+                  fit: BoxFit.contain,
                   child: SizedBox(
-                    width: size.width / 3,
-                    height: size.height / 3,
+                    width: size.width,
+                    height: size.height,
                     child: _card(items, lang),
                   ),
                 ),
@@ -196,7 +200,7 @@ class ShareCard extends StatelessWidget {
   /// Export canvas per template (logical px; captured at 3× pixel ratio).
   static Size designSize(ShareTemplate t) => switch (t) {
         ShareTemplate.top5 => const Size(1080, 760),
-        ShareTemplate.topster => const Size(1080, 1140),
+        ShareTemplate.topster => const Size(1080, 1180),
         ShareTemplate.tasteSnapshot => const Size(1080, 640),
       };
 

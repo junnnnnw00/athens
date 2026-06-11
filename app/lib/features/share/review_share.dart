@@ -66,11 +66,18 @@ Future<void> showReviewShareSheet(
                         setSheetState(() => dark = s.first),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  FittedBox(
-                    child: SizedBox(
-                      width: size.width / 3,
-                      height: size.height / 3,
-                      child: card,
+                  // Full design size inside FittedBox — the box scales the
+                  // 1080-wide card down to the sheet width (capped so the
+                  // sheet stays compact on wide/desktop windows).
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: SizedBox(
+                        width: size.width,
+                        height: size.height,
+                        child: card,
+                      ),
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
