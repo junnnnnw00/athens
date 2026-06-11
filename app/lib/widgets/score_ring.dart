@@ -54,6 +54,46 @@ class ScoreRing extends StatelessWidget {
   }
 }
 
+/// Context-free score ring for off-tree capture (share images). Same visual
+/// as [ScoreRing] but colours are explicit and there is no mount animation.
+class ScoreRingStatic extends StatelessWidget {
+  const ScoreRingStatic(
+      {super.key, required this.score, required this.dark, this.size = 48});
+
+  final double score;
+  final bool dark;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = dark ? AppPalette.dark : AppPalette.light;
+    final color = scoreColor(score, dark: dark);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _RingPainter(
+          fraction: (score / 10).clamp(0.0, 1.0),
+          track: p.line,
+          stroke: color,
+        ),
+        child: Center(
+          child: Text(
+            score.toStringAsFixed(1),
+            style: TextStyle(
+              fontFamily: AppFonts.display,
+              fontFamilyFallback: AppFonts.fallback,
+              fontSize: size * 0.29,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _RingPainter extends CustomPainter {
   _RingPainter({
     required this.fraction,

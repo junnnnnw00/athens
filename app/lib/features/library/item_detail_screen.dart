@@ -327,9 +327,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                   child: Text(context.t('lib_review', ref: ref),
                       style: Theme.of(context).textTheme.titleMedium),
                 ),
-                // Export the review as an Instagram-story image. Only shown
-                // once a review exists — an empty card has nothing to say.
-                if (!_editing && _reviewController.text.trim().isNotEmpty)
+                // Export as a wide score card; the review rides along as a
+                // caption when one exists, but score-only sharing works too.
+                if (!_editing)
                   IconButton(
                     icon: const Icon(Icons.ios_share_rounded, size: 20),
                     tooltip: context.t('lib_share_review', ref: ref),

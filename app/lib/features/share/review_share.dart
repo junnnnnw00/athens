@@ -7,12 +7,14 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../theme/tokens.dart';
+import '../../widgets/score_ring.dart';
 import '../../i18n.dart';
 import '../profile/profile_service.dart';
 import 'share_screen.dart' show CoverArtStatic;
 
-/// Opens a bottom sheet previewing the review share card (Instagram-story
-/// sized) with a single share action.
+/// Opens a bottom sheet previewing the review/score share card with a
+/// black/white theme toggle and a single share action. Works without a
+/// review — then it is just a score card.
 Future<void> showReviewShareSheet(
   BuildContext context,
   WidgetRef ref, {
@@ -20,19 +22,10 @@ Future<void> showReviewShareSheet(
   String? artist,
   String? imageUrl,
   required double score,
-  required String review,
+  String? review,
 }) {
   final lang = ref.read(localeProvider);
   final handle = ref.read(myProfileProvider).valueOrNull?.handle;
-  final card = ReviewShareCard(
-    title: title,
-    artist: artist,
-    imageUrl: imageUrl,
-    score: score,
-    review: review,
-    handle: handle,
-  );
-  final p = AppPalette.dark;
 
   return showModalBottomSheet<void>(
     context: context,
@@ -43,67 +36,84 @@ Future<void> showReviewShareSheet(
     ),
     builder: (sheetContext) {
       var sharing = false;
+      var dark = true;
       return StatefulBuilder(
-        builder: (sheetContext, setSheetState) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: MediaQuery.of(sheetContext).size.height * 0.55,
-                  child: FittedBox(
+        builder: (sheetContext, setSheetState) {
+          final card = ReviewShareCard(
+            title: title,
+            artist: artist,
+            imageUrl: imageUrl,
+            score: score,
+            review: review,
+            handle: handle,
+            dark: dark,
+          );
+          final size = ReviewShareCard.designSize(review);
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SegmentedButton<bool>(
+                    style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                    segments: const [
+                      ButtonSegment(value: true, label: Text('Black')),
+                      ButtonSegment(value: false, label: Text('White')),
+                    ],
+                    selected: {dark},
+                    onSelectionChanged: (s) =>
+                        setSheetState(() => dark = s.first),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  FittedBox(
                     child: SizedBox(
-                      width: 360,
-                      height: 640,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: p.line),
-                        ),
-                        child: card,
-                      ),
+                      width: size.width / 3,
+                      height: size.height / 3,
+                      child: card,
                     ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.ios_share_rounded),
-                    label: sharing
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text(I18n.get('share_button', lang)),
-                    onPressed: sharing
-                        ? null
-                        : () async {
-                            setSheetState(() => sharing = true);
-                            try {
-                              await _shareCard(card, lang);
-                            } finally {
-                              if (sheetContext.mounted) {
-                                setSheetState(() => sharing = false);
+                  const SizedBox(height: AppSpacing.lg),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.ios_share_rounded),
+                      label: sharing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(I18n.get('share_button', lang)),
+                      onPressed: sharing
+                          ? null
+                          : () async {
+                              setSheetState(() => sharing = true);
+                              try {
+                                await _shareCard(card, size, lang);
+                              } finally {
+                                if (sheetContext.mounted) {
+                                  setSheetState(() => sharing = false);
+                                }
                               }
-                            }
-                          },
+                            },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       );
     },
   );
 }
 
-Future<void> _shareCard(ReviewShareCard card, AppLanguage lang) async {
+Future<void> _shareCard(
+    ReviewShareCard card, Size size, AppLanguage lang) async {
   final bytes = await ScreenshotController().captureFromWidget(
     card,
     pixelRatio: 3,
-    targetSize: const Size(1080, 1920),
+    targetSize: size,
   );
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/athens_review_share.png');
@@ -112,8 +122,9 @@ Future<void> _shareCard(ReviewShareCard card, AppLanguage lang) async {
       text: I18n.get('share_text', lang));
 }
 
-/// Self-contained 1080×1920 (9:16) review card — captured off the widget tree,
-/// so all colours/fonts are explicit and no context lookups happen.
+/// Wide, minimal score card (cover · title/artist · score ring, review as a
+/// small caption when present). Captured off the widget tree, so all
+/// colours/fonts are explicit and no context lookups happen.
 class ReviewShareCard extends StatelessWidget {
   const ReviewShareCard({
     super.key,
@@ -121,18 +132,27 @@ class ReviewShareCard extends StatelessWidget {
     required this.artist,
     required this.imageUrl,
     required this.score,
-    required this.review,
+    this.review,
     this.handle,
+    this.dark = true,
   });
 
   final String title;
   final String? artist;
   final String? imageUrl;
   final double score;
-  final String review;
+  final String? review;
   final String? handle;
+  final bool dark;
 
-  static const _p = AppPalette.dark;
+  static bool _hasReview(String? review) =>
+      review != null && review.trim().isNotEmpty;
+
+  /// Wide banner canvas; a bit taller when a review caption is shown.
+  static Size designSize(String? review) =>
+      _hasReview(review) ? const Size(1080, 520) : const Size(1080, 400);
+
+  AppPalette get _p => dark ? AppPalette.dark : AppPalette.light;
 
   TextStyle _t(double size, FontWeight w, Color c, {double? height}) =>
       TextStyle(
@@ -147,62 +167,62 @@ class ReviewShareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasReview = _hasReview(review);
+    final size = designSize(review);
     return AspectRatio(
-      aspectRatio: 1080 / 1920,
+      aspectRatio: size.width / size.height,
       child: Container(
         color: _p.bg,
-        padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 120),
+        padding: const EdgeInsets.all(44),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: CoverArtStatic(title: title, imageUrl: imageUrl, size: 560),
-            ),
-            const SizedBox(height: 56),
-            Text(title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: _t(46, FontWeight.w800, _p.text)),
-            if (artist != null && artist!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(artist!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: _t(28, FontWeight.w500, _p.muted)),
-            ],
-            const SizedBox(height: 28),
-            Row(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: _p.accentSoft,
-                    borderRadius: BorderRadius.circular(40),
-                  ),
-                  child: Text(score.toStringAsFixed(1),
-                      style: _t(30, FontWeight.w800, scoreColor(score))),
-                ),
-              ],
-            ),
-            const SizedBox(height: 44),
             Expanded(
-              child: Text(
-                '“$review”',
-                maxLines: 12,
-                overflow: TextOverflow.ellipsis,
-                style: _t(30, FontWeight.w500, _p.text, height: 1.65),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  CoverArtStatic(
+                      title: title, imageUrl: imageUrl, size: 240, dark: dark),
+                  const SizedBox(width: 40),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: _t(42, FontWeight.w800, _p.text)),
+                        if (artist != null && artist!.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Text(artist!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _t(26, FontWeight.w500, _p.muted)),
+                        ],
+                        const SizedBox(height: 14),
+                        Text(
+                            handle != null && handle!.isNotEmpty
+                                ? '@$handle · Athens'
+                                : 'Athens',
+                            style: _t(20, FontWeight.w600, _p.faint)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 40),
+                  ScoreRingStatic(score: score, dark: dark, size: 190),
+                ],
               ),
             ),
-            const SizedBox(height: 32),
-            Row(
-              children: [
-                if (handle != null && handle!.isNotEmpty)
-                  Text('@$handle', style: _t(24, FontWeight.w600, _p.muted)),
-                const Spacer(),
-                Text('Athens', style: _t(24, FontWeight.w800, _p.accentText)),
-              ],
-            ),
+            if (hasReview) ...[
+              const SizedBox(height: 28),
+              Text(
+                '“${review!.trim()}”',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: _t(24, FontWeight.w500, _p.muted, height: 1.5),
+              ),
+            ],
           ],
         ),
       ),

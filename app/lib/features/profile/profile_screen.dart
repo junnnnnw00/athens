@@ -270,14 +270,9 @@ class ProfileScreen extends ConsumerWidget {
               title: context.t('profile_library', ref: ref),
               onTap: () => context.go('/library')),
           _Tile(
-              icon: Icons.bar_chart_rounded,
+              icon: Icons.query_stats_rounded,
               title: context.t('profile_stats', ref: ref),
               onTap: () => context.push('/stats')),
-          _Tile(
-              icon: Icons.ios_share_rounded,
-              title: context.t('profile_share', ref: ref),
-              subtitle: context.t('profile_share_desc', ref: ref),
-              onTap: () => context.push('/profile/share')),
           _Tile(
               icon: Icons.music_note_outlined,
               title: context.t('profile_lastfm_title', ref: ref),

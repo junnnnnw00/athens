@@ -276,8 +276,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     onPressed: _refresh,
                   ),
                 IconButton(
+                  tooltip: context.t('profile_share', ref: ref),
+                  icon: const Icon(Icons.ios_share_rounded),
+                  onPressed: () => context.push('/library/share'),
+                ),
+                IconButton(
                   tooltip: context.t('profile_stats', ref: ref),
-                  icon: const Icon(Icons.bar_chart_rounded),
+                  icon: const Icon(Icons.query_stats_rounded),
                   onPressed: () => context.push('/stats'),
                 ),
                 IconButton(

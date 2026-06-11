@@ -151,7 +151,14 @@ StatefulShellRoute buildAppShellRoute() => StatefulShellRoute.indexedStack(
             GoRoute(
               path: '/library',
               builder: (c, s) => const LibraryScreen(),
-              routes: [_itemRoute()],
+              routes: [
+                _itemRoute(),
+                // Share lives in the Me branch (library app-bar icon) so
+                // pushing it keeps the Me tab active.
+                GoRoute(
+                    path: 'share',
+                    builder: (c, s) => const ShareScreen()),
+              ],
             ),
             GoRoute(path: '/stats', builder: (c, s) => const StatsScreen()),
             GoRoute(
@@ -161,11 +168,6 @@ StatefulShellRoute buildAppShellRoute() => StatefulShellRoute.indexedStack(
                 GoRoute(
                     path: 'edit',
                     builder: (c, s) => const ProfileEditScreen()),
-                // Share also lives in the Me branch so pushing it from the
-                // Me tab doesn't switch the active tab to Home.
-                GoRoute(
-                    path: 'share',
-                    builder: (c, s) => const ShareScreen()),
               ],
             ),
             GoRoute(
