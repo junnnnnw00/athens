@@ -14,7 +14,7 @@ import '../catalog/catalog_service.dart';
 import '../profile/profile_service.dart';
 import '../../i18n.dart';
 
-enum ShareTemplate { top5, topster, tasteSnapshot }
+enum ShareTemplate { top5, topster }
 
 class ShareScreen extends ConsumerStatefulWidget {
   const ShareScreen({super.key});
@@ -36,8 +36,6 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
           items: items.take(5).toList(), lang: lang, handle: handle, dark: _dark),
       ShareTemplate.topster => ShareCard.topster(
           items: _topsterItems(items), lang: lang, handle: handle, dark: _dark),
-      ShareTemplate.tasteSnapshot =>
-          ShareCard.taste(items: items, lang: lang, handle: handle, dark: _dark),
     };
   }
 
@@ -86,8 +84,6 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                 ButtonSegment(value: ShareTemplate.top5, label: Text('Top 5')),
                 ButtonSegment(
                     value: ShareTemplate.topster, label: Text('Topster')),
-                ButtonSegment(
-                    value: ShareTemplate.tasteSnapshot, label: Text('Taste')),
               ],
               selected: {_template},
               onSelectionChanged: (s) => setState(() => _template = s.first),
@@ -121,7 +117,12 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppLayout.scrollBottomInset(context),
+            ),
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -166,17 +167,6 @@ class ShareCard extends StatelessWidget {
           lang: lang,
           handle: handle,
           dark: dark);
-  factory ShareCard.taste(
-          {required List<RatedCatalogItem> items,
-          required AppLanguage lang,
-          String? handle,
-          bool dark = true}) =>
-      ShareCard._(
-          items: items,
-          template: ShareTemplate.tasteSnapshot,
-          lang: lang,
-          handle: handle,
-          dark: dark);
   factory ShareCard.topster(
           {required List<RatedCatalogItem> items,
           required AppLanguage lang,
@@ -201,7 +191,6 @@ class ShareCard extends StatelessWidget {
   static Size designSize(ShareTemplate t) => switch (t) {
         ShareTemplate.top5 => const Size(1080, 760),
         ShareTemplate.topster => const Size(1080, 1180),
-        ShareTemplate.tasteSnapshot => const Size(1080, 640),
       };
 
   AppPalette get _p => dark ? AppPalette.dark : AppPalette.light;
@@ -220,22 +209,24 @@ class ShareCard extends StatelessWidget {
     final size = designSize(template);
     return AspectRatio(
       aspectRatio: size.width / size.height,
-      child: Container(
-        color: _p.bg,
-        padding: const EdgeInsets.all(48),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: switch (template) {
-                ShareTemplate.top5 => _top5Body(),
-                ShareTemplate.topster => _topsterBody(),
-                ShareTemplate.tasteSnapshot => _tasteBody(),
-              },
-            ),
-            const SizedBox(height: 24),
-            _footer(),
-          ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Container(
+          color: _p.bg,
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: switch (template) {
+                  ShareTemplate.top5 => _top5Body(),
+                  ShareTemplate.topster => _topsterBody(),
+                },
+              ),
+              const SizedBox(height: 24),
+              _footer(),
+            ],
+          ),
         ),
       ),
     );
@@ -332,42 +323,7 @@ class ShareCard extends StatelessWidget {
         title: it.title, imageUrl: it.imageUrl, size: 240, dark: dark);
   }
 
-  Widget _tasteBody() {
-    final counts = <String, int>{};
-    for (final item in items) {
-      for (final tag in item.tags) {
-        counts[tag.name] = (counts[tag.name] ?? 0) + 1;
-      }
-    }
-    final top = counts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            for (final e in top.take(10))
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                decoration: BoxDecoration(
-                  color: _p.accentSoft,
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                ),
-                child:
-                    Text(e.key, style: _t(22, FontWeight.w700, _p.accentText)),
-              ),
-          ],
-        ),
-        const SizedBox(height: 32),
-        Text(I18n.get('share_card_ratings_count', lang, [items.length.toString()]),
-            style: _t(22, FontWeight.w600, _p.muted)),
-      ],
-    );
-  }
+
 }
 
 /// Cover that does not depend on context (for off-tree capture).
