@@ -156,7 +156,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.query_stats_rounded, size: 20, color: p.accentText),
+                    Icon(Icons.bar_chart_rounded, size: 20, color: p.accentText),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Column(
@@ -270,7 +270,7 @@ class ProfileScreen extends ConsumerWidget {
               title: context.t('profile_library', ref: ref),
               onTap: () => context.go('/library')),
           _Tile(
-              icon: Icons.query_stats_rounded,
+              icon: Icons.bar_chart_rounded,
               title: context.t('profile_stats', ref: ref),
               onTap: () => context.push('/stats')),
           _Tile(

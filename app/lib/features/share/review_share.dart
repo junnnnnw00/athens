@@ -29,6 +29,7 @@ Future<void> showReviewShareSheet(
 
   return showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     backgroundColor: Theme.of(context).scaffoldBackgroundColor,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
@@ -84,6 +85,10 @@ Future<void> showReviewShareSheet(
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56),
+                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                       icon: const Icon(Icons.ios_share_rounded),
                       label: sharing
                           ? const SizedBox(
@@ -178,18 +183,20 @@ class ReviewShareCard extends StatelessWidget {
     final size = designSize(review);
     return AspectRatio(
       aspectRatio: size.width / size.height,
-      child: Container(
-        color: _p.bg,
-        padding: const EdgeInsets.all(44),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Container(
+          color: _p.bg,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   CoverArtStatic(
-                      title: title, imageUrl: imageUrl, size: 240, dark: dark),
+                      title: title, imageUrl: imageUrl, size: 240, dark: dark, radius: 24),
                   const SizedBox(width: 40),
                   Expanded(
                     child: Column(
@@ -199,20 +206,20 @@ class ReviewShareCard extends StatelessWidget {
                         Text(title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: _t(42, FontWeight.w800, _p.text)),
+                            style: _t(60, FontWeight.w800, _p.text)),
                         if (artist != null && artist!.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Text(artist!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: _t(26, FontWeight.w500, _p.muted)),
+                              style: _t(40, FontWeight.w500, _p.muted)),
                         ],
                         const SizedBox(height: 14),
                         Text(
                             handle != null && handle!.isNotEmpty
                                 ? '@$handle · Athens'
                                 : 'Athens',
-                            style: _t(20, FontWeight.w600, _p.faint)),
+                            style: _t(32, FontWeight.w600, _p.faint)),
                       ],
                     ),
                   ),
@@ -220,17 +227,17 @@ class ReviewShareCard extends StatelessWidget {
                   ScoreRingStatic(score: score, dark: dark, size: 190),
                 ],
               ),
-            ),
-            if (hasReview) ...[
-              const SizedBox(height: 28),
-              Text(
-                '“${review!.trim()}”',
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: _t(24, FontWeight.w500, _p.muted, height: 1.5),
-              ),
+              if (hasReview) ...[
+                const SizedBox(height: 32),
+                Text(
+                  '“${review!.trim()}”',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: _t(44, FontWeight.w500, _p.muted, height: 1.5),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -282,12 +282,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 ),
                 IconButton(
                   tooltip: context.t('profile_stats', ref: ref),
-                  icon: const Icon(Icons.query_stats_rounded),
+                  icon: const Icon(Icons.bar_chart_rounded),
                   onPressed: () => context.push('/stats'),
                 ),
                 IconButton(
                   tooltip: context.t('profile_me', ref: ref),
-                  icon: const Icon(Icons.person_outline_rounded),
+                  icon: const Icon(Icons.person_rounded),
                   onPressed: () => context.push('/profile'),
                 ),
               ],

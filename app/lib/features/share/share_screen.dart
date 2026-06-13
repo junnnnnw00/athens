@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +29,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   ShareTemplate _template = ShareTemplate.top5;
   bool _dark = true;
   bool _sharing = false;
+  int _topsterCount = 16;
 
   Widget _card(List<RatedCatalogItem> items, AppLanguage lang) {
     final handle = ref.read(myProfileProvider).valueOrNull?.handle;
@@ -35,16 +37,32 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       ShareTemplate.top5 => ShareCard.top5(
           items: items.take(5).toList(), lang: lang, handle: handle, dark: _dark),
       ShareTemplate.topster => ShareCard.topster(
-          items: _topsterItems(items), lang: lang, handle: handle, dark: _dark),
+          items: _topsterItems(items, _topsterCount), lang: lang, handle: handle, dark: _dark, topsterCount: _topsterCount),
     };
   }
 
-  /// Topster = 4×4 grid of the highest-rated covers. Albums first (the
-  /// classic topster is an album chart); pad with tracks/artists if needed.
-  static List<RatedCatalogItem> _topsterItems(List<RatedCatalogItem> items) {
-    final albums = items.where((i) => i.kind == 'album').toList();
-    final rest = items.where((i) => i.kind != 'album').toList();
-    return [...albums, ...rest].take(ShareCard.topsterCount).toList();
+  /// Topster = grid of the highest-rated covers, regardless of album or track.
+  /// When there are overlapping albums (sharing the same image URL), only the
+  /// highest rated one is included.
+  static List<RatedCatalogItem> _topsterItems(List<RatedCatalogItem> items, int count) {
+    final sorted = [...items]..sort((a, b) => b.elo.compareTo(a.elo));
+    final result = <RatedCatalogItem>[];
+    final seenImages = <String>{};
+
+    for (final item in sorted) {
+      if (item.kind != 'album' && item.kind != 'track') {
+        continue;
+      }
+      final img = item.imageUrl;
+      if (img != null && img.isNotEmpty) {
+        if (seenImages.contains(img)) {
+          continue;
+        }
+        seenImages.add(img);
+      }
+      result.add(item);
+    }
+    return result.take(count).toList();
   }
 
   Future<void> _share(List<RatedCatalogItem> items) async {
@@ -89,6 +107,31 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
               onSelectionChanged: (s) => setState(() => _template = s.first),
             ),
           ),
+          if (_template == ShareTemplate.topster) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [9, 16, 25, 36, 49, 64].map((count) {
+                  final n = sqrt(count).toInt();
+                  final label = '${n}x$n ($count)';
+                  final selected = _topsterCount == count;
+                  return ChoiceChip(
+                    visualDensity: VisualDensity.compact,
+                    label: Text(label),
+                    selected: selected,
+                    onSelected: (val) {
+                      if (val) {
+                        setState(() => _topsterCount = count);
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
           SegmentedButton<bool>(
             style: const ButtonStyle(visualDensity: VisualDensity.compact),
             segments: const [
@@ -126,6 +169,10 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 icon: const Icon(Icons.ios_share_rounded),
                 label: _sharing
                     ? const SizedBox(
@@ -154,7 +201,8 @@ class ShareCard extends StatelessWidget {
       required this.template,
       required this.lang,
       this.handle,
-      this.dark = true});
+      this.dark = true,
+      this.topsterCount = 16});
 
   factory ShareCard.top5(
           {required List<RatedCatalogItem> items,
@@ -171,21 +219,24 @@ class ShareCard extends StatelessWidget {
           {required List<RatedCatalogItem> items,
           required AppLanguage lang,
           String? handle,
-          bool dark = true}) =>
+          bool dark = true,
+          int topsterCount = 16}) =>
       ShareCard._(
           items: items,
           template: ShareTemplate.topster,
           lang: lang,
           handle: handle,
-          dark: dark);
+          dark: dark,
+          topsterCount: topsterCount);
 
   final List<RatedCatalogItem> items;
   final ShareTemplate template;
   final AppLanguage lang;
   final String? handle;
   final bool dark;
+  final int topsterCount;
 
-  static const int topsterCount = 16;
+  static const int topsterCountDefault = 16;
 
   /// Export canvas per template (logical px; captured at 3× pixel ratio).
   static Size designSize(ShareTemplate t) => switch (t) {
@@ -223,7 +274,7 @@ class ShareCard extends StatelessWidget {
                   ShareTemplate.topster => _topsterBody(),
                 },
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               _footer(),
             ],
           ),
@@ -248,18 +299,18 @@ class ShareCard extends StatelessWidget {
       children: [
         for (var i = 0; i < items.length; i++)
           Padding(
-            padding: const EdgeInsets.only(bottom: 22),
+            padding: EdgeInsets.only(bottom: i == items.length - 1 ? 0 : 12),
             child: Row(
               children: [
                 SizedBox(
-                  width: 40,
+                  width: 50,
                   child: Text('${i + 1}',
-                      style: _t(30, FontWeight.w800, _p.faint)),
+                      style: _t(38, FontWeight.w800, _p.faint)),
                 ),
                 CoverArtStatic(
                     title: items[i].title,
                     imageUrl: items[i].imageUrl,
-                    size: 88,
+                    size: 110,
                     dark: dark),
                 const SizedBox(width: 24),
                 Expanded(
@@ -269,17 +320,17 @@ class ShareCard extends StatelessWidget {
                       Text(items[i].title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: _t(28, FontWeight.w800, _p.text)),
+                          style: _t(36, FontWeight.w800, _p.text)),
                       const SizedBox(height: 4),
                       Text(items[i].primaryArtist ?? '',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: _t(21, FontWeight.w500, _p.muted)),
+                          style: _t(26, FontWeight.w500, _p.muted)),
                     ],
                   ),
                 ),
                 Text(scoreFromElo(items[i].elo).toStringAsFixed(1),
-                    style: _t(30, FontWeight.w800,
+                    style: _t(38, FontWeight.w800,
                         scoreColor(scoreFromElo(items[i].elo), dark: dark))),
               ],
             ),
@@ -288,22 +339,24 @@ class ShareCard extends StatelessWidget {
     );
   }
 
-  /// Pure 4×4 album-art chart — covers only, no text.
+  /// Pure N×N album-art chart — covers only, no text.
   Widget _topsterBody() {
+    final n = sqrt(topsterCount).toInt();
+    final cellSize = (1080 - 64 - (n - 1) * 10) / n;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var row = 0; row < 4; row++) ...[
+        for (var row = 0; row < n; row++) ...[
           if (row > 0) const SizedBox(height: 10),
           Row(
             children: [
-              for (var col = 0; col < 4; col++) ...[
+              for (var col = 0; col < n; col++) ...[
                 if (col > 0) const SizedBox(width: 10),
                 Expanded(
                   child: AspectRatio(
                     aspectRatio: 1,
-                    child: _gridCell(row * 4 + col),
+                    child: _gridCell(row * n + col, cellSize),
                   ),
                 ),
               ],
@@ -314,13 +367,13 @@ class ShareCard extends StatelessWidget {
     );
   }
 
-  Widget _gridCell(int index) {
+  Widget _gridCell(int index, double cellSize) {
     if (index >= items.length) {
       return Container(color: _p.surface2);
     }
     final it = items[index];
     return CoverArtStatic(
-        title: it.title, imageUrl: it.imageUrl, size: 240, dark: dark);
+        title: it.title, imageUrl: it.imageUrl, size: cellSize, dark: dark, radius: 0);
   }
 
 
@@ -333,18 +386,20 @@ class CoverArtStatic extends StatelessWidget {
       required this.title,
       required this.imageUrl,
       required this.size,
-      this.dark = true});
+      this.dark = true,
+      this.radius});
   final String title;
   final String? imageUrl;
   final double size;
   final bool dark;
+  final double? radius;
 
   @override
   Widget build(BuildContext context) {
     final p = dark ? AppPalette.dark : AppPalette.light;
     final url = imageUrl;
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadii.cover),
+      borderRadius: BorderRadius.circular(radius ?? AppRadii.cover),
       child: SizedBox(
         width: size,
         height: size,
