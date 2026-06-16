@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../data/repository/library_providers.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/theme_providers.dart';
 import 'profile_service.dart';
 import '../../i18n.dart';
 import '../stats/stats_screen.dart';
@@ -290,6 +291,18 @@ class ProfileScreen extends ConsumerWidget {
                   builder: (context) => const _LanguageDialog(),
                 );
               }),
+          Builder(builder: (context) {
+            final themeMode = ref.watch(themeModeProvider);
+            final isDark = themeMode != ThemeMode.light;
+            return _Tile(
+              icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              title: isDark ? '다크 모드' : '라이트 모드',
+              subtitle: isDark ? '라이트 모드로 전환' : '다크 모드로 전환',
+              onTap: () => ref.read(themeModeProvider.notifier).setMode(
+                    isDark ? ThemeMode.light : ThemeMode.dark,
+                  ),
+            );
+          }),
           _Tile(
               icon: Icons.chat_bubble_outline_rounded,
               title: context.t('profile_feedback_title', ref: ref),

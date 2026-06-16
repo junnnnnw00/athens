@@ -11,6 +11,7 @@ import 'api/supabase.dart';
 import 'api/platform_storage.dart';
 import 'data/offline_support.dart' show kLastUserIdKey;
 import 'data/repository/library_providers.dart';
+import 'theme/theme_providers.dart';
 
 const _kSentryDsn = String.fromEnvironment('SENTRY_DSN');
 
@@ -69,11 +70,17 @@ Future<void> main() async {
     } catch (_) {}
   }
   var effectiveUserId = liveUserId ?? cachedUserId;
+  final savedThemeMode = await loadSavedThemeMode();
+  final onboardingDone =
+      await PlatformStorage.read(key: 'onboarding_done') == 'true';
 
   final container = ProviderContainer(
     overrides: [
       if (effectiveUserId != null && effectiveUserId.isNotEmpty)
         lastKnownUserIdProvider.overrideWith((ref) => effectiveUserId),
+      themeModeProvider.overrideWith(
+          (ref) => ThemeModeNotifier(savedThemeMode)),
+      onboardingDoneProvider.overrideWith((ref) => onboardingDone),
     ],
   );
 
@@ -114,12 +121,13 @@ class AthensApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'Athens',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.dark,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }
