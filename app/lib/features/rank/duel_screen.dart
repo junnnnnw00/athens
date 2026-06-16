@@ -503,6 +503,8 @@ class _PlacementDone extends ConsumerWidget {
                         imageUrl: item.imageUrl,
                         size: 110,
                         radius: item.kind == 'artist' ? 55 : AppRadii.card,
+                        artist: item.primaryArtist,
+                        kind: item.kind,
                       ),
                       const SizedBox(height: AppSpacing.md),
                       Text(
@@ -618,7 +620,9 @@ class _DuelCard extends StatelessWidget {
                     imageUrl: item.imageUrl,
                     title: item.title,
                     fallback: p.surface2,
-                    faint: p.faint),
+                    faint: p.faint,
+                    artist: item.primaryArtist,
+                    kind: item.kind),
                 // Bottom scrim only — keeps the album art crisp and readable up
                 // top while the title/artist stay legible over the artwork.
                 DecoratedBox(
@@ -671,23 +675,33 @@ class _DuelCard extends StatelessWidget {
   }
 }
 
-class _DuelArt extends StatelessWidget {
+class _DuelArt extends ConsumerWidget {
   const _DuelArt({
     required this.imageUrl,
     required this.title,
     required this.fallback,
     required this.faint,
+    this.artist,
+    this.kind,
   });
   final String? imageUrl;
   final String title;
   final Color fallback;
   final Color faint;
+  final String? artist;
+  final String? kind;
 
   @override
-  Widget build(BuildContext context) {
-    final url = imageUrl;
+  Widget build(BuildContext context, WidgetRef ref) {
+    String? url = imageUrl;
+    if (!hasUsableArt(url) && artist != null && artist!.isNotEmpty) {
+      url = ref.watch(artworkUrlProvider((
+        kind: kind ?? 'track',
+        artist: artist!,
+        title: title,
+      ))).valueOrNull;
+    }
     if (!hasUsableArt(url)) {
-      // No (usable) artwork — a clean monogram tile instead of an empty box.
       return ColoredBox(
         color: fallback,
         child: Center(
@@ -702,7 +716,6 @@ class _DuelArt extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: url!,
       fit: BoxFit.cover,
-      // Disk-cached so duel artwork shows offline once seen.
       placeholder: (_, __) => ColoredBox(color: fallback),
       errorWidget: (_, __, ___) => ColoredBox(color: fallback),
     );

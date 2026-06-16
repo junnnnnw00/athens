@@ -12,6 +12,9 @@ abstract class ItunesApi {
   /// (iTunes has no native offset param) and returns the slice past [offset].
   Future<List<CatalogItem>> search(String query,
       {String entity = 'song,album,musicArtist', int offset = 0, int limit = 20});
+
+  /// Fetches tracks for an iTunes album by its collection ID.
+  Future<List<CatalogItem>> getAlbumTracks(String collectionId);
 }
 
 class ItunesApiHttp implements ItunesApi {
@@ -42,6 +45,45 @@ class ItunesApiHttp implements ItunesApi {
     if (offset >= all.length) return const [];
     final end = (offset + limit) > all.length ? all.length : offset + limit;
     return all.sublist(offset, end);
+  }
+
+  @override
+  Future<List<CatalogItem>> getAlbumTracks(String collectionId) async {
+    final res = await _http.get(Uri.https('itunes.apple.com', '/lookup', {
+      'id': collectionId,
+      'entity': 'song',
+      'limit': '200',
+    }));
+    if (res.statusCode != 200) return [];
+    final json = jsonDecode(res.body);
+    if (json is! Map || json['results'] is! List) return [];
+    String? albumImage;
+    final tracks = <CatalogItem>[];
+    for (final r in (json['results'] as List).whereType<Map>()) {
+      final wrapper = r['wrapperType'] as String?;
+      if (wrapper == 'collection') {
+        albumImage = (r['artworkUrl100'] as String?)
+            ?.replaceAll('100x100bb', '600x600bb');
+        continue;
+      }
+      if (wrapper != 'track') continue;
+      final id = r['trackId']?.toString();
+      final title = r['trackName'] as String?;
+      if (id == null || title == null) continue;
+      tracks.add(CatalogItem(
+        id: 'itunes:$id',
+        kind: 'track',
+        title: title,
+        primaryArtist: r['artistName'] as String?,
+        imageUrl: albumImage ??
+            (r['artworkUrl100'] as String?)
+                ?.replaceAll('100x100bb', '600x600bb'),
+        source: 'itunes',
+        sourceId: id,
+        album: r['collectionName'] as String?,
+      ));
+    }
+    return tracks;
   }
 
   /// Parses the iTunes Search response into catalog items.

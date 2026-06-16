@@ -1,9 +1,11 @@
 import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../theme/tokens.dart';
 import '../theme/app_theme.dart';
+import '../features/catalog/catalog_service.dart' show artworkUrlProvider;
 
 /// Known Last.fm blank-art placeholder hash; such URLs render an empty grey box.
 const String _kLastfmBlankArtHash = '2a96cbd8b46e442fc41c2b86b821562f';
@@ -16,19 +18,26 @@ bool hasUsableArt(String? url) =>
 
 /// Album/track cover. Shows the real artwork, or a quiet neutral tile with the
 /// title's initials when art is missing (never a rainbow filler tile).
-class CoverArt extends StatelessWidget {
+///
+/// Pass [artist] and [kind] to enable automatic iTunes artwork fallback when
+/// [imageUrl] is missing or a Last.fm placeholder.
+class CoverArt extends ConsumerWidget {
   const CoverArt({
     super.key,
     required this.title,
     this.imageUrl,
     this.size = 56,
     this.radius = AppRadii.cover,
+    this.artist,
+    this.kind,
   });
 
   final String title;
   final String? imageUrl;
   final double size;
   final double radius;
+  final String? artist;
+  final String? kind;
 
   static String initialsOf(String s) {
     final cleaned = s.replaceAll(RegExp(r'[^\p{L}\p{N} ]', unicode: true), '').trim();
@@ -37,9 +46,21 @@ class CoverArt extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
-    final url = imageUrl;
+
+    String? resolvedUrl;
+    if (hasUsableArt(imageUrl)) {
+      resolvedUrl = imageUrl;
+    } else if (artist != null && artist!.isNotEmpty) {
+      resolvedUrl = ref.watch(artworkUrlProvider((
+        kind: kind ?? 'track',
+        artist: artist!,
+        title: title,
+      ))).valueOrNull;
+    }
+
+    final url = resolvedUrl;
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: SizedBox(
@@ -49,8 +70,6 @@ class CoverArt extends StatelessWidget {
             ? CachedNetworkImage(
                 imageUrl: url!,
                 fit: BoxFit.cover,
-                // Disk-cached, so it renders offline once seen. Keep the neutral
-                // tile as both the loading placeholder and the error fallback.
                 fadeInDuration: const Duration(milliseconds: 150),
                 placeholder: (_, __) => _fallback(p),
                 errorWidget: (_, __, ___) => _fallback(p),

@@ -23,6 +23,7 @@ class CatalogItem {
     this.source,
     this.tags = const [],
     this.playedAtUts,
+    this.album,
   });
 
   final String id;
@@ -34,6 +35,7 @@ class CatalogItem {
   final String? source;
   final List<CatalogTag> tags;
   final int? playedAtUts;
+  final String? album;
 
   CatalogItem copyWithTags(List<CatalogTag> tags) => CatalogItem(
         id: id,
@@ -45,6 +47,7 @@ class CatalogItem {
         source: source,
         tags: tags,
         playedAtUts: playedAtUts,
+        album: album,
       );
 
   CatalogItem copyWithImage(String? imageUrl) => CatalogItem(
@@ -57,6 +60,7 @@ class CatalogItem {
         source: source,
         tags: tags,
         playedAtUts: playedAtUts,
+        album: album,
       );
 }
 
@@ -320,6 +324,35 @@ final artworkUrlProvider = FutureProvider.family<String?,
   final svc = ref.read(catalogServiceProvider);
   return svc.findArtworkUrl(
       kind: args.kind, artist: args.artist, title: args.title);
+});
+
+/// Fetches track listing for an album. Keyed by the album's CatalogItem id.
+/// Uses iTunes lookup for itunes-sourced albums; falls back to a search for
+/// other sources (e.g. lastfm albums stored with different IDs).
+final albumTracksProvider =
+    FutureProvider.autoDispose.family<List<CatalogItem>, CatalogItem>((ref, album) async {
+  final itunes = ref.read(itunesApiProvider);
+
+  // Direct iTunes collection lookup.
+  if (album.source == 'itunes' && album.sourceId != null) {
+    try {
+      final tracks = await itunes.getAlbumTracks(album.sourceId!);
+      if (tracks.isNotEmpty) return tracks;
+    } catch (_) {}
+  }
+
+  // Fallback: search iTunes for the album by artist + title, then lookup.
+  final query = '${album.primaryArtist ?? ''} ${album.title}'.trim();
+  if (query.isEmpty) return const [];
+  try {
+    final hits = await itunes.search(query, entity: 'album', limit: 1);
+    if (hits.isEmpty) return const [];
+    final collectionId = hits.first.sourceId;
+    if (collectionId == null) return const [];
+    return itunes.getAlbumTracks(collectionId);
+  } catch (_) {
+    return const [];
+  }
 });
 
 final searchQueryProvider = StateProvider<String>((ref) => '');

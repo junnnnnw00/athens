@@ -423,7 +423,7 @@ class _RecentCardState extends ConsumerState<_RecentCard> {
         ),
         child: Row(
           children: [
-            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 48),
+            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 48, artist: item.primaryArtist, kind: item.kind),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -678,6 +678,8 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
                 title: item.title,
                 imageUrl: item.imageUrl,
                 size: 162,
+                artist: item.primaryArtist,
+                kind: item.kind,
               ),
             ),
             Padding(

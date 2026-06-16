@@ -27,6 +27,12 @@ abstract class SpotifyApi {
   /// [offset] pages through results (Spotify caps offset+limit at 1000).
   Future<List<CatalogItem>> search(String query,
       {String types = 'track,album,artist', int offset = 0, int limit = 20});
+
+  /// Returns the tracks belonging to a Spotify album by its Spotify ID.
+  /// Tracks carry the album's [albumImageUrl] as their imageUrl (Spotify's
+  /// simplified track objects don't embed the album art).
+  Future<List<CatalogItem>> getAlbumTracks(String albumId,
+      {String? albumImageUrl, String? albumName});
 }
 
 class SpotifyApiHttp implements SpotifyApi {
@@ -88,6 +94,25 @@ class SpotifyApiHttp implements SpotifyApi {
     return parseSearch(res.body);
   }
 
+  @override
+  Future<List<CatalogItem>> getAlbumTracks(String albumId,
+      {String? albumImageUrl, String? albumName}) async {
+    final token = await _appToken();
+    final res = await _http.get(
+      Uri.https('api.spotify.com', '/v1/albums/$albumId/tracks', {'limit': '50'}),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (res.statusCode == 429) {
+      final retry = int.tryParse(res.headers['retry-after'] ?? '');
+      throw SpotifyRateLimitException(retry);
+    }
+    if (res.statusCode != 200) return [];
+    final json = _obj(res.body);
+    return _list(json, 'items')
+        .map((t) => _track(t, overrideImage: albumImageUrl, overrideAlbum: albumName))
+        .toList();
+  }
+
   /// Parses Spotify's `/search` response into catalog items.
   static List<CatalogItem> parseSearch(String body) {
     final json = _obj(body);
@@ -104,16 +129,17 @@ class SpotifyApiHttp implements SpotifyApi {
     return items;
   }
 
-  static CatalogItem _track(Map<String, dynamic> t) {
+  static CatalogItem _track(Map<String, dynamic> t, {String? overrideImage, String? overrideAlbum}) {
     final album = t['album'];
     return CatalogItem(
       id: 'spotify:${t['id']}',
       kind: 'track',
       title: t['name'] as String? ?? 'Unknown',
       primaryArtist: _firstArtist(t['artists']),
-      imageUrl: _image(album is Map ? album['images'] : null),
+      imageUrl: overrideImage ?? _image(album is Map ? album['images'] : null),
       source: 'spotify',
       sourceId: t['id'] as String?,
+      album: overrideAlbum ?? (album is Map ? album['name'] as String? : null),
     );
   }
 

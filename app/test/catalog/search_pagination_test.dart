@@ -27,6 +27,9 @@ class _PagingiTunes implements ItunesApi {
         source: 'itunes',
         sourceId: '$n',
       );
+
+  @override
+  Future<List<CatalogItem>> getAlbumTracks(String collectionId) async => const [];
 }
 
 void main() {

@@ -241,7 +241,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                 title: title,
                 imageUrl: imageUrl,
                 size: 200,
-                radius: kind == 'artist' ? 100 : AppRadii.card),
+                radius: kind == 'artist' ? 100 : AppRadii.card,
+                artist: primaryArtist,
+                kind: kind),
           ),
           const SizedBox(height: AppSpacing.xl),
           Row(
@@ -449,8 +451,109 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ),
           ],
           _FriendRatingsSection(itemId: widget.itemId),
+          if (kind == 'album')
+            _AlbumTracksSection(
+              album: widget.catalogItem ??
+                  (item != null
+                      ? CatalogItem(
+                          id: item.id,
+                          kind: item.kind,
+                          title: item.title,
+                          primaryArtist: item.primaryArtist,
+                          imageUrl: item.imageUrl,
+                          source: item.id.contains(':') ? item.id.split(':').first : 'itunes',
+                          sourceId: item.id.contains(':') ? item.id.substring(item.id.indexOf(':') + 1) : item.id,
+                          tags: item.tags,
+                        )
+                      : null),
+            ),
         ],
       ),
+    );
+  }
+}
+
+class _AlbumTracksSection extends ConsumerWidget {
+  const _AlbumTracksSection({required this.album});
+  final CatalogItem? album;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final a = album;
+    if (a == null) return const SizedBox.shrink();
+    final p = context.palette;
+    final async = ref.watch(albumTracksProvider(a));
+    return async.when(
+      loading: () => Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.xxl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('수록곡', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.md),
+            const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+          ],
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (tracks) {
+        if (tracks.isEmpty) return const SizedBox.shrink();
+        final ratedItems = ref.watch(ratedItemsProvider);
+        final ratedKeys = ratedItems
+            .map((r) => catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist))
+            .toSet();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: AppSpacing.xxl),
+            Text('수록곡', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            ...tracks.asMap().entries.map((entry) {
+              final i = entry.key;
+              final track = entry.value;
+              final key = catalogMatchKey(kind: 'track', title: track.title, artist: track.primaryArtist ?? '');
+              final isRated = ratedKeys.contains(key);
+              return InkWell(
+                onTap: () => context.push(
+                  '/home/item/${Uri.encodeComponent(track.id)}',
+                  extra: track,
+                ),
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        child: Text(
+                          '${i + 1}',
+                          style: TextStyle(color: p.muted, fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text(
+                          track.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: isRated ? p.accent : p.text,
+                            fontWeight: isRated ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                      if (isRated)
+                        Icon(Icons.check_circle_rounded, size: 16, color: p.accent),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 }

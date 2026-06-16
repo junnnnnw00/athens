@@ -1078,7 +1078,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
               // Top row: art + title + scores
               Row(
                 children: [
-                  CoverArt(title: item.title, imageUrl: item.imageUrl, size: 44),
+                  CoverArt(title: item.title, imageUrl: item.imageUrl, size: 44, artist: item.artist, kind: 'track'),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
