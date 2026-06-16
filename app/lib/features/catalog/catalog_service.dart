@@ -465,13 +465,14 @@ final recommendationsProvider =
 /// scrobbles and (2) hide already-rated tracks from the recent list.
 String normalizeMatchText(String s) {
   var t = s.toLowerCase().trim();
-  // Drop trailing qualifier in parens/brackets: (Remastered 2011), [Live], etc.
+  // Drop trailing qualifier in parens/brackets: (Remastered 2011), etc.
+  // Excludes "live" — live recordings are distinct tracks, not the same as studio versions.
   t = t.replaceAll(
-      RegExp(r'\s*[\(\[][^\)\]]*\b(remaster|remastered|live|version|edit|mix|deluxe|mono|stereo|feat|featuring|bonus|demo|acoustic|radio)\b[^\)\]]*[\)\]]'),
+      RegExp(r'\s*[\(\[][^\)\]]*\b(remaster|remastered|version|edit|mix|deluxe|mono|stereo|feat|featuring|bonus|demo|acoustic|radio)\b[^\)\]]*[\)\]]'),
       '');
-  // Drop trailing " - 2011 Remaster" / " - Live" style suffixes.
+  // Drop trailing " - 2011 Remaster" style suffixes (not "- live").
   t = t.replaceAll(
-      RegExp(r'\s*-\s*[^-]*\b(remaster|remastered|live|version|edit|mix|deluxe|mono|stereo|anniversary)\b.*$'),
+      RegExp(r'\s*-\s*[^-]*\b(remaster|remastered|version|edit|mix|deluxe|mono|stereo|anniversary)\b.*$'),
       '');
   // Drop "feat. X" / "featuring X" tails.
   t = t.replaceAll(RegExp(r'\s*(feat\.?|featuring|ft\.?)\s.*$'), '');
