@@ -238,7 +238,7 @@ secrets, so they stay out of the repo but must exist on the project.
 
 ---
 
-## PROPOSAL — Play Store premium via Google Play Billing + retained promo codes (2026-06-03) — NEEDS HUMAN APPROVAL
+## PROPOSAL — Play Store premium via Google Play Billing + retained promo codes (2026-06-03) — SUPERSEDED: see "Ship as a free app" decision (2026-06-04)
 
 **Context:** Current premium unlock = external 후원 (Ko-fi / 텀블벅) → custom promo code →
 `redeem_promo_code` RPC sets `profiles.is_premium = true`. On the Play Store this is a policy
@@ -364,6 +364,12 @@ with zero cost. (See chat: youth/student, cost-averse.)
 **Reversibility:** All premium code is recoverable from git history (pre-v1.5.4).
 Re-add `in_app_purchase`, restore the deleted files + `/premium-upgrade` route,
 and revert `isPremium` to read the column. Re-open this proposal before doing so.
+
+**2026-06-16 cleanup:** Removed all remaining premium gate dead-code from
+`friend_comparison_screen.dart` (the `if (isPremium)` blocks, `_buildPremiumTeaser`,
+locked tabs). All comparison features now show unconditionally. Premium UI cleanup
+also applied to personality cards (always show descriptions). Code is cleaner;
+premium features can be restored from git history if monetization returns.
 
 ---
 

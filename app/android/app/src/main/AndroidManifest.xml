@@ -3,6 +3,7 @@
          this to the debug/profile manifests, so release APKs had no network
          access → "Failed to host lookup" on every Supabase/API call. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
     <application
         android:label="Athens"
         android:name="${applicationName}"

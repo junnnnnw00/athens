@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'dev_seed.dart';
@@ -11,21 +12,22 @@ import 'api/platform_storage.dart';
 import 'data/offline_support.dart' show kLastUserIdKey;
 import 'data/repository/library_providers.dart';
 
+const _kSentryDsn = String.fromEnvironment('SENTRY_DSN');
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Top-level crash capture so field errors aren't silent. No crash-reporting
-  // SDK is wired yet (see PRELAUNCH #3 — Sentry); until then uncaught framework
-  // and async/platform errors are at least surfaced to the logs instead of
-  // vanishing. PlatformDispatcher.onError is the modern catch-all (Flutter 3.3+),
-  // so an explicit runZonedGuarded isn't needed.
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
     debugPrint('[crash] ${details.exception}\n${details.stack}');
+    if (_kSentryDsn.isNotEmpty) {
+      Sentry.captureException(details.exception, stackTrace: details.stack);
+    }
   };
   WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
     debugPrint('[crash] $error\n$stack');
-    return true; // handled — don't also crash the isolate
+    if (_kSentryDsn.isNotEmpty) Sentry.captureException(error, stackTrace: stack);
+    return true;
   };
 
   if (isSupabaseInitialized) {
@@ -87,10 +89,23 @@ Future<void> main() async {
     await seedDevData(container);
   }
 
-  runApp(UncontrolledProviderScope(
-    container: container,
-    child: const AthensApp(),
-  ));
+  void runTheApp() => runApp(UncontrolledProviderScope(
+        container: container,
+        child: const AthensApp(),
+      ));
+
+  if (_kSentryDsn.isNotEmpty) {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = _kSentryDsn;
+        options.tracesSampleRate = 0.1;
+        options.attachStacktrace = true;
+      },
+      appRunner: runTheApp,
+    );
+  } else {
+    runTheApp();
+  }
 }
 
 class AthensApp extends ConsumerWidget {

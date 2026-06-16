@@ -35,6 +35,10 @@ dependencies:
   # Share / export
   screenshot: ^3.0.0
   share_plus: ^10.1.4
+  gal: ^1.3.0
+
+  # Crash reporting
+  sentry_flutter: ^8.0.0
 
   # Utilities
   freezed_annotation: ^2.4.4

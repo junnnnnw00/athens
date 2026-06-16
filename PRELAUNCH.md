@@ -21,23 +21,15 @@ risk, and the fix direction. Check off as resolved.
   confirms → calls it → signs out. `deletion_requests` RLS locked to
   authenticated self-inserts (migration 0025). Deployed with `verify_jwt` on.
 
-### [~] 2. Email confirmation — config flipped; **needs hosted dashboard action**
-- **Done in code:** `supabase/config.toml` `enable_confirmations = true`.
-- **⚠ YOU must do (hosted, can't be done from code):**
-  1. Sign up an SMTP provider — **Brevo (300/day free)** recommended over Resend
-     (100/day) for launch-day signup bursts. Get SMTP host/user/pass.
-  2. Supabase dashboard → **Auth → SMTP Settings** → enter the provider creds.
-  3. Auth → Providers → Email → enable **"Confirm email"**; turn **off**
-     `mailer_autoconfirm`.
-  4. Test a real signup → confirmation email arrives → account usable only after.
-  - Cost: $0 at ~1000 users (see earlier analysis).
+### [x] 2. Email confirmation — RESOLVED (2026-06-16)
+- Supabase dashboard SMTP configured + "Confirm email" enabled (done by operator).
 
-### [x] 3. Crash handling — RESOLVED (partial: reporting TODO)
-- **Fixed:** `main.dart` sets `FlutterError.onError` +
-  `PlatformDispatcher.onError` → uncaught framework/async errors are caught and
-  logged instead of vanishing.
-- **Still optional:** no crash-report SDK yet. To get field telemetry, add Sentry
-  (free tier) — needs a DSN (your account). Wire it into the two handlers.
+### [x] 3. Crash reporting — RESOLVED (2026-06-16)
+- `sentry_flutter` wired into `main.dart`. Both `FlutterError.onError` and
+  `PlatformDispatcher.onError` forward to Sentry when `SENTRY_DSN` dart-define is
+  set at build time. Without the define, falls back to debug logging (safe default).
+- **To activate:** create a free Sentry project → pass
+  `--dart-define=SENTRY_DSN=https://...` to `flutter build`.
 
 ---
 
@@ -78,15 +70,15 @@ risk, and the fix direction. Check off as resolved.
 ## ⚪ Missing / recommended (not blocking)
 
 ### Legal / store
-- [ ] **Terms of Service page** — none exists (`web/app/terms` absent). Privacy
-  policy is present; Play listing generally wants ToS too.
+- [x] **Terms of Service page** — created at `web/app/terms/page.tsx` (2026-06-16).
 - [ ] Automate deletion processing (folds into #1).
 
 ### Features (nice-to-have, post-launch)
-- [ ] **Crash/error reporting** (Sentry free) — see #3; essential for triage.
+- [x] **Crash/error reporting** — Sentry wired; activate with `--dart-define=SENTRY_DSN=...`.
+- [x] **Share / image export** — re-enabled (2026-06-16). Platform guards for web/iOS added.
+      Save-to-gallery button added (Android/iOS). Topster now flush tile layout. Review card
+      ring stroke fattened. Galaxy share sheet issue resolved via dedicated save button.
 - [ ] **First-duel onboarding tutorial** — orient new users ("what is this app").
-- [ ] **Share / image export** — currently hidden (see docs/internal/BLOCKERS.md); it's a viral
-  surface. Re-enable once the export is reliable.
 - [ ] **Friend-activity push notifications** — retention.
 - [ ] **Search history / recently searched.**
 

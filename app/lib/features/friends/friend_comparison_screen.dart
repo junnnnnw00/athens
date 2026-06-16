@@ -78,7 +78,6 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
   Widget build(BuildContext context) {
     final p = context.palette;
     final myProfileAsync = ref.watch(myProfileProvider);
-    final isPremium = myProfileAsync.valueOrNull?.isPremium ?? false;
     final myRatings = ref.watch(ratedItemsProvider);
 
     return Scaffold(
@@ -91,14 +90,13 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
           ? const Center(child: CircularProgressIndicator())
           : _friendProfile == null
               ? Center(child: Text('프로필을 찾을 수 없습니다.', style: TextStyle(color: p.text)))
-              : _buildComparisonContent(myRatings, myProfileAsync.valueOrNull, isPremium),
+              : _buildComparisonContent(myRatings, myProfileAsync.valueOrNull),
     );
   }
 
   Widget _buildComparisonContent(
     List<RatedCatalogItem> myRatings,
     UserProfile? myProfile,
-    bool isPremium,
   ) {
     final p = context.palette;
 
@@ -143,9 +141,9 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildOverviewTab(match, myProfile, isPremium),
-                  _buildTracksTab(match, isPremium),
-                  _buildTagsTab(match, isPremium),
+                  _buildOverviewTab(match, myProfile),
+                  _buildTracksTab(match),
+                  _buildTagsTab(match),
                 ],
               ),
             ),
@@ -235,73 +233,62 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     );
   }
 
-  Widget _buildOverviewTab(FriendMatchResult match, UserProfile? myProfile, bool isPremium) {
+  Widget _buildOverviewTab(FriendMatchResult match, UserProfile? myProfile) {
     final p = context.palette;
 
     return ListView(
       padding: EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md,
           AppLayout.scrollBottomInset(context)),
       children: [
-        // ── 1. Basic stats (Free) ───────────────────────────────────────────
-        _buildBasicStatsSection(match, myProfile, isPremium),
+        _buildBasicStatsSection(match, myProfile),
 
         const SizedBox(height: AppSpacing.xl),
 
-        // ── 2. Personality Cards (Free: labels only, Premium: full desc) ────
         _buildSectionTitle('음악 취향 성향'),
         const SizedBox(height: AppSpacing.sm),
-        _buildPersonalityCards(match, isPremium),
+        _buildPersonalityCards(match),
 
         const SizedBox(height: AppSpacing.xl),
 
-        if (isPremium) ...[
-          // ── 3. Score Distribution (Premium) ──────────────────────────────
-          _buildSectionTitle('점수 분포 비교'),
+        _buildSectionTitle('점수 분포 비교'),
+        const SizedBox(height: 4),
+        Text(
+          '각자 어떤 점수대를 얼마나 주는지 한눈에 비교',
+          style: TextStyle(color: p.muted, fontSize: 11),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildScoreDistributionChart(match),
+
+        const SizedBox(height: AppSpacing.xl),
+
+        _buildSectionTitle('공동 평가 분석'),
+        const SizedBox(height: AppSpacing.sm),
+        _buildAgreementSection(match),
+
+        const SizedBox(height: AppSpacing.xl),
+
+        if (match.myTopArtists.isNotEmpty || match.theirTopArtists.isNotEmpty) ...[
+          _buildSectionTitle('선호 아티스트'),
+          const SizedBox(height: AppSpacing.sm),
+          _buildArtistOverlapSection(match),
+          const SizedBox(height: AppSpacing.xl),
+        ],
+
+        if (match.controversialSongs.isNotEmpty) ...[
+          _buildSectionTitle('의견 갈린 곡 Top ${match.controversialSongs.length}'),
           const SizedBox(height: 4),
           Text(
-            '각자 어떤 점수대를 얼마나 주는지 한눈에 비교',
+            '두 사람이 같은 곡에 가장 다른 점수를 준 경우',
             style: TextStyle(color: p.muted, fontSize: 11),
           ),
           const SizedBox(height: AppSpacing.md),
-          _buildScoreDistributionChart(match),
-
-          const SizedBox(height: AppSpacing.xl),
-
-          // ── 4. Agreement Stats (Premium) ─────────────────────────────────
-          _buildSectionTitle('공동 평가 분석'),
-          const SizedBox(height: AppSpacing.sm),
-          _buildAgreementSection(match),
-
-          const SizedBox(height: AppSpacing.xl),
-
-          // ── 5. Artist Overlap (Premium) ───────────────────────────────────
-          if (match.myTopArtists.isNotEmpty || match.theirTopArtists.isNotEmpty) ...[
-            _buildSectionTitle('선호 아티스트'),
-            const SizedBox(height: AppSpacing.sm),
-            _buildArtistOverlapSection(match),
-            const SizedBox(height: AppSpacing.xl),
-          ],
-
-          // ── 6. Controversial Songs (Premium) ─────────────────────────────
-          if (match.controversialSongs.isNotEmpty) ...[
-            _buildSectionTitle('의견 갈린 곡 Top ${match.controversialSongs.length}'),
-            const SizedBox(height: 4),
-            Text(
-              '두 사람이 같은 곡에 가장 다른 점수를 준 경우',
-              style: TextStyle(color: p.muted, fontSize: 11),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ...match.controversialSongs.map((item) => _buildUnifiedComparisonRow(item)),
-          ],
-        ] else ...[
-          // ── Premium teaser ──────────────────────────────────────────────
-          _buildPremiumTeaser(),
+          ...match.controversialSongs.map((item) => _buildUnifiedComparisonRow(item)),
         ],
       ],
     );
   }
 
-  Widget _buildBasicStatsSection(FriendMatchResult match, UserProfile? myProfile, bool isPremium) {
+  Widget _buildBasicStatsSection(FriendMatchResult match, UserProfile? myProfile) {
     final p = context.palette;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -329,11 +316,9 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
           const SizedBox(height: 8),
           _buildStatRow(Icons.music_note_rounded, '공동 평가한 곡',
               '', '${match.commonCount}곡', centerVal: true),
-          if (isPremium) ...[
-            const SizedBox(height: 8),
-            _buildStatRow(Icons.people_rounded, '공통 아티스트',
-                '', '${match.sharedArtistCount}명', centerVal: true),
-          ],
+          const SizedBox(height: 8),
+          _buildStatRow(Icons.people_rounded, '공통 아티스트',
+              '', '${match.sharedArtistCount}명', centerVal: true),
           const SizedBox(height: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),
@@ -390,7 +375,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     );
   }
 
-  Widget _buildPersonalityCards(FriendMatchResult match, bool isPremium) {
+  Widget _buildPersonalityCards(FriendMatchResult match) {
     final p = context.palette;
     final myP = match.myPersonality;
     final theirP = match.theirPersonality;
@@ -402,13 +387,13 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
           children: [
             Expanded(child: _buildPersonalityCard(
               label: tastePersonalityLabel(myP),
-              description: isPremium ? tastePersonalityDescription(myP) : null,
+              description: tastePersonalityDescription(myP),
               isMe: true,
             )),
             const SizedBox(width: AppSpacing.sm),
             Expanded(child: _buildPersonalityCard(
               label: tastePersonalityLabel(theirP),
-              description: isPremium ? tastePersonalityDescription(theirP) : null,
+              description: tastePersonalityDescription(theirP),
               isMe: false,
             )),
           ],
@@ -418,27 +403,20 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
             decoration: BoxDecoration(
-              color: p.accentSoft.withValues(alpha: isPremium ? 0.1 : 0.04),
+              color: p.accentSoft.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: p.accent.withValues(alpha: isPremium ? 0.2 : 0.1)),
+              border: Border.all(color: p.accent.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
-                Text('🔗', style: const TextStyle(fontSize: 13)),
+                const Text('🔗', style: TextStyle(fontSize: 13)),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: isPremium
-                      ? Text(
-                          personalityCompatibility(myP, theirP),
-                          style: TextStyle(color: p.text, fontSize: 11, height: 1.4),
-                        )
-                      : Text(
-                          '성향 궁합 분석은 Premium에서 확인하세요.',
-                          style: TextStyle(color: p.muted, fontSize: 11),
-                        ),
+                  child: Text(
+                    personalityCompatibility(myP, theirP),
+                    style: TextStyle(color: p.text, fontSize: 11, height: 1.4),
+                  ),
                 ),
-                if (!isPremium)
-                  Icon(Icons.lock_rounded, size: 13, color: p.muted),
               ],
             ),
           ),
@@ -782,55 +760,6 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     );
   }
 
-  Widget _buildPremiumTeaser() {
-    final p = context.palette;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [p.surface2, p.accentSoft.withValues(alpha: 0.08)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: p.accent.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.auto_awesome_rounded, size: 28, color: p.accentText),
-          const SizedBox(height: AppSpacing.sm),
-          const Text(
-            'Premium 심층 분석',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            '점수 분포 차트 · 의견 일치율 · 선호 아티스트 비교\n취향 충돌 곡 분석 · 성향 상세 설명',
-            style: TextStyle(color: p.muted, fontSize: 12, height: 1.5),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          GestureDetector(
-            onTap: () => context.push('/premium-upgrade'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                color: p.accent,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Text(
-                'Premium으로 업그레이드',
-                style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-
   // ── Track classification helpers ──────────────────────────────────────────
 
   static const _kBothLove = 0;
@@ -848,61 +777,8 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     return _kAgree;
   }
 
-  Widget _buildTracksTab(FriendMatchResult match, bool isPremium) {
+  Widget _buildTracksTab(FriendMatchResult match) {
     final p = context.palette;
-
-    // ── Premium gate ────────────────────────────────────────────────────────────────
-    if (!isPremium) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: p.accentSoft.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.lock_rounded, size: 32, color: p.accentText),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              const Text(
-                '곡별 대조 리포트',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                '공통 최애 · 내가 더 선호 · 친구가 더 선호\n비슷한 취향 · 취향 충돌 곡을 카테고리별로\n전부 볼 수 있습니다.',
-                style: TextStyle(color: p.muted, fontSize: 13, height: 1.6),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                '공통 평가 곡 ${match.commonCount}곡 대기 중',
-                style: TextStyle(color: p.faint, fontSize: 11),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              GestureDetector(
-                onTap: () => context.push('/premium-upgrade'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: p.accent,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Text(
-                    'Premium으로 업그레이드',
-                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     if (match.commonItems.isEmpty) {
       return Center(
@@ -1093,10 +969,6 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     _kAgree      => p.muted,
     _                => const Color(0xFFE3B341),
   };
-
-  // List<MatchItemInfo> _sliceForTier(List<MatchItemInfo> items, bool isPremium, int freeMax) {
-  //   return isPremium ? items : items.take(freeMax).toList();
-  // }
 
   // Widget _buildCategoryChip(String label, int count, Color textColor, Color bgColor) {
   //   return Container(
@@ -1321,7 +1193,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
 
 
 
-  Widget _buildTagsTab(FriendMatchResult match, bool isPremium) {
+  Widget _buildTagsTab(FriendMatchResult match) {
     final p = context.palette;
 
     return ListView(
@@ -1377,122 +1249,64 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
           const SizedBox(height: AppSpacing.lg),
         ],
 
-        // 3. Unique sections (Premium Lock for free users)
-        if (isPremium) ...[
-          // Unique to Me
-          if (match.myUniqueGenres.isNotEmpty || match.myUniqueMoods.isNotEmpty) ...[
-            _buildSectionTitle('나만 평가한 독특한 취향'),
-            const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ...match.myUniqueGenres.map((g) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: p.surface2,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: p.line),
-                      ),
-                      child: Text(
-                        '장르: $g',
-                        style: TextStyle(color: p.muted, fontSize: 10),
-                      ),
-                    )),
-                ...match.myUniqueMoods.map((m) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: p.surface2,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: p.line),
-                      ),
-                      child: Text(
-                        '분위기: $m',
-                        style: TextStyle(color: p.muted, fontSize: 10),
-                      ),
-                    )),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
-          ],
-
-          // Unique to Friend
-          if (match.theirUniqueGenres.isNotEmpty || match.theirUniqueMoods.isNotEmpty) ...[
-            _buildSectionTitle('친구만 평가한 독특한 취향'),
-            const SizedBox(height: AppSpacing.sm),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ...match.theirUniqueGenres.map((g) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: p.surface2,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: p.line),
-                      ),
-                      child: Text(
-                        '장르: $g',
-                        style: TextStyle(color: p.muted, fontSize: 10),
-                      ),
-                    )),
-                ...match.theirUniqueMoods.map((m) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: p.surface2,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: p.line),
-                      ),
-                      child: Text(
-                        '분위기: $m',
-                        style: TextStyle(color: p.muted, fontSize: 10),
-                      ),
-                    )),
-              ],
-            ),
-          ],
-        ] else ...[
-          // Lock message for unique preferences
-          if (match.myUniqueGenres.isNotEmpty || match.myUniqueMoods.isNotEmpty ||
-              match.theirUniqueGenres.isNotEmpty || match.theirUniqueMoods.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
-                color: p.surface2,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: p.line),
-              ),
-              child: Column(
-                children: [
-                  Icon(Icons.lock_outline_rounded, size: 28, color: p.accent),
-                  const SizedBox(height: AppSpacing.sm),
-                  const Text(
-                    '개별 고유 취향 분석 (Premium)',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '나만 좋아하는 장르/분위기와 친구만 좋아하는 유니크한 선호 곡 분석을 보시려면 Premium으로 가입하세요.',
-                    style: TextStyle(color: p.muted, fontSize: 12),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: p.accent,
-                      foregroundColor: Colors.black,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        // 3. Unique sections
+        if (match.myUniqueGenres.isNotEmpty || match.myUniqueMoods.isNotEmpty) ...[
+          _buildSectionTitle('나만 평가한 독특한 취향'),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ...match.myUniqueGenres.map((g) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: p.surface2,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: p.line),
                     ),
-                    onPressed: () => context.push('/premium-upgrade'),
-                    child: const Text('Premium 활성화', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                    child: Text('장르: $g', style: TextStyle(color: p.muted, fontSize: 10)),
+                  )),
+              ...match.myUniqueMoods.map((m) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: p.surface2,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: p.line),
+                    ),
+                    child: Text('분위기: $m', style: TextStyle(color: p.muted, fontSize: 10)),
+                  )),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+
+        if (match.theirUniqueGenres.isNotEmpty || match.theirUniqueMoods.isNotEmpty) ...[
+          _buildSectionTitle('친구만 평가한 독특한 취향'),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ...match.theirUniqueGenres.map((g) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: p.surface2,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: p.line),
+                    ),
+                    child: Text('장르: $g', style: TextStyle(color: p.muted, fontSize: 10)),
+                  )),
+              ...match.theirUniqueMoods.map((m) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: p.surface2,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: p.line),
+                    ),
+                    child: Text('분위기: $m', style: TextStyle(color: p.muted, fontSize: 10)),
+                  )),
+            ],
+          ),
         ],
       ],
     );

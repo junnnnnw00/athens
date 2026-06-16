@@ -1,7 +1,10 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
@@ -82,33 +85,66 @@ Future<void> showReviewShareSheet(
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(56),
-                        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      if (!kIsWeb) ...[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(56),
+                              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
+                            icon: const Icon(Icons.download_rounded),
+                            label: const Text('저장'),
+                            onPressed: sharing
+                                ? null
+                                : () async {
+                                    setSheetState(() => sharing = true);
+                                    try {
+                                      final bytes = await _captureCard(card, size);
+                                      await Gal.putImageBytes(bytes);
+                                      if (sheetContext.mounted) {
+                                        ScaffoldMessenger.of(sheetContext).showSnackBar(
+                                          const SnackBar(content: Text('갤러리에 저장되었습니다')),
+                                        );
+                                      }
+                                    } finally {
+                                      if (sheetContext.mounted) setSheetState(() => sharing = false);
+                                    }
+                                  },
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                      ],
+                      Expanded(
+                        flex: 2,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(56),
+                            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          icon: const Icon(Icons.ios_share_rounded),
+                          label: sharing
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2))
+                              : Text(I18n.get('share_button', lang)),
+                          onPressed: sharing
+                              ? null
+                              : () async {
+                                  setSheetState(() => sharing = true);
+                                  try {
+                                    await _shareCard(card, size, lang);
+                                  } finally {
+                                    if (sheetContext.mounted) {
+                                      setSheetState(() => sharing = false);
+                                    }
+                                  }
+                                },
+                        ),
                       ),
-                      icon: const Icon(Icons.ios_share_rounded),
-                      label: sharing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(I18n.get('share_button', lang)),
-                      onPressed: sharing
-                          ? null
-                          : () async {
-                              setSheetState(() => sharing = true);
-                              try {
-                                await _shareCard(card, size, lang);
-                              } finally {
-                                if (sheetContext.mounted) {
-                                  setSheetState(() => sharing = false);
-                                }
-                              }
-                            },
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -120,18 +156,23 @@ Future<void> showReviewShareSheet(
   );
 }
 
+Future<Uint8List> _captureCard(ReviewShareCard card, Size size) =>
+    ScreenshotController().captureFromWidget(card, pixelRatio: 3, targetSize: size);
+
 Future<void> _shareCard(
     ReviewShareCard card, Size size, AppLanguage lang) async {
-  final bytes = await ScreenshotController().captureFromWidget(
-    card,
-    pixelRatio: 3,
-    targetSize: size,
-  );
-  final dir = await getTemporaryDirectory();
-  final file = File('${dir.path}/athens_review_share.png');
-  await file.writeAsBytes(bytes);
-  await Share.shareXFiles([XFile(file.path)],
-      text: I18n.get('share_text', lang));
+  final bytes = await _captureCard(card, size);
+  if (kIsWeb) {
+    await Share.shareXFiles(
+      [XFile.fromData(bytes, mimeType: 'image/png')],
+      text: I18n.get('share_text', lang),
+    );
+  } else {
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/athens_review_share.png');
+    await file.writeAsBytes(bytes);
+    await Share.shareXFiles([XFile(file.path)], text: I18n.get('share_text', lang));
+  }
 }
 
 /// Wide, minimal score card (cover · title/artist · score ring, review as a

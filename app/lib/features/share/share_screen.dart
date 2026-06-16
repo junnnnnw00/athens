@@ -1,8 +1,11 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
@@ -65,20 +68,52 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
     return result.take(count).toList();
   }
 
+  Future<Uint8List> _capture(List<RatedCatalogItem> items) async {
+    final lang = ref.read(localeProvider);
+    return _controller.captureFromWidget(
+      _card(items, lang),
+      pixelRatio: 3,
+      targetSize: ShareCard.designSize(_template),
+    );
+  }
+
   Future<void> _share(List<RatedCatalogItem> items) async {
     final lang = ref.read(localeProvider);
     setState(() => _sharing = true);
     try {
-      final bytes = await _controller.captureFromWidget(
-        _card(items, lang),
-        pixelRatio: 3,
-        targetSize: ShareCard.designSize(_template),
-      );
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/athens_share.png');
-      await file.writeAsBytes(bytes);
-      await Share.shareXFiles([XFile(file.path)],
-          text: I18n.get('share_text', lang));
+      final bytes = await _capture(items);
+      if (kIsWeb) {
+        await Share.shareXFiles(
+          [XFile.fromData(bytes, mimeType: 'image/png')],
+          text: I18n.get('share_text', lang),
+        );
+      } else {
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/athens_share.png');
+        await file.writeAsBytes(bytes);
+        await Share.shareXFiles([XFile(file.path)], text: I18n.get('share_text', lang));
+      }
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  Future<void> _saveToGallery(List<RatedCatalogItem> items) async {
+    setState(() => _sharing = true);
+    try {
+      final bytes = await _capture(items);
+      await Gal.putImageBytes(bytes);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('갤러리에 저장되었습니다')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장 실패: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _sharing = false);
     }
@@ -166,23 +201,40 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
               AppSpacing.lg,
               AppLayout.scrollBottomInset(context),
             ),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(56),
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            child: Row(
+              children: [
+                if (!kIsWeb) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56),
+                        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                      icon: const Icon(Icons.download_rounded),
+                      label: const Text('저장'),
+                      onPressed: _sharing || items.isEmpty ? null : () => _saveToGallery(items),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
+                Expanded(
+                  flex: 2,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                      textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    icon: const Icon(Icons.ios_share_rounded),
+                    label: _sharing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(context.t('share_button', ref: ref)),
+                    onPressed: _sharing || items.isEmpty ? null : () => _share(items),
+                  ),
                 ),
-                icon: const Icon(Icons.ios_share_rounded),
-                label: _sharing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(context.t('share_button', ref: ref)),
-                onPressed:
-                    _sharing || items.isEmpty ? null : () => _share(items),
-              ),
+              ],
             ),
           ),
         ],
@@ -339,30 +391,26 @@ class ShareCard extends StatelessWidget {
     );
   }
 
-  /// Pure N×N album-art chart — covers only, no text.
+  /// Pure N×N album-art chart — covers only, no text, flush tile layout.
   Widget _topsterBody() {
     final n = sqrt(topsterCount).toInt();
-    final cellSize = (1080 - 64 - (n - 1) * 10) / n;
+    final cellSize = (1080 - 64) / n;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var row = 0; row < n; row++) ...[
-          if (row > 0) const SizedBox(height: 10),
+        for (var row = 0; row < n; row++)
           Row(
             children: [
-              for (var col = 0; col < n; col++) ...[
-                if (col > 0) const SizedBox(width: 10),
+              for (var col = 0; col < n; col++)
                 Expanded(
                   child: AspectRatio(
                     aspectRatio: 1,
                     child: _gridCell(row * n + col, cellSize),
                   ),
                 ),
-              ],
             ],
           ),
-        ],
       ],
     );
   }

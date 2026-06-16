@@ -109,7 +109,7 @@ class _RingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
     final radius = size.width / 2 - 4;
-    final strokeWidth = size.width * 0.052;
+    final strokeWidth = size.width * 0.085;
 
     final trackPaint = Paint()
       ..style = PaintingStyle.stroke
