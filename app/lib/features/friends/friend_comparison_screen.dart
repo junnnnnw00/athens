@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../i18n.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
@@ -28,6 +29,8 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
   late final TabController _tabController;
   Future<FriendMatchResult>? _matchFuture;
   List<RatedCatalogItem>? _lastRatings;
+
+  AppLanguage get _lang => ref.read(localeProvider);
 
   @override
   void initState() {
@@ -73,6 +76,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(localeProvider); // rebuild on locale change
     final p = context.palette;
     final myProfileAsync = ref.watch(myProfileProvider);
     final myRatings = ref.watch(ratedItemsProvider);
@@ -80,13 +84,13 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(_friendProfile != null
-            ? '${_friendProfile!.displayName ?? _friendProfile!.handle}님과 비교'
-            : '취향 일치율 비교'),
+            ? I18n.get('cmp_title_with_name', _lang, [_friendProfile!.displayName ?? _friendProfile!.handle])
+            : I18n.get('cmp_title', _lang)),
       ),
       body: _isLoadingProfile
           ? const Center(child: CircularProgressIndicator())
           : _friendProfile == null
-              ? Center(child: Text('프로필을 찾을 수 없습니다.', style: TextStyle(color: p.text)))
+              ? Center(child: Text(I18n.get('cmp_profile_not_found', _lang), style: TextStyle(color: p.text)))
               : _buildComparisonContent(myRatings, myProfileAsync.valueOrNull),
     );
   }
@@ -106,7 +110,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
         if (snapshot.hasError || !snapshot.hasData) {
           return Center(
             child: Text(
-              '취향 분석 매칭 중 에러가 발생했습니다: ${snapshot.error}',
+              I18n.get('cmp_error', _lang, ['${snapshot.error}']),
               style: TextStyle(color: p.text),
             ),
           );
@@ -126,10 +130,10 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
               unselectedLabelColor: p.muted,
               indicatorColor: p.accent,
               indicatorSize: TabBarIndicatorSize.tab,
-              tabs: const [
-                Tab(text: '종합 분석'),
-                Tab(text: '대조 (곡)'),
-                Tab(text: '대조 (장르)'),
+              tabs: [
+                Tab(text: I18n.get('cmp_tab_overview', _lang)),
+                Tab(text: I18n.get('cmp_tab_tracks', _lang)),
+                Tab(text: I18n.get('cmp_tab_genres', _lang)),
               ],
             ),
 
@@ -168,7 +172,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  myProfile?.displayName ?? myProfile?.handle ?? '나',
+                  myProfile?.displayName ?? myProfile?.handle ?? I18n.get('cmp_me', _lang),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -194,7 +198,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
                 Icon(Icons.bolt_rounded, size: 16, color: p.accentText),
                 const SizedBox(width: 4),
                 Text(
-                  '${match.matchPercentage.toStringAsFixed(0)}% 일치',
+                  I18n.get('cmp_match_percent', _lang, [match.matchPercentage.toStringAsFixed(0)]),
                   style: TextStyle(
                     color: p.accentText,
                     fontWeight: FontWeight.bold,
@@ -211,7 +215,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  _friendProfile?.displayName ?? _friendProfile?.handle ?? '친구',
+                  _friendProfile?.displayName ?? _friendProfile?.handle ?? I18n.get('cmp_friend', _lang),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.end,
@@ -241,16 +245,16 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
 
         const SizedBox(height: AppSpacing.xl),
 
-        _buildSectionTitle('음악 취향 성향'),
+        _buildSectionTitle(I18n.get('cmp_section_personality', _lang)),
         const SizedBox(height: AppSpacing.sm),
         _buildPersonalityCards(match),
 
         const SizedBox(height: AppSpacing.xl),
 
-        _buildSectionTitle('점수 분포 비교'),
+        _buildSectionTitle(I18n.get('cmp_section_score_dist', _lang)),
         const SizedBox(height: 4),
         Text(
-          '각자 어떤 점수대를 얼마나 주는지 한눈에 비교',
+          I18n.get('cmp_section_score_dist_desc', _lang),
           style: TextStyle(color: p.muted, fontSize: 11),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -258,24 +262,24 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
 
         const SizedBox(height: AppSpacing.xl),
 
-        _buildSectionTitle('공동 평가 분석'),
+        _buildSectionTitle(I18n.get('cmp_section_agreement', _lang)),
         const SizedBox(height: AppSpacing.sm),
         _buildAgreementSection(match),
 
         const SizedBox(height: AppSpacing.xl),
 
         if (match.myTopArtists.isNotEmpty || match.theirTopArtists.isNotEmpty) ...[
-          _buildSectionTitle('선호 아티스트'),
+          _buildSectionTitle(I18n.get('cmp_section_artists', _lang)),
           const SizedBox(height: AppSpacing.sm),
           _buildArtistOverlapSection(match),
           const SizedBox(height: AppSpacing.xl),
         ],
 
         if (match.controversialSongs.isNotEmpty) ...[
-          _buildSectionTitle('의견 갈린 곡 Top ${match.controversialSongs.length}'),
+          _buildSectionTitle(I18n.get('cmp_controversial_title', _lang, ['${match.controversialSongs.length}'])),
           const SizedBox(height: 4),
           Text(
-            '두 사람이 같은 곡에 가장 다른 점수를 준 경우',
+            I18n.get('cmp_controversial_desc', _lang),
             style: TextStyle(color: p.muted, fontSize: 11),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -301,21 +305,23 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
             children: [
               Icon(Icons.bolt_rounded, color: p.accentText, size: 16),
               const SizedBox(width: AppSpacing.xs),
-              Text('기본 정보', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: p.accentText)),
+              Text(I18n.get('cmp_basic_info', _lang), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: p.accentText)),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          _buildStatRow(Icons.library_music_rounded, '평가한 음악 수',
-              '${match.myTotalCount}곡', '${match.theirTotalCount}곡'),
+          _buildStatRow(Icons.library_music_rounded, I18n.get('cmp_rated_count_label', _lang),
+              I18n.get('cmp_tracks_unit', _lang, ['${match.myTotalCount}']),
+              I18n.get('cmp_tracks_unit', _lang, ['${match.theirTotalCount}'])),
           const SizedBox(height: 8),
-          _buildStatRow(Icons.star_rounded, '평균 평점',
-              '${match.myAverageScore.toStringAsFixed(1)}점', '${match.theirAverageScore.toStringAsFixed(1)}점'),
+          _buildStatRow(Icons.star_rounded, I18n.get('cmp_avg_score_label', _lang),
+              I18n.get('cmp_pts_unit', _lang, [match.myAverageScore.toStringAsFixed(1)]),
+              I18n.get('cmp_pts_unit', _lang, [match.theirAverageScore.toStringAsFixed(1)])),
           const SizedBox(height: 8),
-          _buildStatRow(Icons.music_note_rounded, '공동 평가한 곡',
-              '', '${match.commonCount}곡', centerVal: true),
+          _buildStatRow(Icons.music_note_rounded, I18n.get('cmp_common_rated_label', _lang),
+              '', I18n.get('cmp_tracks_unit', _lang, ['${match.commonCount}']), centerVal: true),
           const SizedBox(height: 8),
-          _buildStatRow(Icons.people_rounded, '공통 아티스트',
-              '', '${match.sharedArtistCount}명', centerVal: true),
+          _buildStatRow(Icons.people_rounded, I18n.get('cmp_shared_artists_label', _lang),
+              '', I18n.get('cmp_people_unit', _lang, ['${match.sharedArtistCount}']), centerVal: true),
           const SizedBox(height: AppSpacing.sm),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 8),

@@ -14,8 +14,18 @@ enum AppLanguage {
 }
 
 class LocaleNotifier extends StateNotifier<AppLanguage> {
-  LocaleNotifier() : super(AppLanguage.en) {
+  LocaleNotifier() : super(_getSystemLanguage()) {
     _loadLocale();
+  }
+
+  static AppLanguage _getSystemLanguage() {
+    try {
+      final langCode = WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+      if (langCode.startsWith('ko')) {
+        return AppLanguage.ko;
+      }
+    } catch (_) {}
+    return AppLanguage.en;
   }
 
   Future<void> _loadLocale() async {
@@ -23,11 +33,13 @@ class LocaleNotifier extends StateNotifier<AppLanguage> {
       final code = await PlatformStorage.read(key: _localeKey);
       if (code == AppLanguage.ko.code) {
         state = AppLanguage.ko;
-      } else {
+      } else if (code == AppLanguage.en.code) {
         state = AppLanguage.en;
+      } else {
+        state = _getSystemLanguage();
       }
     } catch (_) {
-      state = AppLanguage.en;
+      state = _getSystemLanguage();
     }
   }
 
@@ -306,6 +318,95 @@ class I18n {
     'update_installing': {AppLanguage.ko: '업데이트 설치 중...', AppLanguage.en: 'Installing update...'},
     'update_download_desc': {AppLanguage.ko: '현재 {0} → 업데이트 다운로드', AppLanguage.en: 'Current version {0} → Download update'},
     'update_btn': {AppLanguage.ko: '업데이트', AppLanguage.en: 'Update'},
+    // Item Detail Screen — new sections
+    'lib_tracklist': {AppLanguage.ko: '수록곡', AppLanguage.en: 'Tracklist'},
+    'lib_friend_ratings': {AppLanguage.ko: '친구 평가', AppLanguage.en: "Friends' Ratings"},
+    // Profile Screen — theme toggle
+    'profile_dark_mode': {AppLanguage.ko: '다크 모드', AppLanguage.en: 'Dark Mode'},
+    'profile_light_mode': {AppLanguage.ko: '라이트 모드', AppLanguage.en: 'Light Mode'},
+    'profile_switch_to_light': {AppLanguage.ko: '라이트 모드로 전환', AppLanguage.en: 'Switch to Light Mode'},
+    'profile_switch_to_dark': {AppLanguage.ko: '다크 모드로 전환', AppLanguage.en: 'Switch to Dark Mode'},
+    // Onboarding Screen
+    'onb_skip': {AppLanguage.ko: '건너뛰기', AppLanguage.en: 'Skip'},
+    'onb_next': {AppLanguage.ko: '다음', AppLanguage.en: 'Next'},
+    'onb_start': {AppLanguage.ko: '시작하기', AppLanguage.en: 'Get Started'},
+    'onb_duel_headline': {AppLanguage.ko: '별점 말고\n선택으로.', AppLanguage.en: 'Not stars.\nJust pick.'},
+    'onb_duel_desc': {AppLanguage.ko: '숫자를 입력하는 게 아니에요.\n두 곡 중 지금 더 듣고 싶은 걸 고르면 돼요.', AppLanguage.en: "No numbers needed.\nJust pick whichever song you'd rather hear right now."},
+    'onb_duel_prompt': {AppLanguage.ko: '지금 더 듣고 싶은 건?', AppLanguage.en: 'Which one right now?'},
+    'onb_duel_hint': {AppLanguage.ko: '탭해보세요', AppLanguage.en: 'Try tapping'},
+    'onb_rank_headline': {AppLanguage.ko: '선택이 쌓이면\n점수가 돼요.', AppLanguage.en: 'Picks stack into\nyour score.'},
+    'onb_rank_desc': {AppLanguage.ko: '고를수록 점수가 정교해져요. 내가 얼마나\n들었는지가 아니라, 얼마나 좋아하는지가 기준이에요.', AppLanguage.en: "More picks, sharper score.\nIt's about how much you love it, not how often you play it."},
+    'onb_share_headline': {AppLanguage.ko: '취향을 기록하고\n친구와 비교해요.', AppLanguage.en: 'Log your taste.\nCompare with friends.'},
+    'onb_share_desc': {AppLanguage.ko: '내 Top 앨범을 카드로 뽑거나, 친구와 취향\n일치율을 비교해봐요. 음악 얘기가 더 재밌어져요.', AppLanguage.en: "Export your top albums as a card, or check your taste overlap.\nMusic talk gets way more interesting."},
+    'onb_share_match_label': {AppLanguage.ko: '친구와 취향 일치율', AppLanguage.en: 'Taste match with friend'},
+    // Friend Comparison Screen
+    'cmp_title': {AppLanguage.ko: '취향 일치율 비교', AppLanguage.en: 'Taste Comparison'},
+    'cmp_title_with_name': {AppLanguage.ko: '{0}님과 비교', AppLanguage.en: 'Compare with {0}'},
+    'cmp_profile_not_found': {AppLanguage.ko: '프로필을 찾을 수 없습니다.', AppLanguage.en: 'Profile not found.'},
+    'cmp_error': {AppLanguage.ko: '취향 분석 매칭 중 에러가 발생했습니다: {0}', AppLanguage.en: 'Taste matching error: {0}'},
+    'cmp_tab_overview': {AppLanguage.ko: '종합 분석', AppLanguage.en: 'Overview'},
+    'cmp_tab_tracks': {AppLanguage.ko: '대조 (곡)', AppLanguage.en: 'Tracks'},
+    'cmp_tab_genres': {AppLanguage.ko: '대조 (장르)', AppLanguage.en: 'Genres'},
+    'cmp_match_percent': {AppLanguage.ko: '{0}% 일치', AppLanguage.en: '{0}% match'},
+    'cmp_section_personality': {AppLanguage.ko: '음악 취향 성향', AppLanguage.en: 'Taste Personality'},
+    'cmp_section_score_dist': {AppLanguage.ko: '점수 분포 비교', AppLanguage.en: 'Score Distribution'},
+    'cmp_section_score_dist_desc': {AppLanguage.ko: '각자 어떤 점수대를 얼마나 주는지 한눈에 비교', AppLanguage.en: 'How often each of you rates in each score range'},
+    'cmp_section_agreement': {AppLanguage.ko: '공동 평가 분석', AppLanguage.en: 'Agreement Analysis'},
+    'cmp_section_artists': {AppLanguage.ko: '선호 아티스트', AppLanguage.en: 'Top Artists'},
+    'cmp_controversial_title': {AppLanguage.ko: '의견 갈린 곡 Top {0}', AppLanguage.en: 'Top {0} Disagreements'},
+    'cmp_controversial_desc': {AppLanguage.ko: '두 사람이 같은 곡에 가장 다른 점수를 준 경우', AppLanguage.en: 'Songs where you two scored most differently'},
+    'cmp_basic_info': {AppLanguage.ko: '기본 정보', AppLanguage.en: 'Basic Info'},
+    'cmp_rated_count_label': {AppLanguage.ko: '평가한 음악 수', AppLanguage.en: 'Rated tracks'},
+    'cmp_avg_score_label': {AppLanguage.ko: '평균 평점', AppLanguage.en: 'Average score'},
+    'cmp_common_rated_label': {AppLanguage.ko: '공동 평가한 곡', AppLanguage.en: 'Co-rated tracks'},
+    'cmp_shared_artists_label': {AppLanguage.ko: '공통 아티스트', AppLanguage.en: 'Shared artists'},
+    'cmp_score_based_note': {AppLanguage.ko: '같은 곡에 매긴 점수를 기반으로 분석되었습니다.', AppLanguage.en: 'Analysis based on scores for co-rated tracks.'},
+    'cmp_genre_based_note': {AppLanguage.ko: '공통 평가 곡이 없어 장르/분위기 위주로 분석되었습니다.', AppLanguage.en: 'No co-rated tracks — analyzed by genre/mood instead.'},
+    'cmp_me': {AppLanguage.ko: '나', AppLanguage.en: 'Me'},
+    'cmp_friend': {AppLanguage.ko: '친구', AppLanguage.en: 'Friend'},
+    'cmp_tracks_unit': {AppLanguage.ko: '{0}곡', AppLanguage.en: '{0} tracks'},
+    'cmp_pts_unit': {AppLanguage.ko: '{0}점', AppLanguage.en: '{0} pts'},
+    'cmp_people_unit': {AppLanguage.ko: '{0}명', AppLanguage.en: '{0}'},
+    'cmp_agreement_rate_label': {AppLanguage.ko: '의견 일치율', AppLanguage.en: 'Agreement rate'},
+    'cmp_agreement_high': {AppLanguage.ko: '높음', AppLanguage.en: 'High'},
+    'cmp_agreement_mid': {AppLanguage.ko: '보통', AppLanguage.en: 'Medium'},
+    'cmp_agreement_low': {AppLanguage.ko: '낮음', AppLanguage.en: 'Low'},
+    'cmp_common_eval_label': {AppLanguage.ko: '공통 평가', AppLanguage.en: 'Co-rated'},
+    'cmp_listened_together': {AppLanguage.ko: '함께 들은 곡', AppLanguage.en: 'together'},
+    'cmp_clash_label': {AppLanguage.ko: '의견 충돌', AppLanguage.en: 'Clashes'},
+    'cmp_clash_sub': {AppLanguage.ko: '3점 이상 차이', AppLanguage.en: '3+ pt gap'},
+    'cmp_agree_high_text': {AppLanguage.ko: '같은 곡에 비슷한 점수를 주는 편입니다.', AppLanguage.en: 'You tend to score the same songs similarly.'},
+    'cmp_agree_mid_text': {AppLanguage.ko: '절반 정도의 곡에서 비슷한 감상을 나눕니다.', AppLanguage.en: 'About half the songs share a similar vibe.'},
+    'cmp_agree_low_text': {AppLanguage.ko: '같은 곡에도 꽤 다른 평가를 내리는 편입니다.', AppLanguage.en: 'You rate the same songs quite differently.'},
+    'cmp_std_even': {AppLanguage.ko: '고른 평가', AppLanguage.en: 'Consistent'},
+    'cmp_std_moderate': {AppLanguage.ko: '적당한 호불호', AppLanguage.en: 'Moderate spread'},
+    'cmp_std_strong': {AppLanguage.ko: '강한 호불호', AppLanguage.en: 'Strong opinions'},
+    'cmp_my_top_artists': {AppLanguage.ko: '나의 TOP 아티스트', AppLanguage.en: 'My Top Artists'},
+    'cmp_their_top_artists': {AppLanguage.ko: '친구의 TOP 아티스트', AppLanguage.en: 'Their Top Artists'},
+    'cmp_no_data': {AppLanguage.ko: '데이터 없음', AppLanguage.en: 'No data'},
+    'cmp_shared_artists_count': {AppLanguage.ko: '공통 아티스트 {0}명', AppLanguage.en: '{0} shared artists'},
+    'cmp_cat_all': {AppLanguage.ko: '전체', AppLanguage.en: 'All'},
+    'cmp_cat_both_love': {AppLanguage.ko: '공통 최애', AppLanguage.en: 'Both Love'},
+    'cmp_cat_i_prefer': {AppLanguage.ko: '내가 더 선호', AppLanguage.en: 'I Prefer'},
+    'cmp_cat_they_prefer': {AppLanguage.ko: '친구가 더 선호', AppLanguage.en: 'They Prefer'},
+    'cmp_cat_agree': {AppLanguage.ko: '비슷한 취향', AppLanguage.en: 'Similar Taste'},
+    'cmp_cat_clash': {AppLanguage.ko: '취향 충돌', AppLanguage.en: 'Clashing'},
+    'cmp_sub_both_love': {AppLanguage.ko: '둘 다 7점 이상', AppLanguage.en: 'Both 7+ pts'},
+    'cmp_sub_i_prefer': {AppLanguage.ko: '나 ≥ 친구 + 2점', AppLanguage.en: 'Me ≥ Friend + 2'},
+    'cmp_sub_they_prefer': {AppLanguage.ko: '친구 ≥ 나 + 2점', AppLanguage.en: 'Friend ≥ Me + 2'},
+    'cmp_sub_agree': {AppLanguage.ko: '점수 차이 2점 미만', AppLanguage.en: 'Gap < 2 pts'},
+    'cmp_sub_clash': {AppLanguage.ko: '점수 차이 3점 이상', AppLanguage.en: 'Gap ≥ 3 pts'},
+    'cmp_no_common_tracks': {AppLanguage.ko: '공동 평가한 음악이 없습니다', AppLanguage.en: 'No co-rated music'},
+    'cmp_no_common_tracks_desc': {AppLanguage.ko: '두 사람이 같은 곡을 평가해야\n비교가 가능합니다.', AppLanguage.en: 'Both of you need to rate the same songs\nto compare.'},
+    'cmp_pt_gap': {AppLanguage.ko: '{0}점 차이', AppLanguage.en: '{0} pt gap'},
+    'cmp_n_tracks_section': {AppLanguage.ko: '{0}곡', AppLanguage.en: '{0} tracks'},
+    'cmp_shared_genres': {AppLanguage.ko: '공통 선호 장르', AppLanguage.en: 'Shared Genres'},
+    'cmp_shared_moods': {AppLanguage.ko: '공통 선호 분위기', AppLanguage.en: 'Shared Moods'},
+    'cmp_my_unique_taste': {AppLanguage.ko: '나만 평가한 독특한 취향', AppLanguage.en: 'My Unique Taste'},
+    'cmp_their_unique_taste': {AppLanguage.ko: '친구만 평가한 독특한 취향', AppLanguage.en: 'Their Unique Taste'},
+    'cmp_genre_prefix': {AppLanguage.ko: '장르: {0}', AppLanguage.en: 'Genre: {0}'},
+    'cmp_mood_prefix': {AppLanguage.ko: '분위기: {0}', AppLanguage.en: 'Mood: {0}'},
+    'cmp_no_common_analysis': {AppLanguage.ko: '공동 평가 곡이 없어 분석이 불가합니다.', AppLanguage.en: 'No co-rated tracks to analyze.'},
   };
 
   static String get(String key, AppLanguage lang, [List<String>? args]) {

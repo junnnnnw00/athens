@@ -420,7 +420,7 @@ class _LibraryRow extends ConsumerWidget {
                   style: Theme.of(context).textTheme.bodySmall),
             ),
             const SizedBox(width: AppSpacing.md),
-            CoverArt(title: item.title, imageUrl: resolvedUrl, size: 56),
+            CoverArt(title: item.title, imageUrl: resolvedUrl, size: 56, artist: item.primaryArtist, kind: item.kind),
             const SizedBox(width: AppSpacing.lg),
             Expanded(
               child: Column(

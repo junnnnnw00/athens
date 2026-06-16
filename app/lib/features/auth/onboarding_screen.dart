@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../api/platform_storage.dart';
+import '../../i18n.dart';
 import '../../theme/tokens.dart';
 
 const _kOnboardingDoneKey = 'onboarding_done';
@@ -107,7 +108,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     GestureDetector(
                       onTap: _done,
                       child: Text(
-                        '건너뛰기',
+                        context.t('onb_skip', ref: ref),
                         style: TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
@@ -127,16 +128,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
 // ── Page 1: The duel ─────────────────────────────────────────────────────────
 
-class _DuelPage extends StatefulWidget {
+class _DuelPage extends ConsumerStatefulWidget {
   const _DuelPage({required this.p, required this.onNext});
   final AppPalette p;
   final VoidCallback onNext;
 
   @override
-  State<_DuelPage> createState() => _DuelPageState();
+  ConsumerState<_DuelPage> createState() => _DuelPageState();
 }
 
-class _DuelPageState extends State<_DuelPage> {
+class _DuelPageState extends ConsumerState<_DuelPage> {
   int _deckPos = 0;
   int? _picked;
   Timer? _timer;
@@ -165,6 +166,7 @@ class _DuelPageState extends State<_DuelPage> {
   @override
   Widget build(BuildContext context) {
     final p = widget.p;
+    final lang = ref.watch(localeProvider);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 60, 24, 32),
@@ -182,7 +184,7 @@ class _DuelPageState extends State<_DuelPage> {
             ),
             const SizedBox(height: 14),
             Text(
-              '별점 말고\n선택으로.',
+              I18n.get('onb_duel_headline', lang),
               style: TextStyle(
                 fontFamily: AppFonts.display,
                 fontFamilyFallback: AppFonts.fallback,
@@ -195,7 +197,7 @@ class _DuelPageState extends State<_DuelPage> {
             ),
             const SizedBox(height: 14),
             Text(
-              '숫자를 입력하는 게 아니에요.\n두 곡 중 지금 더 듣고 싶은 걸 고르면 돼요.',
+              I18n.get('onb_duel_desc', lang),
               style: TextStyle(
                 fontSize: 15,
                 height: 1.55,
@@ -216,7 +218,7 @@ class _DuelPageState extends State<_DuelPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '지금 더 듣고 싶은 건?',
+                  I18n.get('onb_duel_prompt', lang),
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w700,
@@ -224,13 +226,13 @@ class _DuelPageState extends State<_DuelPage> {
                   ),
                 ),
                 Text(
-                  '탭해보세요',
+                  I18n.get('onb_duel_hint', lang),
                   style: TextStyle(fontSize: 12, color: p.faint),
                 ),
               ],
             ),
             const Spacer(),
-            _cta(p, '다음', widget.onNext),
+            _cta(p, I18n.get('onb_next', lang), widget.onNext),
           ],
         ),
       ),
@@ -298,16 +300,16 @@ class _DuelPageState extends State<_DuelPage> {
 
 // ── Page 2: The rank ─────────────────────────────────────────────────────────
 
-class _RankPage extends StatefulWidget {
+class _RankPage extends ConsumerStatefulWidget {
   const _RankPage({required this.p, required this.onNext});
   final AppPalette p;
   final VoidCallback onNext;
 
   @override
-  State<_RankPage> createState() => _RankPageState();
+  ConsumerState<_RankPage> createState() => _RankPageState();
 }
 
-class _RankPageState extends State<_RankPage>
+class _RankPageState extends ConsumerState<_RankPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _anim;
 
@@ -332,6 +334,7 @@ class _RankPageState extends State<_RankPage>
   @override
   Widget build(BuildContext context) {
     final p = widget.p;
+    final lang = ref.watch(localeProvider);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 60, 24, 32),
@@ -349,7 +352,7 @@ class _RankPageState extends State<_RankPage>
             ),
             const SizedBox(height: 14),
             Text(
-              '선택이 쌓이면\n점수가 돼요.',
+              I18n.get('onb_rank_headline', lang),
               style: TextStyle(
                 fontFamily: AppFonts.display,
                 fontFamilyFallback: AppFonts.fallback,
@@ -362,7 +365,7 @@ class _RankPageState extends State<_RankPage>
             ),
             const SizedBox(height: 14),
             Text(
-              '고를수록 점수가 정교해져요. 내가 얼마나\n들었는지가 아니라, 얼마나 좋아하는지가 기준이에요.',
+              I18n.get('onb_rank_desc', lang),
               style: TextStyle(
                 fontSize: 15,
                 height: 1.55,
@@ -395,7 +398,7 @@ class _RankPageState extends State<_RankPage>
               );
             }),
             const Spacer(),
-            _cta(p, '다음', widget.onNext),
+            _cta(p, I18n.get('onb_next', lang), widget.onNext),
           ],
         ),
       ),
@@ -481,16 +484,16 @@ class _RankPageState extends State<_RankPage>
 
 // ── Page 3: The share ─────────────────────────────────────────────────────────
 
-class _SharePage extends StatefulWidget {
+class _SharePage extends ConsumerStatefulWidget {
   const _SharePage({required this.p, required this.onNext});
   final AppPalette p;
   final VoidCallback onNext;
 
   @override
-  State<_SharePage> createState() => _SharePageState();
+  ConsumerState<_SharePage> createState() => _SharePageState();
 }
 
-class _SharePageState extends State<_SharePage>
+class _SharePageState extends ConsumerState<_SharePage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _anim;
 
@@ -515,6 +518,7 @@ class _SharePageState extends State<_SharePage>
   @override
   Widget build(BuildContext context) {
     final p = widget.p;
+    final lang = ref.watch(localeProvider);
     final fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
 
     return SafeArea(
@@ -534,7 +538,7 @@ class _SharePageState extends State<_SharePage>
             ),
             const SizedBox(height: 14),
             Text(
-              '취향을 기록하고\n친구와 비교해요.',
+              I18n.get('onb_share_headline', lang),
               style: TextStyle(
                 fontFamily: AppFonts.display,
                 fontFamilyFallback: AppFonts.fallback,
@@ -547,7 +551,7 @@ class _SharePageState extends State<_SharePage>
             ),
             const SizedBox(height: 14),
             Text(
-              '내 Top 앨범을 카드로 뽑거나, 친구와 취향\n일치율을 비교해봐요. 음악 얘기가 더 재밌어져요.',
+              I18n.get('onb_share_desc', lang),
               style: TextStyle(
                 fontSize: 15,
                 height: 1.55,
@@ -565,10 +569,10 @@ class _SharePageState extends State<_SharePage>
                   child: child,
                 ),
               ),
-              child: _topsterPreview(p),
+              child: _topsterPreview(p, lang),
             ),
             const Spacer(),
-            _cta(p, '시작하기', widget.onNext),
+            _cta(p, I18n.get('onb_start', lang), widget.onNext),
             const SizedBox(height: 4),
           ],
         ),
@@ -576,7 +580,7 @@ class _SharePageState extends State<_SharePage>
     );
   }
 
-  Widget _topsterPreview(AppPalette p) {
+  Widget _topsterPreview(AppPalette p, AppLanguage lang) {
     return Container(
       decoration: BoxDecoration(
         color: p.surface,
@@ -629,7 +633,7 @@ class _SharePageState extends State<_SharePage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '친구와 취향 일치율',
+                      I18n.get('onb_share_match_label', lang),
                       style: TextStyle(
                           fontSize: 12, color: p.muted, fontWeight: FontWeight.w500),
                     ),

@@ -483,13 +483,20 @@ class _AlbumTracksSection extends ConsumerWidget {
     if (a == null) return const SizedBox.shrink();
     final p = context.palette;
     final async = ref.watch(albumTracksProvider(a));
+    final path = GoRouterState.of(context).uri.path;
+    final prefix = path.startsWith('/library')
+        ? '/library'
+        : path.startsWith('/search')
+            ? '/search'
+            : '/home';
+
     return async.when(
       loading: () => Padding(
         padding: const EdgeInsets.only(top: AppSpacing.xxl),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('수록곡', style: Theme.of(context).textTheme.titleSmall),
+            Text(context.t('lib_tracklist', ref: ref), style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: AppSpacing.md),
             const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
           ],
@@ -506,7 +513,7 @@ class _AlbumTracksSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: AppSpacing.xxl),
-            Text('수록곡', style: Theme.of(context).textTheme.titleSmall),
+            Text(context.t('lib_tracklist', ref: ref), style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: AppSpacing.sm),
             ...tracks.asMap().entries.map((entry) {
               final i = entry.key;
@@ -515,7 +522,7 @@ class _AlbumTracksSection extends ConsumerWidget {
               final isRated = ratedKeys.contains(key);
               return InkWell(
                 onTap: () => context.push(
-                  '/home/item/${Uri.encodeComponent(track.id)}',
+                  '$prefix/item/${Uri.encodeComponent(track.id)}',
                   extra: track,
                 ),
                 borderRadius: BorderRadius.circular(AppRadii.card),
@@ -575,7 +582,7 @@ class _FriendRatingsSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: AppSpacing.xxl),
-            Text('친구 평가', style: Theme.of(context).textTheme.titleSmall),
+            Text(context.t('lib_friend_ratings', ref: ref), style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: AppSpacing.sm),
             ...ratings.map((r) {
               final name = r.profile.displayName?.isNotEmpty == true
@@ -690,15 +697,25 @@ class _InfoSection extends ConsumerWidget {
       title: title,
     )));
 
+    final path = GoRouterState.of(context).uri.path;
+    final prefix = path.startsWith('/library')
+        ? '/library'
+        : path.startsWith('/search')
+            ? '/search'
+            : '/home';
+
     return infoAsync.when(
       data: (info) {
         if (info.isEmpty) return const SizedBox.shrink();
 
+        final albumForLink = (kind == 'track' && info.album != null && info.album!.isNotEmpty)
+            ? info.album
+            : null;
         final facts = <String>[];
         if (info.year != null && info.year!.isNotEmpty) {
           facts.add(info.year!);
         }
-        if (info.album != null && info.album!.isNotEmpty) {
+        if (albumForLink == null && info.album != null && info.album!.isNotEmpty) {
           facts.add(info.album!);
         }
         if (info.durationMs != null && info.durationMs! > 0) {
@@ -731,8 +748,8 @@ class _InfoSection extends ConsumerWidget {
             ],
 
             const SizedBox(height: AppSpacing.xl),
-            
-            // Facts row: year · album · duration
+
+            // Facts row: year · duration (album shown separately as link for tracks)
             if (facts.isNotEmpty) ...[
               Text(
                 facts.join(' · '),
@@ -740,6 +757,43 @@ class _InfoSection extends ConsumerWidget {
                   color: p.muted,
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+            // Tappable album link for tracks
+            if (albumForLink != null) ...[
+              GestureDetector(
+                onTap: () async {
+                  final service = ref.read(catalogServiceProvider);
+                  final results = await service.search('$artist $albumForLink', kind: 'album');
+                  if (results.isEmpty || !context.mounted) return;
+                  context.push(
+                    '$prefix/item/${Uri.encodeComponent(results.first.id)}',
+                    extra: results.first,
+                  );
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.album_rounded, size: 12, color: p.accentText),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        albumForLink,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: p.accentText,
+                          fontSize: 14,
+                          decoration: TextDecoration.underline,
+                          decorationColor: p.accentText,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(Icons.chevron_right_rounded, size: 14, color: p.accentText),
+                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),

@@ -561,7 +561,7 @@ class FriendsService {
         .select('updated_at, item_id, items!inner(id, kind, source, source_id, title, primary_artist, image_url, tags)')
         .inFilter('user_id', friendIds)
         .order('updated_at', ascending: false)
-        .limit(30);
+        .limit(100);
 
     final items = <CatalogItem>[];
     final seenIds = <String>{};

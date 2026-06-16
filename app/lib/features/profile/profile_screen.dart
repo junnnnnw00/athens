@@ -296,8 +296,8 @@ class ProfileScreen extends ConsumerWidget {
             final isDark = themeMode != ThemeMode.light;
             return _Tile(
               icon: isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-              title: isDark ? '다크 모드' : '라이트 모드',
-              subtitle: isDark ? '라이트 모드로 전환' : '다크 모드로 전환',
+              title: isDark ? context.t('profile_dark_mode', ref: ref) : context.t('profile_light_mode', ref: ref),
+              subtitle: isDark ? context.t('profile_switch_to_light', ref: ref) : context.t('profile_switch_to_dark', ref: ref),
               onTap: () => ref.read(themeModeProvider.notifier).setMode(
                     isDark ? ThemeMode.light : ThemeMode.dark,
                   ),

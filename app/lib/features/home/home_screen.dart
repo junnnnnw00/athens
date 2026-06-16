@@ -26,6 +26,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime? _lastBackPressTime;
+  int _friendsShowCount = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -38,10 +39,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final friendsRecentAsync = ref.watch(friendsRecentRatingsProvider);
     final libraryAsync = ref.watch(libraryControllerProvider);
     final ratedItems = ref.watch(ratedItemsProvider);
-    final ratedIds = ratedItems.map((e) => e.id).toSet();
-    final ratedKeys = ratedItems
-        .map((r) => catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist))
-        .toSet();
+
 
     return PopScope(
       canPop: false,
@@ -242,12 +240,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     loading: () => const SizedBox.shrink(),
                     error: (_, __) => const SizedBox.shrink(),
                     data: (items) {
-                      final unrated = items.where((it) {
-                        final key = catalogMatchKey(
-                            kind: it.kind, title: it.title, artist: it.primaryArtist);
-                        return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
-                      }).toList();
-                      if (unrated.isEmpty) return const SizedBox.shrink();
+                      if (items.isEmpty) return const SizedBox.shrink();
+
+                      final friendKeyToScore = <String, double>{
+                        for (final r in ratedItems)
+                          catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist):
+                              scoreFromElo(r.elo),
+                      };
+                      final shown = items.take(_friendsShowCount).toList();
+                      final hasMore = items.length > _friendsShowCount;
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
@@ -259,11 +260,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 style: Theme.of(context).textTheme.titleMedium),
                             const SizedBox(height: AppSpacing.md),
                             Column(
-                              children: unrated
-                                  .take(5)
-                                  .map((it) => _FriendRecentCard(item: it))
-                                  .toList(),
+                              children: shown.map((it) {
+                                final key = catalogMatchKey(
+                                    kind: it.kind, title: it.title, artist: it.primaryArtist);
+                                return _FriendRecentCard(item: it, userScore: friendKeyToScore[key]);
+                              }).toList(),
                             ),
+                            if (hasMore)
+                              Center(
+                                child: TextButton(
+                                  onPressed: () => setState(() => _friendsShowCount += 10),
+                                  child: Text(context.t('search_more', ref: ref)),
+                                ),
+                              ),
                           ],
                         ),
                       );
@@ -822,7 +831,7 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
         ),
         child: Row(
           children: [
-            CoverArt(title: item.title, imageUrl: resolvedUrl, size: 52),
+            CoverArt(title: item.title, imageUrl: resolvedUrl, size: 52, artist: item.primaryArtist, kind: item.kind),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -888,8 +897,9 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
 }
 
 class _FriendRecentCard extends ConsumerStatefulWidget {
-  const _FriendRecentCard({required this.item});
+  const _FriendRecentCard({required this.item, this.userScore});
   final CatalogItem item;
+  final double? userScore;
 
   @override
   ConsumerState<_FriendRecentCard> createState() => _FriendRecentCardState();
@@ -977,7 +987,7 @@ class _FriendRecentCardState extends ConsumerState<_FriendRecentCard> {
         ),
         child: Row(
           children: [
-            CoverArt(title: item.title, imageUrl: resolvedUrl, size: 48),
+            CoverArt(title: item.title, imageUrl: resolvedUrl, size: 48, artist: item.primaryArtist, kind: item.kind),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -1006,15 +1016,31 @@ class _FriendRecentCardState extends ConsumerState<_FriendRecentCard> {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            FilledButton(
-              onPressed: _busy ? null : _rate,
-              child: _busy
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(context.t('home_rate', ref: ref)),
-            ),
+            widget.userScore != null
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: p.accentSoft,
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                    ),
+                    child: Text(
+                      widget.userScore!.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: p.accentText,
+                      ),
+                    ),
+                  )
+                : FilledButton(
+                    onPressed: _busy ? null : _rate,
+                    child: _busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text(context.t('home_rate', ref: ref)),
+                  ),
           ],
         ),
       ),
