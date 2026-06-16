@@ -475,8 +475,9 @@ String normalizeMatchText(String s) {
       '');
   // Drop "feat. X" / "featuring X" tails.
   t = t.replaceAll(RegExp(r'\s*(feat\.?|featuring|ft\.?)\s.*$'), '');
-  // Strip remaining punctuation, collapse whitespace.
-  t = t.replaceAll(RegExp(r'[^\w\s]', unicode: true), ' ');
+  // Strip punctuation/symbols while keeping all Unicode letters and digits
+  // (Korean, Japanese, etc.). \w only covers ASCII so use \p{L}\p{N}.
+  t = t.replaceAll(RegExp(r'[^\p{L}\p{N}\s]', unicode: true), ' ');
   t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
   return t;
 }

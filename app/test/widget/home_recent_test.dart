@@ -36,7 +36,7 @@ void main() {
     expect(find.textContaining('Fake Tag Track 1'), findsOneWidget);
   });
 
-  testWidgets('home surfaces only unrated recently-played tracks',
+  testWidgets('home shows all recently-played tracks; rated ones have a score chip',
       (tester) async {
     final harness = TestHarness(
       recentlyPlayed: [
@@ -64,8 +64,9 @@ void main() {
     await tester.pump();
     await tester.pump();
 
+    // Both tracks appear — rated track shows a score, unrated shows rate button.
     expect(find.text('Fresh Track'), findsOneWidget);
-    expect(find.text('Already Rated'), findsNothing);
+    expect(find.text('Already Rated'), findsOneWidget);
   });
 
   testWidgets('user without Last.fm sees a graceful empty state', (tester) async {
