@@ -484,8 +484,8 @@ final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
 
   final lastfm = ref.watch(lastfmApiProvider);
   try {
-    // Pull a few extra so dedup still leaves a full list.
-    final tracks = await lastfm.getRecentTracks(username: username, limit: 30);
+    // Fetch more than shown — dedup collapses repeated scrobbles so we need headroom.
+    final tracks = await lastfm.getRecentTracks(username: username, limit: 50);
     final seen = <String>{};
     final out = <CatalogItem>[];
     for (final t in tracks) {
