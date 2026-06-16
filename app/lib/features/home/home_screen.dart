@@ -194,21 +194,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                     data: (items) {
-                      // Surface only tracks the user hasn't rated yet (match by ID or normalized title/artist/kind).
-                      final unrated = items.where((it) {
-                        final key = catalogMatchKey(
-                            kind: it.kind, title: it.title, artist: it.primaryArtist);
-                        return !ratedKeys.contains(key) && !ratedIds.contains(it.id);
-                      }).toList();
-
-                      if (unrated.isEmpty) {
+                      if (items.isEmpty) {
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                           child: _RecentEmpty(lastfmEnabled: lastfmEnabled),
                         );
                       }
 
-                      final taken = unrated.take(10).toList();
+                      final taken = items.take(10).toList();
+                      // Build key→score lookup so rated tracks can show their score.
+                      final keyToScore = <String, double>{
+                        for (final r in ratedItems)
+                          catalogMatchKey(
+                            kind: r.kind,
+                            title: r.title,
+                            artist: r.primaryArtist,
+                          ): scoreFromElo(r.elo),
+                      };
 
                       // 2-row Horizontal Grid Layout
                       return SizedBox(
@@ -221,11 +223,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             crossAxisCount: 2,
                             mainAxisSpacing: AppSpacing.sm,
                             crossAxisSpacing: AppSpacing.sm,
-                            childAspectRatio: 90 / 280, // crossAxis/mainAxis height/width ratio
+                            childAspectRatio: 90 / 280,
                           ),
                           itemCount: taken.length,
                           itemBuilder: (context, index) {
-                            return _CompactRecentCard(item: taken[index]);
+                            final it = taken[index];
+                            final key = catalogMatchKey(
+                                kind: it.kind, title: it.title, artist: it.primaryArtist);
+                            return _CompactRecentCard(item: it, score: keyToScore[key]);
                           },
                         ),
                       );
@@ -725,8 +730,9 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
 }
 
 class _CompactRecentCard extends ConsumerStatefulWidget {
-  const _CompactRecentCard({required this.item});
+  const _CompactRecentCard({required this.item, this.score});
   final CatalogItem item;
+  final double? score;
 
   @override
   ConsumerState<_CompactRecentCard> createState() => _CompactRecentCardState();
@@ -825,22 +831,40 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            SizedBox(
-              height: 30,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
-                ),
-                onPressed: _busy ? null : _rate,
-                child: _busy
-                    ? const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(strokeWidth: 1))
-                    : Text(context.t('home_rate', ref: ref), style: const TextStyle(fontSize: 12)),
-              ),
-            ),
+            widget.score != null
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: p.accentSoft,
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                    ),
+                    child: Text(
+                      widget.score!.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: p.accentText,
+                      ),
+                    ),
+                  )
+                : SizedBox(
+                    height: 30,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadii.pill)),
+                      ),
+                      onPressed: _busy ? null : _rate,
+                      child: _busy
+                          ? const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(strokeWidth: 1))
+                          : Text(context.t('home_rate', ref: ref),
+                              style: const TextStyle(fontSize: 12)),
+                    ),
+                  ),
           ],
         ),
       ),

@@ -76,7 +76,7 @@ class I18n {
     'home_friends_rated': {AppLanguage.ko: '친구들이 평가한 음악', AppLanguage.en: 'Friends\' Rated Music'},
     'home_friend_rated_label': {AppLanguage.ko: '친구가 평가함', AppLanguage.en: 'Rated by a friend'},
     'home_added_toast': {AppLanguage.ko: '"{0}" 추가됨 — 같은 종류를 더 추가하면 순위를 매겨요', AppLanguage.en: '"{0}" added — add more of the same kind to rank them'},
-    'home_recent_all_rated': {AppLanguage.ko: '최근 들은 음악을 모두 평가했습니다! 🎉\n음악을 들으면 여기에 나타납니다.', AppLanguage.en: 'All recently played music has been rated! 🎉\nListen to more music to see them here.'},
+    'home_recent_all_rated': {AppLanguage.ko: 'Last.fm에 최근 플레이 기록이 없어요.\n음악을 들으면 여기에 나타납니다.', AppLanguage.en: 'No recent plays on Last.fm yet.\nListen to something and check back.'},
     'home_recent_connect_lastfm': {AppLanguage.ko: 'Last.fm을 연동하면 최근 들은 곡이 여기에 나타나요.', AppLanguage.en: 'Connect Last.fm to see your recently played tracks here.'},
     'home_connect_lastfm_btn': {AppLanguage.ko: 'Last.fm 연동하기', AppLanguage.en: 'Connect Last.fm'},
     'rate_prompt_track': {AppLanguage.ko: '이 곡은 어땠나요?', AppLanguage.en: 'How was this track?'},

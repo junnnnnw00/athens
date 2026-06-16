@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/itunes_api.dart';
@@ -511,7 +512,8 @@ final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
       ));
     }
     return out;
-  } catch (_) {
+  } catch (e, st) {
+    debugPrint('[lastfm] recentlyPlayedProvider error: $e\n$st');
     return [];
   }
 });
