@@ -23,11 +23,9 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     with SingleTickerProviderStateMixin {
   UserProfile? _friendProfile;
   bool _isLoadingProfile = true;
-  // -1 = 전체, 0~4 = specific category
   int _selectedTrackCategory = -1;
 
   late final TabController _tabController;
-  // Cached future — recreated only when friendId changes
   Future<FriendMatchResult>? _matchFuture;
   List<RatedCatalogItem>? _lastRatings;
 
@@ -44,7 +42,6 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
     super.dispose();
   }
 
-  /// Returns cached Future, only recalculates when ratings list reference changes.
   Future<FriendMatchResult> _getMatchFuture(List<RatedCatalogItem> myRatings) {
     if (_matchFuture == null || !identical(_lastRatings, myRatings)) {
       _lastRatings = myRatings;

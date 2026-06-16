@@ -9,11 +9,9 @@ import '../../theme/tokens.dart';
 
 const _kOnboardingDoneKey = 'onboarding_done';
 
-/// Mark onboarding complete and persist.
 Future<void> completeOnboarding() =>
     PlatformStorage.write(key: _kOnboardingDoneKey, value: 'true');
 
-// Album art from the landing screen deck (already bundled).
 const _covers = [
   'assets/landing/covers/idioteque.jpg',
   'assets/landing/covers/spacesong.jpg',
@@ -62,7 +60,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _done() async {
     await completeOnboarding();
     if (!mounted) return;
-    // If there's an existing session the router will redirect to /home.
     context.go('/landing');
   }
 
@@ -84,13 +81,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               _SharePage(p: p, onNext: _done),
             ],
           ),
-          // Top row: skip + dot indicator
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: Row(
                 children: [
-                  // Dots
                   Row(
                     children: List.generate(3, (i) {
                       final active = i == _page;
@@ -108,7 +103,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     }),
                   ),
                   const Spacer(),
-                  // Skip
                   if (_page < 2)
                     GestureDetector(
                       onTap: _done,
@@ -377,7 +371,6 @@ class _RankPageState extends State<_RankPage>
               ),
             ),
             const Spacer(),
-            // Mini ranked list
             ...List.generate(_rankData.length, (i) {
               final delay = i * 0.15;
               final anim = CurvedAnimation(
@@ -584,7 +577,6 @@ class _SharePageState extends State<_SharePage>
   }
 
   Widget _topsterPreview(AppPalette p) {
-    // 2×3 mini topster grid using landing covers
     return Container(
       decoration: BoxDecoration(
         color: p.surface,
@@ -619,7 +611,6 @@ class _SharePageState extends State<_SharePage>
             }).toList(),
           ),
           const SizedBox(height: 12),
-          // Match row
           Row(
             children: [
               Container(

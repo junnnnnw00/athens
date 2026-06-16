@@ -78,7 +78,7 @@ risk, and the fix direction. Check off as resolved.
 - [x] **Share / image export** — re-enabled (2026-06-16). Platform guards for web/iOS added.
       Save-to-gallery button added (Android/iOS). Topster now flush tile layout. Review card
       ring stroke fattened. Galaxy share sheet issue resolved via dedicated save button.
-- [ ] **First-duel onboarding tutorial** — orient new users ("what is this app").
+- [x] **First-run onboarding** — 3-page tour (pairwise demo, ranking preview, share/compare) added in v1.6.0. Shown once to unauthenticated first-time visitors; `onboarding_done` persisted in secure storage.
 - [ ] **Friend-activity push notifications** — retention.
 - [ ] **Search history / recently searched.**
 

@@ -50,7 +50,7 @@ function which returns a short-lived token for catalog search.
 | Visual language | DESIGN.md (refined minimalism) **supersedes ACCEPTANCE Part C** | DESIGN.md is the later, authoritative spec (CLAUDE.md source-of-truth #8) |
 | Accent | ONE mint (`#74E0A4` dark / `#3DBE6E` light) | DESIGN.md; replaces the earlier pink — album art carries all other colour |
 | Type | Hanken Grotesk (display/UI) + Pretendard (Korean) | DESIGN.md; bundled locally in `app/assets/fonts/` for offline + deterministic goldens |
-| Modes | Dark default + light | DESIGN.md ships both |
+| Modes | Dark default + light toggle | Persisted in `flutter_secure_storage` via `ThemeModeNotifier`; restored at cold start |
 | Nav | 3-item floating pill (Home · Add · Me) | DESIGN.md; Stats/Profile/Share/Spotify reached from app bars + the Me/profile screen |
 | UI language | Korean-first strings | Korean target user (C6) |
 

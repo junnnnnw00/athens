@@ -42,9 +42,7 @@ Future<void> main() async {
       await Supabase.instance.client.auth.onAuthStateChange.first.timeout(
         const Duration(milliseconds: 300),
       );
-    } catch (_) {
-      // Timeout or error — proceed with startup
-    }
+    } catch (_) {}
   }
 
   // Resolve the library owner id so a returning user can cold-start fully
