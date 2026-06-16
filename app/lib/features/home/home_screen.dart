@@ -201,7 +201,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         );
                       }
 
-                      final taken = items.take(10).toList();
+                      final taken = items.take(20).toList();
                       // Build key→score lookup so rated tracks can show their score.
                       final keyToScore = <String, double>{
                         for (final r in ratedItems)
