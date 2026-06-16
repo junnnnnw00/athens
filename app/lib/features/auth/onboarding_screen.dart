@@ -61,7 +61,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Future<void> _done() async {
     await completeOnboarding();
     if (!mounted) return;
-    context.go('/landing');
+    context.go('/auth');
   }
 
   @override
@@ -71,56 +71,61 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     return Scaffold(
       backgroundColor: p.bg,
-      body: Stack(
-        children: [
-          PageView(
-            controller: _controller,
-            onPageChanged: (i) => setState(() => _page = i),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Stack(
             children: [
-              _DuelPage(p: p, onNext: _next),
-              _RankPage(p: p, onNext: _next),
-              _SharePage(p: p, onNext: _done),
-            ],
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: Row(
+              PageView(
+                controller: _controller,
+                onPageChanged: (i) => setState(() => _page = i),
                 children: [
-                  Row(
-                    children: List.generate(3, (i) {
-                      final active = i == _page;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 280),
-                        curve: Curves.easeOutCubic,
-                        margin: const EdgeInsets.only(right: 6),
-                        width: active ? 20 : 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: active ? p.accent : p.line,
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      );
-                    }),
-                  ),
-                  const Spacer(),
-                  if (_page < 2)
-                    GestureDetector(
-                      onTap: _done,
-                      child: Text(
-                        context.t('onb_skip', ref: ref),
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: p.faint,
-                        ),
-                      ),
-                    ),
+                  _DuelPage(p: p, onNext: _next),
+                  _RankPage(p: p, onNext: _next),
+                  _SharePage(p: p, onNext: _done),
                 ],
               ),
-            ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Row(
+                    children: [
+                      Row(
+                        children: List.generate(3, (i) {
+                          final active = i == _page;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeOutCubic,
+                            margin: const EdgeInsets.only(right: 6),
+                            width: active ? 20 : 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: active ? p.accent : p.line,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          );
+                        }),
+                      ),
+                      const Spacer(),
+                      if (_page < 2)
+                        GestureDetector(
+                          onTap: _done,
+                          child: Text(
+                            context.t('onb_skip', ref: ref),
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: p.faint,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -451,119 +451,13 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ),
           ],
           _FriendRatingsSection(itemId: widget.itemId),
-          if (kind == 'album')
-            _AlbumTracksSection(
-              album: widget.catalogItem ??
-                  (item != null
-                      ? CatalogItem(
-                          id: item.id,
-                          kind: item.kind,
-                          title: item.title,
-                          primaryArtist: item.primaryArtist,
-                          imageUrl: item.imageUrl,
-                          source: item.id.contains(':') ? item.id.split(':').first : 'itunes',
-                          sourceId: item.id.contains(':') ? item.id.substring(item.id.indexOf(':') + 1) : item.id,
-                          tags: item.tags,
-                        )
-                      : null),
-            ),
         ],
       ),
     );
   }
 }
 
-class _AlbumTracksSection extends ConsumerWidget {
-  const _AlbumTracksSection({required this.album});
-  final CatalogItem? album;
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final a = album;
-    if (a == null) return const SizedBox.shrink();
-    final p = context.palette;
-    final async = ref.watch(albumTracksProvider(a));
-    final path = GoRouterState.of(context).uri.path;
-    final prefix = path.startsWith('/library')
-        ? '/library'
-        : path.startsWith('/search')
-            ? '/search'
-            : '/home';
-
-    return async.when(
-      loading: () => Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.xxl),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(context.t('lib_tracklist', ref: ref), style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.md),
-            const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-          ],
-        ),
-      ),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (tracks) {
-        if (tracks.isEmpty) return const SizedBox.shrink();
-        final ratedItems = ref.watch(ratedItemsProvider);
-        final ratedKeys = ratedItems
-            .map((r) => catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist))
-            .toSet();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: AppSpacing.xxl),
-            Text(context.t('lib_tracklist', ref: ref), style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: AppSpacing.sm),
-            ...tracks.asMap().entries.map((entry) {
-              final i = entry.key;
-              final track = entry.value;
-              final key = catalogMatchKey(kind: 'track', title: track.title, artist: track.primaryArtist ?? '');
-              final isRated = ratedKeys.contains(key);
-              return InkWell(
-                onTap: () => context.push(
-                  '$prefix/item/${Uri.encodeComponent(track.id)}',
-                  extra: track,
-                ),
-                borderRadius: BorderRadius.circular(AppRadii.card),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        child: Text(
-                          '${i + 1}',
-                          style: TextStyle(color: p.muted, fontSize: 13),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Text(
-                          track.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isRated ? p.accent : p.text,
-                            fontWeight: isRated ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                      ),
-                      if (isRated)
-                        Icon(Icons.check_circle_rounded, size: 16, color: p.accent),
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ],
-        );
-      },
-    );
-  }
-}
 
 class _FriendRatingsSection extends ConsumerWidget {
   const _FriendRatingsSection({required this.itemId});
@@ -658,22 +552,36 @@ class _Stat extends StatelessWidget {
   }
 }
 
-class _TagChip extends StatelessWidget {
+class _TagChip extends ConsumerWidget {
   const _TagChip(this.name);
   final String name;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: p.chip,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: p.line),
+    return InkWell(
+      onTap: () {
+        ref.read(searchQueryProvider.notifier).state = name;
+        ref.read(searchKindProvider.notifier).state = 'all';
+        context.go('/search');
+      },
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: p.chip,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(color: p.line),
+        ),
+        child: Text(
+          name,
+          style: TextStyle(
+            color: p.accentText,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
-      child: Text(name,
-          style: TextStyle(color: p.muted, fontSize: 13, fontWeight: FontWeight.w500)),
     );
   }
 }
@@ -697,25 +605,15 @@ class _InfoSection extends ConsumerWidget {
       title: title,
     )));
 
-    final path = GoRouterState.of(context).uri.path;
-    final prefix = path.startsWith('/library')
-        ? '/library'
-        : path.startsWith('/search')
-            ? '/search'
-            : '/home';
-
     return infoAsync.when(
       data: (info) {
         if (info.isEmpty) return const SizedBox.shrink();
 
-        final albumForLink = (kind == 'track' && info.album != null && info.album!.isNotEmpty)
-            ? info.album
-            : null;
         final facts = <String>[];
         if (info.year != null && info.year!.isNotEmpty) {
           facts.add(info.year!);
         }
-        if (albumForLink == null && info.album != null && info.album!.isNotEmpty) {
+        if (info.album != null && info.album!.isNotEmpty) {
           facts.add(info.album!);
         }
         if (info.durationMs != null && info.durationMs! > 0) {
@@ -757,43 +655,6 @@ class _InfoSection extends ConsumerWidget {
                   color: p.muted,
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-            ],
-            // Tappable album link for tracks
-            if (albumForLink != null) ...[
-              GestureDetector(
-                onTap: () async {
-                  final service = ref.read(catalogServiceProvider);
-                  final results = await service.search('$artist $albumForLink', kind: 'album');
-                  if (results.isEmpty || !context.mounted) return;
-                  context.push(
-                    '$prefix/item/${Uri.encodeComponent(results.first.id)}',
-                    extra: results.first,
-                  );
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.album_rounded, size: 12, color: p.accentText),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        albumForLink,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: p.accentText,
-                          fontSize: 14,
-                          decoration: TextDecoration.underline,
-                          decorationColor: p.accentText,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    Icon(Icons.chevron_right_rounded, size: 14, color: p.accentText),
-                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),

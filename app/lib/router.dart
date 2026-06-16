@@ -24,12 +24,7 @@ import 'data/connectivity_providers.dart';
 import 'data/offline_support.dart';
 import 'data/repository/library_providers.dart';
 
-import 'features/auth/landing_screen.dart';
 import 'features/auth/onboarding_screen.dart';
-
-/// Set to `true` once the user has seen onboarding (seeded from storage at
-/// startup so the redirect is synchronous).
-final onboardingDoneProvider = StateProvider<bool>((ref) => false);
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _homeNavKey = GlobalKey<NavigatorState>(debugLabel: 'home');
@@ -78,22 +73,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     // to Home instead of showing go_router's red error screen.
     onException: (context, state, router) => router.go('/home'),
     redirect: (context, state) {
-      final onOnboarding = state.matchedLocation == '/onboarding';
-
-      // Show onboarding exactly once on first install (no session yet).
-      final onboardingDone = ref.read(onboardingDoneProvider);
-      if (!onboardingDone && !onOnboarding) {
-        // Skip onboarding gate when Supabase is mocked (tests / dev seed).
-        if (isSupabaseInitialized) {
-          Session? session;
-          try {
-            session = Supabase.instance.client.auth.currentSession;
-          } catch (_) {}
-          if (session == null) return '/onboarding';
-        }
-      }
-      if (onOnboarding) return null;
-
       if (!isSupabaseInitialized) {
         if (state.matchedLocation == '/auth' || state.matchedLocation == '/landing') {
           return '/home';
@@ -128,8 +107,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(path: '/onboarding', builder: (c, s) => const OnboardingScreen()),
-      GoRoute(path: '/landing', builder: (c, s) => const LandingScreen()),
+      GoRoute(path: '/landing', builder: (c, s) => const OnboardingScreen()),
       GoRoute(path: '/auth', builder: (c, s) => const AuthScreen()),
       buildAppShellRoute(),
     ],

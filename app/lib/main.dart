@@ -67,18 +67,14 @@ Future<void> main() async {
       await PlatformStorage.write(key: kLastUserIdKey, value: liveUserId);
     } catch (_) {}
   }
-  var effectiveUserId = liveUserId ?? cachedUserId;
+  final effectiveUserId = liveUserId ?? cachedUserId;
   final savedThemeMode = await loadSavedThemeMode();
-  final onboardingDone =
-      await PlatformStorage.read(key: 'onboarding_done') == 'true';
-
   final container = ProviderContainer(
     overrides: [
       if (effectiveUserId != null && effectiveUserId.isNotEmpty)
         lastKnownUserIdProvider.overrideWith((ref) => effectiveUserId),
       themeModeProvider.overrideWith(
           (ref) => ThemeModeNotifier(savedThemeMode)),
-      onboardingDoneProvider.overrideWith((ref) => onboardingDone),
     ],
   );
 
