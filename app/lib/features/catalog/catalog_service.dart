@@ -312,6 +312,16 @@ final itemInfoProvider = FutureProvider.family<ItemInfo,
       kind: args.kind, artist: args.artist, title: args.title);
 });
 
+/// Lazily fetches cover-art URL from iTunes for items that have no usable art
+/// (Last.fm often returns missing or placeholder images). Keyed by (kind,
+/// artist, title) so results are cached for the lifetime of the provider.
+final artworkUrlProvider = FutureProvider.family<String?,
+    ({String kind, String artist, String title})>((ref, args) async {
+  final svc = ref.read(catalogServiceProvider);
+  return svc.findArtworkUrl(
+      kind: args.kind, artist: args.artist, title: args.title);
+});
+
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
 /// Active search-kind filter: 'all' | 'track' | 'album' | 'artist'.

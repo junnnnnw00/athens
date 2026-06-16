@@ -793,6 +793,19 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final item = widget.item;
+
+    // Lazily resolve cover art from iTunes when Last.fm returned no usable art.
+    final String? resolvedUrl;
+    if (hasUsableArt(item.imageUrl)) {
+      resolvedUrl = item.imageUrl;
+    } else {
+      resolvedUrl = ref.watch(artworkUrlProvider((
+        kind: item.kind,
+        artist: item.primaryArtist ?? '',
+        title: item.title,
+      ))).valueOrNull;
+    }
+
     return InkWell(
       onTap: () {
         context.push('/home/item/${Uri.encodeComponent(item.id)}', extra: item);
@@ -807,7 +820,7 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
         ),
         child: Row(
           children: [
-            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 52),
+            CoverArt(title: item.title, imageUrl: resolvedUrl, size: 52),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
@@ -935,6 +948,18 @@ class _FriendRecentCardState extends ConsumerState<_FriendRecentCard> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final item = widget.item;
+
+    final String? resolvedUrl;
+    if (hasUsableArt(item.imageUrl)) {
+      resolvedUrl = item.imageUrl;
+    } else {
+      resolvedUrl = ref.watch(artworkUrlProvider((
+        kind: item.kind,
+        artist: item.primaryArtist ?? '',
+        title: item.title,
+      ))).valueOrNull;
+    }
+
     return InkWell(
       onTap: () {
         context.push('/home/item/${Uri.encodeComponent(item.id)}', extra: item);
@@ -950,7 +975,7 @@ class _FriendRecentCardState extends ConsumerState<_FriendRecentCard> {
         ),
         child: Row(
           children: [
-            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 48),
+            CoverArt(title: item.title, imageUrl: resolvedUrl, size: 48),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(

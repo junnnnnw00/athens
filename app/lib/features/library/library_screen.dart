@@ -394,6 +394,18 @@ class _LibraryRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final score = scoreFromElo(item.elo);
+
+    final String? resolvedUrl;
+    if (hasUsableArt(item.imageUrl)) {
+      resolvedUrl = item.imageUrl;
+    } else {
+      resolvedUrl = ref.watch(artworkUrlProvider((
+        kind: item.kind,
+        artist: item.primaryArtist ?? '',
+        title: item.title,
+      ))).valueOrNull;
+    }
+
     return InkWell(
       onTap: () => context.push('/library/item/${Uri.encodeComponent(item.id)}'),
       child: Padding(
@@ -408,7 +420,7 @@ class _LibraryRow extends ConsumerWidget {
                   style: Theme.of(context).textTheme.bodySmall),
             ),
             const SizedBox(width: AppSpacing.md),
-            CoverArt(title: item.title, imageUrl: item.imageUrl, size: 56),
+            CoverArt(title: item.title, imageUrl: resolvedUrl, size: 56),
             const SizedBox(width: AppSpacing.lg),
             Expanded(
               child: Column(
