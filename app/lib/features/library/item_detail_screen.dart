@@ -13,6 +13,7 @@ import '../../widgets/initial_score_dialog.dart';
 import 'community_stats_section.dart';
 import 'item_info_cache.dart';
 import '../share/review_share.dart';
+import '../friends/friends_service.dart';
 import '../../i18n.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
@@ -447,8 +448,84 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               ),
             ),
           ],
+          _FriendRatingsSection(itemId: widget.itemId),
         ],
       ),
+    );
+  }
+}
+
+class _FriendRatingsSection extends ConsumerWidget {
+  const _FriendRatingsSection({required this.itemId});
+  final String itemId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final async = ref.watch(friendRatingsForItemProvider(itemId));
+    return async.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (ratings) {
+        if (ratings.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: AppSpacing.xxl),
+            Text('친구 평가', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            ...ratings.map((r) {
+              final name = r.profile.displayName?.isNotEmpty == true
+                  ? r.profile.displayName!
+                  : r.profile.handle;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: p.surface2,
+                      backgroundImage: r.profile.avatarUrl != null
+                          ? NetworkImage(r.profile.avatarUrl!)
+                          : null,
+                      child: r.profile.avatarUrl == null
+                          ? Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : '?',
+                              style: TextStyle(fontSize: 13, color: p.text),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: p.accent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                      ),
+                      child: Text(
+                        r.score.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: p.accent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 }

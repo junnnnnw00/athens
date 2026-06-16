@@ -600,6 +600,50 @@ class FriendsService {
 
     return items;
   }
+
+  /// Returns ratings that friends (following) have given to a specific item.
+  Future<List<({UserProfile profile, double score})>> getFriendRatingsForItem(String itemId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return [];
+
+    final followRows = await _client
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id);
+    final friendIds = followRows.map((r) => r['following_id'] as String).toList();
+    if (friendIds.isEmpty) return [];
+
+    final colonIdx = itemId.indexOf(':');
+    if (colonIdx < 0) return [];
+    final source = itemId.substring(0, colonIdx);
+    final sourceId = itemId.substring(colonIdx + 1);
+
+    final itemRow = await _client
+        .from('items')
+        .select('id')
+        .eq('source', source)
+        .eq('source_id', sourceId)
+        .maybeSingle();
+    if (itemRow == null) return [];
+    final itemUuid = itemRow['id'] as String;
+
+    final rows = await _client
+        .from('ratings')
+        .select('elo, profile:profiles!ratings_user_id_fkey(id, handle, display_name, avatar_url)')
+        .eq('item_id', itemUuid)
+        .inFilter('user_id', friendIds);
+
+    final result = <({UserProfile profile, double score})>[];
+    for (final row in rows) {
+      final pd = row['profile'] as Map<String, dynamic>?;
+      if (pd == null) continue;
+      final profile = UserProfile.fromMap(pd);
+      final elo = (row['elo'] as num?)?.toDouble() ?? 1000.0;
+      result.add((profile: profile, score: scoreFromElo(elo)));
+    }
+    result.sort((a, b) => b.score.compareTo(a.score));
+    return result;
+  }
 }
 
 final friendsServiceProvider = Provider<FriendsService>((ref) => FriendsService());
@@ -617,6 +661,12 @@ final followersProvider = FutureProvider.autoDispose<List<UserProfile>>((ref) as
 /// Friends' recent ratings provider
 final friendsRecentRatingsProvider = FutureProvider.autoDispose<List<CatalogItem>>((ref) async {
   return ref.watch(friendsServiceProvider).getFriendsRecentRatings();
+});
+
+/// Friends' ratings for a specific catalog item (keyed by local itemId).
+final friendRatingsForItemProvider = FutureProvider.autoDispose
+    .family<List<({UserProfile profile, double score})>, String>((ref, itemId) async {
+  return ref.watch(friendsServiceProvider).getFriendRatingsForItem(itemId);
 });
 
 /// Cached per-user taste match. One network round-trip per user per library
