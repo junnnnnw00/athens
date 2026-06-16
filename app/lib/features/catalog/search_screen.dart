@@ -52,7 +52,7 @@ final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, 
   for (final candidate in candidateGenres) {
     List<LastfmRecentTrack> tagged;
     try {
-      tagged = await lastfm.getTagTopTracks(tag: candidate, limit: 50);
+      tagged = await lastfm.getTagTopTracks(tag: candidate, limit: 100);
     } catch (_) {
       tagged = const [];
     }
@@ -76,7 +76,7 @@ final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, 
       );
       if (ratedIds.contains(item.id)) continue;
       mapped.add(item);
-      if (mapped.length >= 5) break;
+      if (mapped.length >= 15) break;
     }
     if (mapped.isNotEmpty) {
       picks = mapped;

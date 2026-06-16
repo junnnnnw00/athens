@@ -186,10 +186,23 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
   @override
   Widget build(BuildContext context) {
     final added = widget.added;
+    final item = widget.item;
+
+    final String? resolvedUrl;
+    if (hasUsableArt(item.imageUrl)) {
+      resolvedUrl = item.imageUrl;
+    } else {
+      resolvedUrl = ref.watch(artworkUrlProvider((
+        kind: item.kind,
+        artist: item.primaryArtist ?? '',
+        title: item.title,
+      ))).valueOrNull;
+    }
+
     return InkWell(
       onTap: () {
-        context.push('/search/item/${Uri.encodeComponent(widget.item.id)}',
-            extra: widget.item);
+        context.push('/search/item/${Uri.encodeComponent(item.id)}',
+            extra: item);
       },
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: Padding(
@@ -198,11 +211,10 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
         child: Row(
           children: [
             CoverArt(
-                title: widget.item.title,
-                imageUrl: widget.item.imageUrl,
+                title: item.title,
+                imageUrl: resolvedUrl,
                 size: 48,
-                // Artists get a circular avatar, releases a rounded square.
-                radius: widget.item.kind == 'artist' ? 24 : AppRadii.cover),
+                radius: item.kind == 'artist' ? 24 : AppRadii.cover),
             const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
