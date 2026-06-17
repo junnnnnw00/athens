@@ -317,7 +317,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               Center(
-                child: Text(I18n.get('fr_error', _lang, ['\$err']), style: TextStyle(color: p.text)),
+                child: Text(I18n.get('fr_error', _lang, ['$err']), style: TextStyle(color: p.text)),
               ),
             ],
           ),
@@ -431,7 +431,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        I18n.get('fr_friends_count', _lang, ['\${friends.length}']),
+                        I18n.get('fr_friends_count', _lang, ['${friends.length}']),
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                     ),
@@ -557,7 +557,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(I18n.get('fr_follow_failed', _lang, ['\$e']))),
+          SnackBar(content: Text(I18n.get('fr_follow_failed', _lang, ['$e']))),
         );
       }
     }

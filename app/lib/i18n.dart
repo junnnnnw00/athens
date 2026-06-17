@@ -139,6 +139,7 @@ class I18n {
     'lib_merge_desc': {AppLanguage.ko: '선택한 항목을 이 항목과 동일한 곡으로 합칩니다. 평가가 하나로 통합됩니다.', AppLanguage.en: 'Merge the selected item into this one. Their ratings collapse into a single entry.'},
     'lib_merged_toast': {AppLanguage.ko: '항목을 합쳤습니다', AppLanguage.en: 'Items merged'},
     'lib_merge_need_anchor': {AppLanguage.ko: '평가된 항목을 선택해야 합니다', AppLanguage.en: 'Pick a rated item to merge into'},
+    'lib_merge_failed': {AppLanguage.ko: '합치기 실패: {0}', AppLanguage.en: 'Merge failed: {0}'},
     'lib_unrated_message': {AppLanguage.ko: '아직 라이브러리에 추가되지 않은 항목입니다.', AppLanguage.en: 'This item has not been added to your library yet.'},
     'lib_add_to_library': {AppLanguage.ko: '라이브러리에 추가', AppLanguage.en: 'Add to Library'},
     'lib_listeners_count': {AppLanguage.ko: '청취자 {0}', AppLanguage.en: '{0} Listeners'},

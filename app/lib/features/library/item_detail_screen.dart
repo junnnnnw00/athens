@@ -112,12 +112,16 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     }).toList();
 
     final messenger = ScaffoldMessenger.of(context);
+    final lang = ref.read(localeProvider);
     final toast = context.t('lib_merged_toast', ref: ref);
     final needAnchor = context.t('lib_merge_need_anchor', ref: ref);
     final selected = await showModalBottomSheet<CatalogItem>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.8,
+      ),
       builder: (_) => _MergePicker(
         kind: selfKind,
         selfId: directItem?.id ?? catalog?.id,
@@ -135,26 +139,31 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final selectedRated =
         items.where((r) => r.id == selected.id).firstOrNull;
 
-    if (directItem != null) {
-      // Current item is rated → fold the chosen item into it.
-      if (selectedRated != null) {
-        await controller.mergeWith(
-            primaryId: directItem.id, duplicateId: selectedRated.id);
+    try {
+      if (directItem != null) {
+        // Current item is rated → fold the chosen item into it.
+        if (selectedRated != null) {
+          await controller.mergeWith(
+              primaryId: directItem.id, duplicateId: selectedRated.id);
+        } else {
+          await controller.mergeCatalogInto(
+              source: selected, targetLocalId: directItem.id);
+        }
       } else {
+        // Current item is an unrated search result → it must be aliased onto a
+        // RATED item (the score anchor).
+        if (selectedRated == null) {
+          messenger.showSnackBar(SnackBar(content: Text(needAnchor)));
+          return;
+        }
         await controller.mergeCatalogInto(
-            source: selected, targetLocalId: directItem.id);
+            source: catalog!, targetLocalId: selectedRated.id);
       }
-    } else {
-      // Current item is an unrated search result → it must be aliased onto a
-      // RATED item (the score anchor).
-      if (selectedRated == null) {
-        messenger.showSnackBar(SnackBar(content: Text(needAnchor)));
-        return;
-      }
-      await controller.mergeCatalogInto(
-          source: catalog!, targetLocalId: selectedRated.id);
+      messenger.showSnackBar(SnackBar(content: Text(toast)));
+    } catch (e) {
+      messenger.showSnackBar(
+          SnackBar(content: Text(I18n.get('lib_merge_failed', lang, ['$e']))));
     }
-    messenger.showSnackBar(SnackBar(content: Text(toast)));
   }
 
   Future<void> _confirmDelete() async {
@@ -1234,7 +1243,10 @@ class _MergePickerState extends ConsumerState<_MergePicker> {
       padding: EdgeInsets.only(
         left: AppSpacing.xl,
         right: AppSpacing.xl,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+        top: AppSpacing.sm,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom +
+            AppSpacing.xl,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
