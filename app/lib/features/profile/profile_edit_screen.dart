@@ -55,6 +55,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final uploadFailedPrefix = context.t('edit_upload_failed', ref: ref);
     final action = await showModalBottomSheet<String>(
       context: context,
+      useRootNavigator: true,
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,

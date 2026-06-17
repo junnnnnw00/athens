@@ -310,6 +310,14 @@ class LibraryRepository {
     }
   }
 
+  /// Removes manual merge aliases for a set of natural keys to disconnect/unlink them.
+  Future<void> removeMergeAliases(Set<String> naturalKeys) async {
+    for (final k in naturalKeys) {
+      if (k.isEmpty) continue;
+      await _db.deleteAlias(k);
+    }
+  }
+
   /// The canonical key a library item currently resolves to (after aliases) —
   /// the merge target other items should be aliased onto.
   Future<String> resolvedCanonicalForItem(String localId) async {

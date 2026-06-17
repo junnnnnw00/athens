@@ -34,6 +34,22 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   bool _saving = false;
   bool _busy = false;
 
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: AppLayout.scrollBottomInset(context),
+          left: AppSpacing.xl,
+          right: AppSpacing.xl,
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _reviewController.dispose();
@@ -111,12 +127,12 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       return true;
     }).toList();
 
-    final messenger = ScaffoldMessenger.of(context);
     final lang = ref.read(localeProvider);
     final toast = context.t('lib_merged_toast', ref: ref);
     final needAnchor = context.t('lib_merge_need_anchor', ref: ref);
     final selected = await showModalBottomSheet<CatalogItem>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       showDragHandle: true,
       constraints: BoxConstraints(
@@ -130,6 +146,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         // Current item is unrated → target must be a rated item, so only filter
         // the library list (a catalog pick can't carry a score).
         allowCatalogSearch: directItem != null,
+        currentTitle: directItem?.title ?? catalog?.title ?? '',
+        currentArtist: directItem?.primaryArtist ?? catalog?.primaryArtist ?? '',
       ),
     );
     if (selected == null || !mounted) return;
@@ -153,16 +171,42 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         // Current item is an unrated search result → it must be aliased onto a
         // RATED item (the score anchor).
         if (selectedRated == null) {
-          messenger.showSnackBar(SnackBar(content: Text(needAnchor)));
+          _showSnackBar(needAnchor);
           return;
         }
         await controller.mergeCatalogInto(
             source: catalog!, targetLocalId: selectedRated.id);
       }
-      messenger.showSnackBar(SnackBar(content: Text(toast)));
+      _showSnackBar(toast);
     } catch (e) {
-      messenger.showSnackBar(
-          SnackBar(content: Text(I18n.get('lib_merge_failed', lang, ['$e']))));
+      _showSnackBar(I18n.get('lib_merge_failed', lang, ['$e']));
+    }
+  }
+
+  Future<void> _unlinkMerge() async {
+    final items = ref.read(ratedItemsProvider);
+    final directItem = items.where((i) => i.id == widget.itemId).firstOrNull;
+    final catalog = widget.catalogItem;
+    final selfKind = directItem?.kind ?? catalog?.kind ?? 'track';
+    final currentTitle = directItem?.title ?? catalog?.title ?? '';
+    final currentArtist = directItem?.primaryArtist ?? catalog?.primaryArtist ?? '';
+
+    setState(() => _busy = true);
+    final lang = ref.read(localeProvider);
+
+    try {
+      await ref.read(libraryControllerProvider.notifier).unlinkItem(
+        kind: selfKind,
+        title: currentTitle,
+        artist: currentArtist.isNotEmpty ? currentArtist : null,
+        isrc: catalog?.isrc,
+        storedCanonicalKey: directItem?.canonicalKey,
+      );
+      _showSnackBar(context.t('lib_merge_unlinked_toast', ref: ref));
+    } catch (e) {
+      _showSnackBar(I18n.get('lib_merge_unlink_failed', lang, ['$e']));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -240,9 +284,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       router.push('/duel/${Uri.encodeComponent(enrichedItem.id)}');
     } else {
       if (mounted) setState(() => _busy = false);
-      messenger.showSnackBar(
-        SnackBar(content: Text(toastMsg)),
-      );
+      _showSnackBar(toastMsg);
     }
   }
 
@@ -407,6 +449,50 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
+          if (directItem == null && aliasItem != null) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: p.surface2,
+                borderRadius: BorderRadius.circular(AppRadii.card),
+                border: Border.all(color: p.line),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.link_rounded, color: p.accentText, size: 20),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      context.t('lib_merge_linked_to', args: ['${aliasItem.title}${aliasItem.primaryArtist != null ? ' (${aliasItem.primaryArtist})' : ''}'], ref: ref),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: p.text,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  TextButton(
+                    onPressed: _busy ? null : _unlinkMerge,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      context.t('lib_merge_unlink', ref: ref),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (!isUnrated)
             Row(
               children: [
@@ -1158,11 +1244,15 @@ class _MergePicker extends ConsumerStatefulWidget {
     required this.selfId,
     required this.candidates,
     required this.allowCatalogSearch,
+    this.currentTitle,
+    this.currentArtist,
   });
   final String kind;
   final String? selfId;
   final List<RatedCatalogItem> candidates;
   final bool allowCatalogSearch;
+  final String? currentTitle;
+  final String? currentArtist;
 
   @override
   ConsumerState<_MergePicker> createState() => _MergePickerState();
@@ -1221,22 +1311,83 @@ class _MergePickerState extends ConsumerState<_MergePicker> {
         sourceId: r.id.contains(':') ? r.id.split(':').last : r.id,
       );
 
+  double _calculateSimilarity(
+      String title1, String? artist1, String title2, String? artist2) {
+    final t1 = normalizeMatchText(title1);
+    final t2 = normalizeMatchText(title2);
+    final a1 = normalizeMatchText(artist1 ?? '');
+    final a2 = normalizeMatchText(artist2 ?? '');
+
+    final words1 = t1.split(' ').where((w) => w.length > 1).toSet();
+    final words2 = t2.split(' ').where((w) => w.length > 1).toSet();
+    final artistWords1 = a1.split(' ').where((w) => w.length > 1).toSet();
+    final artistWords2 = a2.split(' ').where((w) => w.length > 1).toSet();
+
+    double score = 0.0;
+
+    // Word overlap in titles
+    final titleOverlap = words1.intersection(words2).length;
+    score += titleOverlap * 2.0;
+
+    // Word overlap in artists
+    final artistOverlap = artistWords1.intersection(artistWords2).length;
+    score += artistOverlap * 1.5;
+
+    // Check if one title is substring of another
+    if (t1.contains(t2) || t2.contains(t1)) {
+      score += 1.0;
+    }
+
+    // Check if one artist is substring of another
+    if (a1.isNotEmpty && a2.isNotEmpty && (a1.contains(a2) || a2.contains(a1))) {
+      score += 0.8;
+    }
+
+    // Exact matches
+    if (t1 == t2) {
+      score += 3.0;
+    }
+    if (a1.isNotEmpty && a1 == a2) {
+      score += 1.0;
+    }
+
+    return score;
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final q = _query.trim().toLowerCase();
     final searching = q.isNotEmpty;
     final List<CatalogItem> items;
+    final String currentTitle = widget.currentTitle ?? '';
+    final String currentArtist = widget.currentArtist ?? '';
+
     if (widget.allowCatalogSearch && searching) {
       // Catalog (iTunes) results for folding an unrated dupe into a rated item.
       items = _results;
     } else {
-      // Library candidates (the rated anchors), filtered locally when typing.
-      items = widget.candidates
+      // Library candidates (the rated anchors), sorted by similarity to current item first,
+      // then filtered locally when typing.
+      final filtered = widget.candidates
           .where((r) => !searching ||
               '${r.title} ${r.primaryArtist ?? ''}'.toLowerCase().contains(q))
-          .map(_asCatalog)
           .toList();
+
+      if (currentTitle.isNotEmpty) {
+        filtered.sort((a, b) {
+          final scoreA = _calculateSimilarity(
+              currentTitle, currentArtist, a.title, a.primaryArtist);
+          final scoreB = _calculateSimilarity(
+              currentTitle, currentArtist, b.title, b.primaryArtist);
+          if (scoreA != scoreB) {
+            return scoreB.compareTo(scoreA); // descending
+          }
+          return a.title.compareTo(b.title);
+        });
+      }
+
+      items = filtered.map(_asCatalog).toList();
     }
 
     return Padding(
@@ -1292,7 +1443,7 @@ class _MergePickerState extends ConsumerState<_MergePicker> {
           else
             Flexible(
               child: ListView.separated(
-                shrinkWrap: true,
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 itemCount: items.length,
                 separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
                 itemBuilder: (c, i) {

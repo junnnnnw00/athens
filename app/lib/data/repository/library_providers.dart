@@ -348,6 +348,25 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
     await _reload();
   }
 
+  Future<void> unlinkItem({
+    required String kind,
+    required String title,
+    String? artist,
+    String? isrc,
+    String? storedCanonicalKey,
+  }) async {
+    final keys = naturalKeysFor(
+      kind: kind,
+      title: title,
+      artist: artist,
+      isrc: isrc,
+      storedCanonicalKey: storedCanonicalKey,
+    );
+    await _repo.removeMergeAliases(keys);
+    ref.invalidate(canonicalAliasesProvider);
+    await _reload();
+  }
+
   Future<void> resetForPlacement(String itemId, {double startingElo = Elo.startingElo}) async {
     await _repo.resetForPlacement(itemId, startingElo: startingElo);
     await _reload();
@@ -366,10 +385,8 @@ final ratedItemsProvider = Provider<List<RatedCatalogItem>>((ref) {
 /// Manual merge aliases (naturalKey → targetCanonicalKey), loaded from Drift.
 /// Consulted via [resolveCanonicalKey] so a searched item merged onto a rated
 /// one resolves as rated even when it's not in the library. Invalidated after
-/// each merge.
+/// each merge or unlink.
 final canonicalAliasesProvider = FutureProvider<Map<String, String>>((ref) async {
-  // Re-read whenever the library changes (a merge reloads it).
-  ref.watch(libraryControllerProvider);
   return ref.read(libraryRepositoryProvider).loadAliases();
 });
 
