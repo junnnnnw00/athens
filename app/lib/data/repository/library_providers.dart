@@ -326,6 +326,16 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
     await _reload();
   }
 
+  /// Manually merges [duplicateId] into [primaryId] (same logical track/album
+  /// the auto ISRC dedup missed). They collapse into one in the library.
+  Future<void> mergeWith({
+    required String primaryId,
+    required String duplicateId,
+  }) async {
+    await _repo.mergeItems(primaryId: primaryId, duplicateId: duplicateId);
+    await _reload();
+  }
+
   Future<void> resetForPlacement(String itemId, {double startingElo = Elo.startingElo}) async {
     await _repo.resetForPlacement(itemId, startingElo: startingElo);
     await _reload();

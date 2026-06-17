@@ -93,6 +93,33 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     }
   }
 
+  /// Manually merge another library item into this one — for cross-language
+  /// duplicates the automatic ISRC dedup missed. Opens a searchable picker of
+  /// same-kind items; the chosen one collapses into this entry.
+  Future<void> _mergeDuplicate() async {
+    final items = ref.read(ratedItemsProvider);
+    final current = items.where((i) => i.id == widget.itemId).firstOrNull;
+    if (current == null) return;
+    final candidates = items
+        .where((i) => i.kind == current.kind && i.canonicalKey != current.canonicalKey)
+        .toList();
+
+    final messenger = ScaffoldMessenger.of(context);
+    final toast = context.t('lib_merged_toast', ref: ref);
+    final selected = await showModalBottomSheet<RatedCatalogItem>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (c) => _MergePicker(current: current, candidates: candidates),
+    );
+    if (selected == null || !mounted) return;
+    await ref.read(libraryControllerProvider.notifier).mergeWith(
+          primaryId: widget.itemId,
+          duplicateId: selected.id,
+        );
+    messenger.showSnackBar(SnackBar(content: Text(toast)));
+  }
+
   Future<void> _confirmDelete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -221,6 +248,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                   icon: const Icon(Icons.more_vert_rounded),
                   onSelected: (v) {
                     if (v == 'replace') _replace();
+                    if (v == 'merge') _mergeDuplicate();
                     if (v == 'delete') _confirmDelete();
                   },
                   itemBuilder: (c) => [
@@ -230,6 +258,14 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                         contentPadding: EdgeInsets.zero,
                         leading: const Icon(Icons.refresh_rounded),
                         title: Text(context.t('lib_placement_test', ref: ref)),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'merge',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.merge_rounded),
+                        title: Text(context.t('lib_merge', ref: ref)),
                       ),
                     ),
                     PopupMenuItem(
@@ -1023,6 +1059,100 @@ class _AlbumTracksSection extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Searchable picker of same-kind library items to merge into the current one.
+/// Returns the chosen item (or null on dismiss).
+class _MergePicker extends StatefulWidget {
+  const _MergePicker({required this.current, required this.candidates});
+  final RatedCatalogItem current;
+  final List<RatedCatalogItem> candidates;
+
+  @override
+  State<_MergePicker> createState() => _MergePickerState();
+}
+
+class _MergePickerState extends State<_MergePicker> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final q = _query.toLowerCase().trim();
+    final filtered = q.isEmpty
+        ? widget.candidates
+        : widget.candidates.where((i) {
+            final hay = '${i.title} ${i.primaryArtist ?? ''}'.toLowerCase();
+            return hay.contains(q);
+          }).toList();
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.xl,
+        right: AppSpacing.xl,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(context.t('lib_merge_title'),
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(context.t('lib_merge_desc'),
+              style: TextStyle(color: p.muted, fontSize: 12)),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            autofocus: true,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search_rounded, size: 20),
+              hintText: context.t('lib_merge_hint'),
+              isDense: true,
+            ),
+            onChanged: (v) => setState(() => _query = v),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (filtered.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+              child: Center(
+                child: Text(context.t('lib_merge_empty'),
+                    style: TextStyle(color: p.muted)),
+              ),
+            )
+          else
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
+                itemBuilder: (c, i) {
+                  final it = filtered[i];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CoverArt(
+                      title: it.title,
+                      imageUrl: it.imageUrl,
+                      size: 44,
+                      radius: it.kind == 'artist' ? 22 : 8,
+                      artist: it.primaryArtist,
+                      kind: it.kind,
+                    ),
+                    title: Text(it.title,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: it.primaryArtist != null
+                        ? Text(it.primaryArtist!,
+                            maxLines: 1, overflow: TextOverflow.ellipsis)
+                        : null,
+                    onTap: () => Navigator.pop(c, it),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

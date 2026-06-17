@@ -285,6 +285,27 @@ class LibraryRepository {
     await _db.setItemCanonicalKey(localId, canonicalKey);
   }
 
+  /// Manually merges [duplicateId] into [primaryId] by assigning both the same
+  /// canonical key, so `loadLibrary` collapses them into one (keeping the
+  /// most-dueled copy). The duplicate's rating/duel rows stay in the DB, so the
+  /// merge is reversible by re-resolving each item's key. Local-only.
+  Future<void> mergeItems({
+    required String primaryId,
+    required String duplicateId,
+  }) async {
+    final primary = await _db.getItemById(primaryId);
+    if (primary == null) return;
+    final key =
+        (primary.canonicalKey != null && primary.canonicalKey!.isNotEmpty)
+            ? primary.canonicalKey!
+            : catalogMatchKey(
+                kind: primary.kind,
+                title: primary.title,
+                artist: primary.primaryArtist);
+    await _db.setItemCanonicalKey(primaryId, key);
+    await _db.setItemCanonicalKey(duplicateId, key);
+  }
+
   Future<RatedCatalogItem?> getItem(String itemId) async {
     final all = await loadLibrary();
     for (final i in all) {
