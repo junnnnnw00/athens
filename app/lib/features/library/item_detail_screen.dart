@@ -699,18 +699,29 @@ class _InfoSection extends ConsumerWidget {
                   String? collectionId = catalogAlbumSourceId;
                   String? resolvedAlbumName = albumForLink;
 
-                  // If no stored collectionId, search for track to get one
+                  // If no stored collectionId, search for track and prefer
+                  // the hit whose album name matches albumForLink exactly.
                   if (collectionId == null) {
                     try {
                       final hits = await itunes.search(
-                          '$artist $title', entity: 'song', limit: 5);
+                          '$artist $title', entity: 'song', limit: 10);
+                      String? fallbackId;
+                      String? fallbackName;
                       for (final h in hits) {
-                        if (h.albumSourceId != null) {
+                        if (h.albumSourceId == null) continue;
+                        final nameMatch =
+                            h.album?.toLowerCase().trim() ==
+                                albumForLink.toLowerCase().trim();
+                        if (nameMatch) {
                           collectionId = h.albumSourceId;
-                          resolvedAlbumName = h.album ?? albumForLink;
+                          resolvedAlbumName = h.album;
                           break;
                         }
+                        fallbackId ??= h.albumSourceId;
+                        fallbackName ??= h.album;
                       }
+                      collectionId ??= fallbackId;
+                      resolvedAlbumName ??= fallbackName ?? albumForLink;
                     } catch (_) {}
                   }
 
