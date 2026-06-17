@@ -324,6 +324,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             title: title,
             catalogAlbum: widget.catalogItem?.album,
             catalogAlbumSourceId: widget.catalogItem?.albumSourceId,
+            catalogTrackSourceId: widget.catalogItem?.source == 'itunes'
+                ? widget.catalogItem?.sourceId
+                : null,
           ),
           if (kind == 'album')
             _AlbumTracksSection(
@@ -614,12 +617,15 @@ class _InfoSection extends ConsumerWidget {
     required this.title,
     this.catalogAlbum,
     this.catalogAlbumSourceId,
+    this.catalogTrackSourceId,
   });
   final String kind;
   final String artist;
   final String title;
   final String? catalogAlbum;
   final String? catalogAlbumSourceId;
+  /// iTunes trackId — used for direct collectionId lookup when albumSourceId is unavailable.
+  final String? catalogTrackSourceId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -699,8 +705,14 @@ class _InfoSection extends ConsumerWidget {
                   String? collectionId = catalogAlbumSourceId;
                   String? resolvedAlbumName = albumForLink;
 
-                  // If no stored collectionId, search for track and prefer
-                  // the hit whose album name matches albumForLink exactly.
+                  // Path 2: direct iTunes track lookup for exact collectionId
+                  if (collectionId == null && catalogTrackSourceId != null) {
+                    try {
+                      collectionId = await itunes.lookupCollectionId(catalogTrackSourceId!);
+                    } catch (_) {}
+                  }
+
+                  // Path 3: search for track, prefer album-name fuzzy match
                   if (collectionId == null) {
                     try {
                       final hits = await itunes.search(
@@ -709,9 +721,12 @@ class _InfoSection extends ConsumerWidget {
                       String? fallbackName;
                       for (final h in hits) {
                         if (h.albumSourceId == null) continue;
-                        final nameMatch =
-                            h.album?.toLowerCase().trim() ==
-                                albumForLink.toLowerCase().trim();
+                        final hAlbum = h.album?.toLowerCase().trim() ?? '';
+                        final want = albumForLink.toLowerCase().trim();
+                        // Fuzzy: one contains the other (handles deluxe/remaster editions)
+                        final nameMatch = hAlbum == want ||
+                            hAlbum.contains(want) ||
+                            want.contains(hAlbum);
                         if (nameMatch) {
                           collectionId = h.albumSourceId;
                           resolvedAlbumName = h.album;

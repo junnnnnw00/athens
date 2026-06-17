@@ -15,6 +15,10 @@ abstract class ItunesApi {
 
   /// Fetches tracks for an iTunes album by its collection ID.
   Future<List<CatalogItem>> getAlbumTracks(String collectionId);
+
+  /// Looks up the collectionId (album ID) for a given iTunes track ID.
+  /// Returns null if not found or on error.
+  Future<String?> lookupCollectionId(String trackId);
 }
 
 class ItunesApiHttp implements ItunesApi {
@@ -84,6 +88,21 @@ class ItunesApiHttp implements ItunesApi {
       ));
     }
     return tracks;
+  }
+
+  @override
+  Future<String?> lookupCollectionId(String trackId) async {
+    final res = await _http.get(Uri.https('itunes.apple.com', '/lookup', {
+      'id': trackId,
+    }));
+    if (res.statusCode != 200) return null;
+    final json = jsonDecode(res.body);
+    if (json is! Map || json['results'] is! List) return null;
+    for (final r in (json['results'] as List).whereType<Map>()) {
+      final cid = r['collectionId']?.toString();
+      if (cid != null) return cid;
+    }
+    return null;
   }
 
   /// Parses the iTunes Search response into catalog items.
