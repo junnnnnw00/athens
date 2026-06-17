@@ -227,43 +227,49 @@ class CatalogService {
   /// crowded out by albums/artists.
   Future<List<CatalogItem>> search(String query,
       {String kind = 'all', int offset = 0, int limit = kSearchPageSize}) async {
-    final itunesEntity = _kindToItunesEntity(kind);
-    final results = await _itunesApi.search(query, entity: itunesEntity, offset: offset, limit: limit);
+    if (query.trim().isEmpty) return const [];
 
-    if (kind == 'album') {
-      final albums = <CatalogItem>[];
-      final seenIds = <String>{};
-      for (final item in results) {
-        if (item.kind == 'album') {
-          if (seenIds.add(item.id)) {
-            albums.add(item);
-          }
-        } else if (item.kind == 'track' && item.albumSourceId != null && item.album != null) {
-          final albumId = 'itunes:${item.albumSourceId}';
-          if (seenIds.add(albumId)) {
-            albums.add(CatalogItem(
-              id: albumId,
-              kind: 'album',
-              title: item.album!,
-              primaryArtist: item.primaryArtist,
-              imageUrl: item.imageUrl,
-              source: 'itunes',
-              sourceId: item.albumSourceId!,
-            ));
-          }
+    // iTunes silently drops the MIDDLE entity in a multi-entity query (e.g.
+    // `song,album,musicArtist` returns tracks + artists but NO albums), so a
+    // combined "all" search must fan out into one request per type and merge —
+    // otherwise albums never appear in the results.
+    if (kind == 'all') {
+      final lists = await Future.wait([
+        _safeSearch(query, 'song', offset, limit),
+        _safeSearch(query, 'album', offset, limit),
+        _safeSearch(query, 'musicArtist', offset, limit),
+      ]);
+      final merged = <CatalogItem>[];
+      final seen = <String>{};
+      for (final list in lists) {
+        for (final it in list) {
+          if (seen.add(it.id)) merged.add(it);
         }
       }
-      return albums;
+      return merged;
     }
 
-    return results;
+    return _itunesApi.search(query,
+        entity: _kindToItunesEntity(kind), offset: offset, limit: limit);
+  }
+
+  /// One entity's results, swallowing failures so a single type's error doesn't
+  /// blank the whole combined "all" search.
+  Future<List<CatalogItem>> _safeSearch(
+      String query, String entity, int offset, int limit) async {
+    try {
+      return await _itunesApi.search(query,
+          entity: entity, offset: offset, limit: limit);
+    } catch (_) {
+      return const [];
+    }
   }
 
   static String _kindToItunesEntity(String kind) => switch (kind) {
         'track' => 'song',
-        'album' => 'album,song',
+        'album' => 'album',
         'artist' => 'musicArtist',
-        _ => 'song,album,musicArtist',
+        _ => 'song',
       };
 
   /// Rich, on-demand detail info (not persisted) for the item detail screen:
