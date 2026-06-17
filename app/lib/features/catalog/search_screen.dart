@@ -128,6 +128,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   void dispose() {
+    ref.read(selectedGenreProvider.notifier).state = null;
     _debounce?.cancel();
     super.dispose();
   }

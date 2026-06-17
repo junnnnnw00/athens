@@ -109,9 +109,11 @@ String personalityCompatibility(TastePersonality a, TastePersonality b, [AppLang
   final set = {a, b};
   final isEn = lang == AppLanguage.en;
 
-  if (a == b) return isEn
-      ? 'Same type! A rare combination that intuitively understands each other\'s taste.'
-      : '같은 성향끼리! 서로의 취향을 직관적으로 이해하는 드문 조합입니다.';
+  if (a == b) {
+    return isEn
+        ? 'Same type! A rare combination that intuitively understands each other\'s taste.'
+        : '같은 성향끼리! 서로의 취향을 직관적으로 이해하는 드문 조합입니다.';
+  }
 
   if (set.containsAll([TastePersonality.coldCritic, TastePersonality.hyperReactioner]) ||
       set.containsAll([TastePersonality.selectiveObsessive, TastePersonality.warmSteady])) {

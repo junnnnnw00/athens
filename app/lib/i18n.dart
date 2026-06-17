@@ -77,6 +77,9 @@ class I18n {
     'landing_have_account': {AppLanguage.ko: '이미 계정이 있어요 →', AppLanguage.en: 'Already have an account? →'},
     // Home Screen
     'home_title': {AppLanguage.ko: '오늘은 무엇을 평가할까요?', AppLanguage.en: 'What are we rating today?'},
+    'home_greeting_morning': {AppLanguage.ko: '좋은 아침이에요', AppLanguage.en: 'Good morning'},
+    'home_greeting_afternoon': {AppLanguage.ko: '좋은 오후예요', AppLanguage.en: 'Good afternoon'},
+    'home_greeting_evening': {AppLanguage.ko: '좋은 저녁이에요', AppLanguage.en: 'Good evening'},
     'home_recent': {AppLanguage.ko: '최근 들은 음악', AppLanguage.en: 'Recently Played'},
     'home_recent_error': {AppLanguage.ko: '최근 재생 목록을 불러오지 못했어요', AppLanguage.en: 'Failed to load recently played tracks'},
     'home_start_duel': {AppLanguage.ko: '듀얼 시작하기', AppLanguage.en: 'Start Duel'},

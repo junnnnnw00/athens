@@ -28,6 +28,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime? _lastBackPressTime;
   int _friendsShowCount = 10;
 
+  String _timeGreeting(BuildContext context, WidgetRef ref) {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return context.t('home_greeting_morning', ref: ref);
+    if (hour < 18) return context.t('home_greeting_afternoon', ref: ref);
+    return context.t('home_greeting_evening', ref: ref);
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
@@ -105,18 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (profile?.handle != null)
-                          Text(
-                            '@${profile!.handle!}',
-                            style: TextStyle(
-                              color: p.accent,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        if (profile?.handle != null) const SizedBox(height: 2),
-                        Text(context.t('home_title', ref: ref),
+                        Text(_timeGreeting(context, ref),
                             style: Theme.of(context).textTheme.headlineSmall),
                       ],
                     ),

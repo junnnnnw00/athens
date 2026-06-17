@@ -247,7 +247,7 @@ class CatalogService {
       final results = await search(query, kind: kind, limit: 5);
       for (final r in results) {
         final url = r.imageUrl;
-        if (url != null && url.isNotEmpty) return url;
+        if (url != null && url.isNotEmpty && !url.contains('2a96cbd8b46e442fc41c2b86b821562f')) return url;
       }
     } catch (_) {
       // Offline / transient — leave the item art-less for now.

@@ -322,6 +322,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             kind: kind,
             artist: primaryArtist ?? '',
             title: title,
+            catalogAlbum: widget.catalogItem?.album,
           ),
           if (kind == 'album')
             _AlbumTracksSection(
@@ -496,48 +497,53 @@ class _FriendRatingsSection extends ConsumerWidget {
               final name = r.profile.displayName?.isNotEmpty == true
                   ? r.profile.displayName!
                   : r.profile.handle;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: p.surface2,
-                      backgroundImage: r.profile.avatarUrl != null
-                          ? NetworkImage(r.profile.avatarUrl!)
-                          : null,
-                      child: r.profile.avatarUrl == null
-                          ? Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : '?',
-                              style: TextStyle(fontSize: 13, color: p.text),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+              return GestureDetector(
+                onTap: () => context.push('/friends/compare/${r.profile.id}'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: p.surface2,
+                        backgroundImage: r.profile.avatarUrl != null
+                            ? NetworkImage(r.profile.avatarUrl!)
+                            : null,
+                        child: r.profile.avatarUrl == null
+                            ? Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                style: TextStyle(fontSize: 13, color: p.text),
+                              )
+                            : null,
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: p.accent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
-                      ),
-                      child: Text(
-                        r.score.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: p.accent,
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: p.accent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
+                        child: Text(
+                          r.score.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: p.accent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(Icons.chevron_right_rounded, size: 16, color: p.faint),
+                    ],
+                  ),
                 ),
               );
             }),
@@ -605,10 +611,12 @@ class _InfoSection extends ConsumerWidget {
     required this.kind,
     required this.artist,
     required this.title,
+    this.catalogAlbum,
   });
   final String kind;
   final String artist;
   final String title;
+  final String? catalogAlbum;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -623,11 +631,17 @@ class _InfoSection extends ConsumerWidget {
       data: (info) {
         if (info.isEmpty) return const SizedBox.shrink();
 
+        final albumForLink = kind == 'track'
+            ? (catalogAlbum?.isNotEmpty == true
+                ? catalogAlbum
+                : (info.album?.isNotEmpty == true ? info.album : null))
+            : null;
+
         final facts = <String>[];
         if (info.year != null && info.year!.isNotEmpty) {
           facts.add(info.year!);
         }
-        if (info.album != null && info.album!.isNotEmpty) {
+        if (albumForLink == null && info.album != null && info.album!.isNotEmpty) {
           facts.add(info.album!);
         }
         if (info.durationMs != null && info.durationMs! > 0) {
@@ -669,6 +683,39 @@ class _InfoSection extends ConsumerWidget {
                   color: p.muted,
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+
+            // Tappable album link for tracks
+            if (albumForLink != null) ...[
+              GestureDetector(
+                onTap: () async {
+                  final service = ref.read(catalogServiceProvider);
+                  try {
+                    final results = await service.search(
+                        '$artist $albumForLink', kind: 'album');
+                    if (results.isEmpty || !context.mounted) return;
+                    context.push(
+                        '/home/item/${Uri.encodeComponent(results.first.id)}',
+                        extra: results.first);
+                  } catch (_) {}
+                },
+                child: Row(
+                  children: [
+                    Icon(Icons.album_rounded, size: 14, color: p.muted),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        albumForLink,
+                        style: TextStyle(color: p.muted, fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, size: 16, color: p.faint),
+                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
