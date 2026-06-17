@@ -73,7 +73,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       backgroundColor: p.bg,
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
+          constraints: const BoxConstraints(maxWidth: 460, maxHeight: 900),
           child: Stack(
             children: [
               PageView(

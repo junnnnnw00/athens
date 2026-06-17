@@ -102,8 +102,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                    child: Text(context.t('home_title', ref: ref),
-                        style: Theme.of(context).textTheme.headlineSmall),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (profile?.handle != null)
+                          Text(
+                            '@${profile!.handle!}',
+                            style: TextStyle(
+                              color: p.accent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        if (profile?.handle != null) const SizedBox(height: 2),
+                        Text(context.t('home_title', ref: ref),
+                            style: Theme.of(context).textTheme.headlineSmall),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   // Don't decide onboarding vs. duel until the library has
@@ -682,66 +698,88 @@ class _RecommendedCardState extends ConsumerState<_RecommendedCard> {
       borderRadius: BorderRadius.circular(AppRadii.card),
       child: Container(
         width: 164,
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: p.surface,
           borderRadius: BorderRadius.circular(AppRadii.card),
-          border: Border.all(color: p.line),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(AppRadii.card - 1),
-                topRight: Radius.circular(AppRadii.card - 1),
-              ),
+            // Full-bleed cover art
+            SizedBox(
+              width: 164,
+              height: double.infinity,
               child: CoverArt(
                 title: item.title,
                 imageUrl: item.imageUrl,
-                size: 162,
+                size: double.infinity,
+                radius: 0,
                 artist: item.primaryArtist,
                 kind: item.kind,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 13.5),
+            // Gradient overlay — bottom 55% fades to near-black
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.35, 1.0],
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.88),
+                    ],
                   ),
-                  const SizedBox(height: 1),
-                  Text(
-                    item.primaryArtist ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: p.muted, fontSize: 11.5),
-                  ),
-                ],
+                ),
               ),
             ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm),
-              child: SizedBox(
-                width: double.infinity,
-                height: 30,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
-                  ),
-                  onPressed: _busy ? null : _rate,
-                  child: _busy
-                      ? const SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(strokeWidth: 1.5))
-                      : Text(context.t('home_rate', ref: ref), style: const TextStyle(fontSize: 12)),
+            // Title + artist + rate button pinned to bottom
+            Positioned(
+              bottom: 0, left: 0, right: 0,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.primaryArtist ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.65),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 30,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadii.pill)),
+                        ),
+                        onPressed: _busy ? null : _rate,
+                        child: _busy
+                            ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5))
+                            : Text(context.t('home_rate', ref: ref), style: const TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
