@@ -326,18 +326,25 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
     await _reload();
   }
 
-  /// Manually merges [duplicateId] into [primaryId] (same logical track/album
-  /// the auto ISRC dedup missed). They collapse into one in the library.
+  /// Manually merges library item [duplicateId] into [primaryId] (same logical
+  /// track/album the auto ISRC dedup missed). They collapse into one.
   Future<void> mergeWith({
     required String primaryId,
     required String duplicateId,
-    CatalogItem? duplicateCatalogItem,
   }) async {
-    await _repo.mergeItems(
-      primaryId: primaryId,
-      duplicateId: duplicateId,
-      duplicateCatalogItem: duplicateCatalogItem,
-    );
+    await _repo.mergeItems(primaryId: primaryId, duplicateId: duplicateId);
+    ref.invalidate(canonicalAliasesProvider);
+    await _reload();
+  }
+
+  /// Merges a catalog item (possibly not in the library — a search result) onto
+  /// a rated library item [targetLocalId], so it resolves as rated everywhere.
+  Future<void> mergeCatalogInto({
+    required CatalogItem source,
+    required String targetLocalId,
+  }) async {
+    await _repo.mergeCatalogInto(source: source, targetLocalId: targetLocalId);
+    ref.invalidate(canonicalAliasesProvider);
     await _reload();
   }
 
@@ -354,4 +361,19 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
 /// Convenience: the loaded list (empty while loading / on error).
 final ratedItemsProvider = Provider<List<RatedCatalogItem>>((ref) {
   return ref.watch(libraryControllerProvider).valueOrNull ?? const [];
+});
+
+/// Manual merge aliases (naturalKey → targetCanonicalKey), loaded from Drift.
+/// Consulted via [resolveCanonicalKey] so a searched item merged onto a rated
+/// one resolves as rated even when it's not in the library. Invalidated after
+/// each merge.
+final canonicalAliasesProvider = FutureProvider<Map<String, String>>((ref) async {
+  // Re-read whenever the library changes (a merge reloads it).
+  ref.watch(libraryControllerProvider);
+  return ref.read(libraryRepositoryProvider).loadAliases();
+});
+
+/// Synchronous view of [canonicalAliasesProvider] (empty until first load).
+final canonicalAliasesMapProvider = Provider<Map<String, String>>((ref) {
+  return ref.watch(canonicalAliasesProvider).valueOrNull ?? const {};
 });

@@ -1769,6 +1769,208 @@ class LocalItemInfosCompanion extends UpdateCompanion<LocalItemInfo> {
   }
 }
 
+class $LocalAliasesTable extends LocalAliases
+    with TableInfo<$LocalAliasesTable, CanonicalAlias> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalAliasesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _naturalKeyMeta =
+      const VerificationMeta('naturalKey');
+  @override
+  late final GeneratedColumn<String> naturalKey = GeneratedColumn<String>(
+      'natural_key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _canonicalKeyMeta =
+      const VerificationMeta('canonicalKey');
+  @override
+  late final GeneratedColumn<String> canonicalKey = GeneratedColumn<String>(
+      'canonical_key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [naturalKey, canonicalKey];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_aliases';
+  @override
+  VerificationContext validateIntegrity(Insertable<CanonicalAlias> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('natural_key')) {
+      context.handle(
+          _naturalKeyMeta,
+          naturalKey.isAcceptableOrUnknown(
+              data['natural_key']!, _naturalKeyMeta));
+    } else if (isInserting) {
+      context.missing(_naturalKeyMeta);
+    }
+    if (data.containsKey('canonical_key')) {
+      context.handle(
+          _canonicalKeyMeta,
+          canonicalKey.isAcceptableOrUnknown(
+              data['canonical_key']!, _canonicalKeyMeta));
+    } else if (isInserting) {
+      context.missing(_canonicalKeyMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {naturalKey};
+  @override
+  CanonicalAlias map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CanonicalAlias(
+      naturalKey: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}natural_key'])!,
+      canonicalKey: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}canonical_key'])!,
+    );
+  }
+
+  @override
+  $LocalAliasesTable createAlias(String alias) {
+    return $LocalAliasesTable(attachedDatabase, alias);
+  }
+}
+
+class CanonicalAlias extends DataClass implements Insertable<CanonicalAlias> {
+  final String naturalKey;
+  final String canonicalKey;
+  const CanonicalAlias({required this.naturalKey, required this.canonicalKey});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['natural_key'] = Variable<String>(naturalKey);
+    map['canonical_key'] = Variable<String>(canonicalKey);
+    return map;
+  }
+
+  LocalAliasesCompanion toCompanion(bool nullToAbsent) {
+    return LocalAliasesCompanion(
+      naturalKey: Value(naturalKey),
+      canonicalKey: Value(canonicalKey),
+    );
+  }
+
+  factory CanonicalAlias.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CanonicalAlias(
+      naturalKey: serializer.fromJson<String>(json['naturalKey']),
+      canonicalKey: serializer.fromJson<String>(json['canonicalKey']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'naturalKey': serializer.toJson<String>(naturalKey),
+      'canonicalKey': serializer.toJson<String>(canonicalKey),
+    };
+  }
+
+  CanonicalAlias copyWith({String? naturalKey, String? canonicalKey}) =>
+      CanonicalAlias(
+        naturalKey: naturalKey ?? this.naturalKey,
+        canonicalKey: canonicalKey ?? this.canonicalKey,
+      );
+  CanonicalAlias copyWithCompanion(LocalAliasesCompanion data) {
+    return CanonicalAlias(
+      naturalKey:
+          data.naturalKey.present ? data.naturalKey.value : this.naturalKey,
+      canonicalKey: data.canonicalKey.present
+          ? data.canonicalKey.value
+          : this.canonicalKey,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CanonicalAlias(')
+          ..write('naturalKey: $naturalKey, ')
+          ..write('canonicalKey: $canonicalKey')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(naturalKey, canonicalKey);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CanonicalAlias &&
+          other.naturalKey == this.naturalKey &&
+          other.canonicalKey == this.canonicalKey);
+}
+
+class LocalAliasesCompanion extends UpdateCompanion<CanonicalAlias> {
+  final Value<String> naturalKey;
+  final Value<String> canonicalKey;
+  final Value<int> rowid;
+  const LocalAliasesCompanion({
+    this.naturalKey = const Value.absent(),
+    this.canonicalKey = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalAliasesCompanion.insert({
+    required String naturalKey,
+    required String canonicalKey,
+    this.rowid = const Value.absent(),
+  })  : naturalKey = Value(naturalKey),
+        canonicalKey = Value(canonicalKey);
+  static Insertable<CanonicalAlias> custom({
+    Expression<String>? naturalKey,
+    Expression<String>? canonicalKey,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (naturalKey != null) 'natural_key': naturalKey,
+      if (canonicalKey != null) 'canonical_key': canonicalKey,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalAliasesCompanion copyWith(
+      {Value<String>? naturalKey,
+      Value<String>? canonicalKey,
+      Value<int>? rowid}) {
+    return LocalAliasesCompanion(
+      naturalKey: naturalKey ?? this.naturalKey,
+      canonicalKey: canonicalKey ?? this.canonicalKey,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (naturalKey.present) {
+      map['natural_key'] = Variable<String>(naturalKey.value);
+    }
+    if (canonicalKey.present) {
+      map['canonical_key'] = Variable<String>(canonicalKey.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalAliasesCompanion(')
+          ..write('naturalKey: $naturalKey, ')
+          ..write('canonicalKey: $canonicalKey, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1778,6 +1980,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LocalComparisonsTable(this);
   late final $LocalReviewsTable localReviews = $LocalReviewsTable(this);
   late final $LocalItemInfosTable localItemInfos = $LocalItemInfosTable(this);
+  late final $LocalAliasesTable localAliases = $LocalAliasesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1787,7 +1990,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         localRatings,
         localComparisons,
         localReviews,
-        localItemInfos
+        localItemInfos,
+        localAliases
       ];
 }
 
@@ -2740,6 +2944,135 @@ typedef $$LocalItemInfosTableProcessedTableManager = ProcessedTableManager<
     ),
     LocalItemInfo,
     PrefetchHooks Function()>;
+typedef $$LocalAliasesTableCreateCompanionBuilder = LocalAliasesCompanion
+    Function({
+  required String naturalKey,
+  required String canonicalKey,
+  Value<int> rowid,
+});
+typedef $$LocalAliasesTableUpdateCompanionBuilder = LocalAliasesCompanion
+    Function({
+  Value<String> naturalKey,
+  Value<String> canonicalKey,
+  Value<int> rowid,
+});
+
+class $$LocalAliasesTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalAliasesTable> {
+  $$LocalAliasesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get naturalKey => $composableBuilder(
+      column: $table.naturalKey, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get canonicalKey => $composableBuilder(
+      column: $table.canonicalKey, builder: (column) => ColumnFilters(column));
+}
+
+class $$LocalAliasesTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalAliasesTable> {
+  $$LocalAliasesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get naturalKey => $composableBuilder(
+      column: $table.naturalKey, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get canonicalKey => $composableBuilder(
+      column: $table.canonicalKey,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$LocalAliasesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalAliasesTable> {
+  $$LocalAliasesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get naturalKey => $composableBuilder(
+      column: $table.naturalKey, builder: (column) => column);
+
+  GeneratedColumn<String> get canonicalKey => $composableBuilder(
+      column: $table.canonicalKey, builder: (column) => column);
+}
+
+class $$LocalAliasesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $LocalAliasesTable,
+    CanonicalAlias,
+    $$LocalAliasesTableFilterComposer,
+    $$LocalAliasesTableOrderingComposer,
+    $$LocalAliasesTableAnnotationComposer,
+    $$LocalAliasesTableCreateCompanionBuilder,
+    $$LocalAliasesTableUpdateCompanionBuilder,
+    (
+      CanonicalAlias,
+      BaseReferences<_$AppDatabase, $LocalAliasesTable, CanonicalAlias>
+    ),
+    CanonicalAlias,
+    PrefetchHooks Function()> {
+  $$LocalAliasesTableTableManager(_$AppDatabase db, $LocalAliasesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalAliasesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalAliasesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalAliasesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> naturalKey = const Value.absent(),
+            Value<String> canonicalKey = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalAliasesCompanion(
+            naturalKey: naturalKey,
+            canonicalKey: canonicalKey,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String naturalKey,
+            required String canonicalKey,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              LocalAliasesCompanion.insert(
+            naturalKey: naturalKey,
+            canonicalKey: canonicalKey,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$LocalAliasesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $LocalAliasesTable,
+    CanonicalAlias,
+    $$LocalAliasesTableFilterComposer,
+    $$LocalAliasesTableOrderingComposer,
+    $$LocalAliasesTableAnnotationComposer,
+    $$LocalAliasesTableCreateCompanionBuilder,
+    $$LocalAliasesTableUpdateCompanionBuilder,
+    (
+      CanonicalAlias,
+      BaseReferences<_$AppDatabase, $LocalAliasesTable, CanonicalAlias>
+    ),
+    CanonicalAlias,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2754,4 +3087,6 @@ class $AppDatabaseManager {
       $$LocalReviewsTableTableManager(_db, _db.localReviews);
   $$LocalItemInfosTableTableManager get localItemInfos =>
       $$LocalItemInfosTableTableManager(_db, _db.localItemInfos);
+  $$LocalAliasesTableTableManager get localAliases =>
+      $$LocalAliasesTableTableManager(_db, _db.localAliases);
 }

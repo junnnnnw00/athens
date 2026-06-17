@@ -662,6 +662,49 @@ String catalogCanonicalKey({
   return catalogMatchKey(kind: kind, title: title, artist: artist);
 }
 
+/// Resolves an item's effective canonical key, applying manual merge [aliases].
+///
+/// Manual merges (see the detail-screen "merge as same" action) record an alias
+/// from an item's natural key — its ISRC/text canonical key AND its plain text
+/// key — to a target canonical key. This lets a searched item the automatic
+/// ISRC dedup couldn't bridge (different-language release, different ISRC) map
+/// onto an already-rated item, even when the searched item is not in the
+/// library. Pass the persisted [storedCanonicalKey] for library items.
+String resolveCanonicalKey({
+  required String kind,
+  required String title,
+  String? artist,
+  String? isrc,
+  String? storedCanonicalKey,
+  Map<String, String> aliases = const {},
+}) {
+  final natural = (storedCanonicalKey != null && storedCanonicalKey.isNotEmpty)
+      ? storedCanonicalKey
+      : catalogCanonicalKey(kind: kind, title: title, artist: artist, isrc: isrc);
+  if (aliases.isEmpty) return natural;
+  final textKey = catalogMatchKey(kind: kind, title: title, artist: artist);
+  return aliases[natural] ?? aliases[textKey] ?? natural;
+}
+
+/// The set of keys that should all be aliased onto a merge target so the item
+/// resolves to it from anywhere: its canonical (ISRC/stored) key AND its plain
+/// normalized text key.
+Set<String> naturalKeysFor({
+  required String kind,
+  required String title,
+  String? artist,
+  String? isrc,
+  String? storedCanonicalKey,
+}) {
+  final canonical = (storedCanonicalKey != null && storedCanonicalKey.isNotEmpty)
+      ? storedCanonicalKey
+      : catalogCanonicalKey(kind: kind, title: title, artist: artist, isrc: isrc);
+  return {
+    canonical,
+    catalogMatchKey(kind: kind, title: title, artist: artist),
+  }..removeWhere((k) => k.isEmpty);
+}
+
 final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
   final profile = ref.watch(myProfileProvider).valueOrNull;
   if (profile == null) return [];

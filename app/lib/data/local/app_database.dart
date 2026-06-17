@@ -85,6 +85,20 @@ class LocalReviews extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Manual cross-identity merge aliases: maps an item's natural key (its ISRC or
+/// normalized text key) to a target canonical key, so a searched item that the
+/// automatic ISRC dedup couldn't bridge (e.g. a different-language release with
+/// a different ISRC) resolves to an already-rated item — even when the searched
+/// item is not in the library. See `resolveCanonicalKey`.
+@DataClassName('CanonicalAlias')
+class LocalAliases extends Table {
+  TextColumn get naturalKey => text()();
+  TextColumn get canonicalKey => text()();
+
+  @override
+  Set<Column> get primaryKey => {naturalKey};
+}
+
 /// Cached rich item detail (year/album/duration/listeners/summary/genres/top
 /// tracks) keyed by a `kind|artist|title` signature. Persisted so the item
 /// detail screen shows the last-fetched info fully offline.
@@ -102,14 +116,14 @@ class LocalItemInfos extends Table {
 // ============================================================================
 
 @DriftDatabase(
-    tables: [LocalItems, LocalRatings, LocalComparisons, LocalReviews, LocalItemInfos])
+    tables: [LocalItems, LocalRatings, LocalComparisons, LocalReviews, LocalItemInfos, LocalAliases])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -127,6 +141,9 @@ class AppDatabase extends _$AppDatabase {
         if (from < 4) {
           await m.addColumn(localItems, localItems.canonicalKey);
         }
+        if (from < 5) {
+          await m.createTable(localAliases);
+        }
       },
     );
   }
@@ -135,6 +152,15 @@ class AppDatabase extends _$AppDatabase {
   Future<void> setItemCanonicalKey(String id, String canonicalKey) =>
       (update(localItems)..where((i) => i.id.equals(id)))
           .write(LocalItemsCompanion(canonicalKey: Value(canonicalKey)));
+
+  // Canonical merge aliases
+  Future<List<CanonicalAlias>> getAllAliases() => select(localAliases).get();
+
+  Future<void> upsertAlias(LocalAliasesCompanion alias) =>
+      into(localAliases).insertOnConflictUpdate(alias);
+
+  Future<void> deleteAlias(String naturalKey) =>
+      (delete(localAliases)..where((a) => a.naturalKey.equals(naturalKey))).go();
 
   // Cached item detail info
   Future<LocalItemInfo?> getItemInfo(String key) =>

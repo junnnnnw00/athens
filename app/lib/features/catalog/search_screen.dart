@@ -218,17 +218,26 @@ class _SearchBody extends ConsumerWidget {
     final s = ref.watch(searchControllerProvider);
     final kind = ref.watch(searchKindProvider);
     final ratedItems = ref.watch(ratedItemsProvider);
+    final aliases = ref.watch(canonicalAliasesMapProvider);
     final addedIds = ratedItems.map((e) => e.id).toSet();
-    // Canonical (ISRC) + text keys of rated items, so an already-rated copy
-    // listed under a translated/transliterated title still shows as added.
+    // Resolved-canonical (ISRC + manual merge aliases) + text keys of rated
+    // items, so an already-rated copy listed under a translated/transliterated
+    // title — or one manually merged — still shows as added.
     final addedKeys = <String>{};
     for (final r in ratedItems) {
-      addedKeys.add(r.canonicalKey);
+      addedKeys.add(resolveCanonicalKey(
+        kind: r.kind,
+        title: r.title,
+        artist: r.primaryArtist,
+        storedCanonicalKey: r.storedCanonicalKey,
+        aliases: aliases,
+      ));
       addedKeys.add(catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist));
     }
     bool isAdded(CatalogItem i) =>
         addedIds.contains(i.id) ||
-        addedKeys.contains(i.canonicalKey) ||
+        addedKeys.contains(resolveCanonicalKey(
+            kind: i.kind, title: i.title, artist: i.primaryArtist, isrc: i.isrc, aliases: aliases)) ||
         addedKeys.contains(
             catalogMatchKey(kind: i.kind, title: i.title, artist: i.primaryArtist));
 

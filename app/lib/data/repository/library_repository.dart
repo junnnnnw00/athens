@@ -173,6 +173,7 @@ class LibraryRepository {
   Future<List<RatedCatalogItem>> loadLibrary() async {
     final ratings = await _db.getRatingsForUser(userId);
     final items = {for (final i in await _db.getAllItems()) i.id: i};
+    final aliases = await loadAliases();
     final result = <RatedCatalogItem>[];
     for (final r in ratings) {
       final item = items[r.itemId];
@@ -199,7 +200,13 @@ class LibraryRepository {
     // ranking history isn't lost.
     final byKey = <String, RatedCatalogItem>{};
     for (final r in result) {
-      final key = r.canonicalKey;
+      final key = resolveCanonicalKey(
+        kind: r.kind,
+        title: r.title,
+        artist: r.primaryArtist,
+        storedCanonicalKey: r.storedCanonicalKey,
+        aliases: aliases,
+      );
       final existing = byKey[key];
       if (existing == null ||
           r.comparisons > existing.comparisons ||
@@ -285,41 +292,80 @@ class LibraryRepository {
     await _db.setItemCanonicalKey(localId, canonicalKey);
   }
 
-  /// Manually merges [duplicateId] into [primaryId] by assigning both the same
-  /// canonical key, so `loadLibrary` collapses them into one (keeping the
-  /// most-dueled copy). The duplicate's rating/duel rows stay in the DB, so the
-  /// merge is reversible by re-resolving each item's key. Local-only.
+  /// All manual merge aliases (naturalKey → targetCanonicalKey). Local-only.
+  Future<Map<String, String>> loadAliases() async {
+    final rows = await _db.getAllAliases();
+    return {for (final a in rows) a.naturalKey: a.canonicalKey};
+  }
+
+  /// Records that every key in [naturalKeys] resolves to [targetCanonical].
+  Future<void> addMergeAliases(
+      Set<String> naturalKeys, String targetCanonical) async {
+    for (final k in naturalKeys) {
+      if (k.isEmpty || k == targetCanonical) continue;
+      await _db.upsertAlias(LocalAliasesCompanion(
+        naturalKey: Value(k),
+        canonicalKey: Value(targetCanonical),
+      ));
+    }
+  }
+
+  /// The canonical key a library item currently resolves to (after aliases) —
+  /// the merge target other items should be aliased onto.
+  Future<String> resolvedCanonicalForItem(String localId) async {
+    final item = await _db.getItemById(localId);
+    if (item == null) return '';
+    final aliases = await loadAliases();
+    return resolveCanonicalKey(
+      kind: item.kind,
+      title: item.title,
+      artist: item.primaryArtist,
+      storedCanonicalKey: item.canonicalKey,
+      aliases: aliases,
+    );
+  }
+
+  /// Manually merges the library item [duplicateId] into [primaryId]: aliases the
+  /// duplicate's natural keys onto the primary's resolved canonical key, so
+  /// `loadLibrary` collapses them into one. Reversible by deleting the aliases.
   Future<void> mergeItems({
     required String primaryId,
     required String duplicateId,
-    CatalogItem? duplicateCatalogItem,
   }) async {
-    final primary = await _db.getItemById(primaryId);
-    if (primary == null) return;
-    final key =
-        (primary.canonicalKey != null && primary.canonicalKey!.isNotEmpty)
-            ? primary.canonicalKey!
-            : catalogMatchKey(
-                kind: primary.kind,
-                title: primary.title,
-                artist: primary.primaryArtist);
+    final dup = await _db.getItemById(duplicateId);
+    if (dup == null) return;
+    final target = await resolvedCanonicalForItem(primaryId);
+    if (target.isEmpty) return;
+    await addMergeAliases(
+      naturalKeysFor(
+        kind: dup.kind,
+        title: dup.title,
+        artist: dup.primaryArtist,
+        storedCanonicalKey: dup.canonicalKey,
+      ),
+      target,
+    );
+  }
 
-    if (duplicateCatalogItem != null) {
-      await _db.upsertItem(LocalItemsCompanion(
-        id: Value(duplicateCatalogItem.id),
-        kind: Value(duplicateCatalogItem.kind),
-        source: Value(duplicateCatalogItem.source ?? 'unknown'),
-        sourceId: Value(duplicateCatalogItem.sourceId ?? duplicateCatalogItem.id),
-        title: Value(duplicateCatalogItem.title),
-        primaryArtist: Value(duplicateCatalogItem.primaryArtist),
-        imageUrl: Value(duplicateCatalogItem.imageUrl),
-        tags: Value(_encodeTags(duplicateCatalogItem.tags)),
-        canonicalKey: Value(key),
-      ));
-    }
-
-    await _db.setItemCanonicalKey(primaryId, key);
-    await _db.setItemCanonicalKey(duplicateId, key);
+  /// Manually merges an arbitrary catalog item (possibly NOT in the library —
+  /// e.g. a search result) onto the resolved canonical key of library item
+  /// [targetLocalId]. The catalog item then resolves as rated everywhere
+  /// (search badge, detail score) without being added to the library.
+  Future<void> mergeCatalogInto({
+    required CatalogItem source,
+    required String targetLocalId,
+  }) async {
+    final target = await resolvedCanonicalForItem(targetLocalId);
+    if (target.isEmpty) return;
+    await addMergeAliases(
+      naturalKeysFor(
+        kind: source.kind,
+        title: source.title,
+        artist: source.primaryArtist,
+        isrc: source.isrc,
+      ),
+      target,
+    );
   }
 
   Future<RatedCatalogItem?> getItem(String itemId) async {

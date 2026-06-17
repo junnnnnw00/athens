@@ -121,6 +121,44 @@ void main() {
       expect(item.canonicalKey, 'isrc:US1234567890');
     });
   });
+
+  group('resolveCanonicalKey + naturalKeysFor (manual merge)', () {
+    test('with no aliases returns the natural key', () {
+      final key = resolveCanonicalKey(
+          kind: 'track', title: 'Into the Night', artist: 'YOASOBI', isrc: 'US111');
+      expect(key, 'isrc:US111');
+    });
+
+    test('alias maps a searched item onto a merged target canonical key', () {
+      // English release (different ISRC) merged onto the Japanese rating.
+      const target = 'isrc:JPU902000123';
+      final aliases = {
+        for (final k in naturalKeysFor(
+            kind: 'track', title: 'Into the Night', artist: 'YOASOBI', isrc: 'USABC1234567'))
+          k: target,
+      };
+      // The searched English item now resolves to the Japanese canonical key.
+      final resolved = resolveCanonicalKey(
+          kind: 'track',
+          title: 'Into the Night',
+          artist: 'YOASOBI',
+          isrc: 'USABC1234567',
+          aliases: aliases);
+      expect(resolved, target);
+    });
+
+    test('alias also matches by text key when the item carries no ISRC', () {
+      const target = 'isrc:JPU902000123';
+      final aliases = {
+        for (final k in naturalKeysFor(
+            kind: 'track', title: 'Into the Night', artist: 'YOASOBI'))
+          k: target,
+      };
+      final resolved = resolveCanonicalKey(
+          kind: 'track', title: 'Into the Night', artist: 'YOASOBI', aliases: aliases);
+      expect(resolved, target);
+    });
+  });
 }
 
 class _ThrowingLastfmApi implements LastfmApi {

@@ -94,31 +94,41 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     }
   }
 
-  /// Manually merge another library item into this one — for cross-language
-  /// duplicates the automatic ISRC dedup missed. Opens a searchable picker of
-  /// same-kind items; the chosen one collapses into this entry.
+  /// Manually mark this item as the same recording as a rated library item —
+  /// for cross-language duplicates the automatic ISRC dedup missed. Works both
+  /// for a rated item (another library item collapses into it) AND for a
+  /// searched item not in the library (it adopts the chosen item's rating).
   Future<void> _mergeDuplicate() async {
     final items = ref.read(ratedItemsProvider);
-    final current = items.where((i) => i.id == widget.itemId).firstOrNull;
-    if (current == null) return;
-    final candidates = items
-        .where((i) => i.kind == current.kind && i.canonicalKey != current.canonicalKey)
-        .toList();
+    final directItem = items.where((i) => i.id == widget.itemId).firstOrNull;
+    final catalog = widget.catalogItem;
+    final selfKind = directItem?.kind ?? catalog?.kind;
+
+    final candidates = items.where((i) {
+      if (directItem != null && i.id == directItem.id) return false;
+      if (selfKind != null && i.kind != selfKind) return false;
+      return true;
+    }).toList();
 
     final messenger = ScaffoldMessenger.of(context);
     final toast = context.t('lib_merged_toast', ref: ref);
-    final selected = await showModalBottomSheet<CatalogItem>(
+    final selected = await showModalBottomSheet<RatedCatalogItem>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (c) => _MergePicker(current: current, candidates: candidates),
+      builder: (_) => _MergePicker(candidates: candidates),
     );
     if (selected == null || !mounted) return;
-    await ref.read(libraryControllerProvider.notifier).mergeWith(
-          primaryId: widget.itemId,
-          duplicateId: selected.id,
-          duplicateCatalogItem: selected,
-        );
+    final controller = ref.read(libraryControllerProvider.notifier);
+    if (directItem != null) {
+      // This item is in the library: collapse the chosen item into it.
+      await controller.mergeWith(
+          primaryId: directItem.id, duplicateId: selected.id);
+    } else if (catalog != null) {
+      // This item is a search result: alias it onto the chosen rated item.
+      await controller.mergeCatalogInto(
+          source: catalog, targetLocalId: selected.id);
+    }
     messenger.showSnackBar(SnackBar(content: Text(toast)));
   }
 
@@ -206,20 +216,46 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   Widget build(BuildContext context) {
     final p = context.palette;
     final items = ref.watch(ratedItemsProvider);
-    final item = items.where((i) => i.id == widget.itemId).firstOrNull;
+    final aliases = ref.watch(canonicalAliasesMapProvider);
+    final c = widget.catalogItem;
+
+    final directItem = items.where((i) => i.id == widget.itemId).firstOrNull;
+    // An opened search result may be the same recording as a rated library item
+    // — via the automatic ISRC match OR a manual merge alias — even though its
+    // id differs. Resolve it so its score shows and it's treated as rated.
+    RatedCatalogItem? aliasItem;
+    if (directItem == null && c != null) {
+      final target = resolveCanonicalKey(
+          kind: c.kind, title: c.title, artist: c.primaryArtist, isrc: c.isrc, aliases: aliases);
+      for (final r in items) {
+        final rk = resolveCanonicalKey(
+            kind: r.kind,
+            title: r.title,
+            artist: r.primaryArtist,
+            storedCanonicalKey: r.storedCanonicalKey,
+            aliases: aliases);
+        if (rk == target) {
+          aliasItem = r;
+          break;
+        }
+      }
+    }
+    final item = directItem ?? aliasItem;
 
     final isUnrated = item == null;
-    if (isUnrated && widget.catalogItem == null) {
+    if (isUnrated && c == null) {
       return Scaffold(
         appBar: AppBar(),
         body: Center(child: Text(context.t('lib_item_not_found', ref: ref))),
       );
     }
 
-    final String title = item == null ? widget.catalogItem!.title : item.title;
-    final String? primaryArtist = item == null ? widget.catalogItem!.primaryArtist : item.primaryArtist;
-    final String? imageUrl = item == null ? widget.catalogItem!.imageUrl : item.imageUrl;
-    final String kind = item == null ? widget.catalogItem!.kind : item.kind;
+    // Display prefers the opened catalog item (e.g. the searched title in its own
+    // language), falling back to the rated record.
+    final String title = c?.title ?? item!.title;
+    final String? primaryArtist = c?.primaryArtist ?? item?.primaryArtist;
+    final String? imageUrl = c?.imageUrl ?? item?.imageUrl;
+    final String kind = c?.kind ?? item!.kind;
 
     final storedTags = !isUnrated ? item.tags : widget.catalogItem?.tags ?? [];
     final liveTags = isUnrated && storedTags.isEmpty
@@ -243,44 +279,44 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        actions: isUnrated
-            ? null
-            : [
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert_rounded),
-                  onSelected: (v) {
-                    if (v == 'replace') _replace();
-                    if (v == 'merge') _mergeDuplicate();
-                    if (v == 'delete') _confirmDelete();
-                  },
-                  itemBuilder: (c) => [
-                    PopupMenuItem(
-                      value: 'replace',
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.refresh_rounded),
-                        title: Text(context.t('lib_placement_test', ref: ref)),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'merge',
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.merge_rounded),
-                        title: Text(context.t('lib_merge', ref: ref)),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.delete_outline_rounded),
-                        title: Text(context.t('lib_delete', ref: ref)),
-                      ),
-                    ),
-                  ],
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (v) {
+              if (v == 'replace') _replace();
+              if (v == 'merge') _mergeDuplicate();
+              if (v == 'delete') _confirmDelete();
+            },
+            itemBuilder: (ctx) => [
+              if (!isUnrated)
+                PopupMenuItem(
+                  value: 'replace',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.refresh_rounded),
+                    title: Text(context.t('lib_placement_test', ref: ref)),
+                  ),
                 ),
-              ],
+              PopupMenuItem(
+                value: 'merge',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.merge_rounded),
+                  title: Text(context.t('lib_merge', ref: ref)),
+                ),
+              ),
+              if (!isUnrated)
+                PopupMenuItem(
+                  value: 'delete',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.delete_outline_rounded),
+                    title: Text(context.t('lib_delete', ref: ref)),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(
@@ -976,13 +1012,20 @@ class _AlbumTracksSection extends ConsumerWidget {
         if (tracks.isEmpty) return const SizedBox.shrink();
 
         final ratedItems = ref.watch(ratedItemsProvider);
-        // Keyed by both the canonical (ISRC) key and the text key, so an
-        // album track that was rated under a translated title still shows its
-        // score (album tracks from iTunes carry ISRCs).
+        final aliases = ref.watch(canonicalAliasesMapProvider);
+        // Keyed by resolved-canonical (ISRC + merge aliases) and text key, so an
+        // album track rated under a translated title (or manually merged) still
+        // shows its score.
         final ratedKeys = <String, double>{};
         for (final r in ratedItems) {
           final score = scoreFromElo(r.elo);
-          ratedKeys[r.canonicalKey] = score;
+          ratedKeys[resolveCanonicalKey(
+            kind: r.kind,
+            title: r.title,
+            artist: r.primaryArtist,
+            storedCanonicalKey: r.storedCanonicalKey,
+            aliases: aliases,
+          )] = score;
           ratedKeys[catalogMatchKey(
               kind: r.kind, title: r.title, artist: r.primaryArtist)] = score;
         }
@@ -997,7 +1040,13 @@ class _AlbumTracksSection extends ConsumerWidget {
             ...tracks.asMap().entries.map((entry) {
               final idx = entry.key;
               final track = entry.value;
-              final score = ratedKeys[track.canonicalKey] ??
+              final score = ratedKeys[resolveCanonicalKey(
+                    kind: 'track',
+                    title: track.title,
+                    artist: track.primaryArtist,
+                    isrc: track.isrc,
+                    aliases: aliases,
+                  )] ??
                   ratedKeys[catalogMatchKey(
                       kind: 'track', title: track.title, artist: track.primaryArtist ?? '')];
 
@@ -1065,68 +1114,29 @@ class _AlbumTracksSection extends ConsumerWidget {
   }
 }
 
-/// Searchable picker of same-kind library items or catalog items to merge into the current one.
-class _MergePicker extends ConsumerStatefulWidget {
-  const _MergePicker({required this.current, required this.candidates});
-  final RatedCatalogItem current;
+/// Searchable picker of rated library items to merge the current item onto.
+/// Returns the chosen rated item (or null on dismiss).
+class _MergePicker extends StatefulWidget {
+  const _MergePicker({required this.candidates});
   final List<RatedCatalogItem> candidates;
 
   @override
-  ConsumerState<_MergePicker> createState() => _MergePickerState();
+  State<_MergePicker> createState() => _MergePickerState();
 }
 
-class _MergePickerState extends ConsumerState<_MergePicker> {
+class _MergePickerState extends State<_MergePicker> {
   String _query = '';
-  List<CatalogItem> _searchResults = const [];
-  bool _loading = false;
-  Timer? _debounce;
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _onQueryChanged(String val) {
-    _debounce?.cancel();
-    setState(() {
-      _query = val;
-      if (val.trim().isEmpty) {
-        _searchResults = const [];
-        _loading = false;
-        return;
-      }
-      _loading = true;
-    });
-
-    _debounce = Timer(const Duration(milliseconds: 400), () async {
-      if (!mounted) return;
-      try {
-        final service = ref.read(catalogServiceProvider);
-        final results = await service.search(
-          val.trim(),
-          kind: widget.current.kind,
-          limit: 20,
-        );
-        if (!mounted) return;
-        setState(() {
-          _searchResults = results.where((item) => item.id != widget.current.id).toList();
-          _loading = false;
-        });
-      } catch (_) {
-        if (!mounted) return;
-        setState(() {
-          _loading = false;
-        });
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final q = _query.toLowerCase().trim();
-    final isSearchMode = q.isNotEmpty;
+    final filtered = q.isEmpty
+        ? widget.candidates
+        : widget.candidates.where((i) {
+            final hay = '${i.title} ${i.primaryArtist ?? ''}'.toLowerCase();
+            return hay.contains(q);
+          }).toList();
 
     return Padding(
       padding: EdgeInsets.only(
@@ -1150,109 +1160,47 @@ class _MergePickerState extends ConsumerState<_MergePicker> {
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               hintText: context.t('lib_merge_hint'),
               isDense: true,
-              suffixIcon: _loading
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : null,
             ),
-            onChanged: _onQueryChanged,
+            onChanged: (v) => setState(() => _query = v),
           ),
           const SizedBox(height: AppSpacing.md),
-          if (isSearchMode) ...[
-            if (!_loading && _searchResults.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                child: Center(
-                  child: Text(context.t('search_no_results', ref: ref),
-                      style: TextStyle(color: p.muted)),
-                ),
-              )
-            else
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: _searchResults.length,
-                  separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
-                  itemBuilder: (c, i) {
-                    final it = _searchResults[i];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CoverArt(
-                        title: it.title,
-                        imageUrl: it.imageUrl,
-                        size: 44,
-                        radius: it.kind == 'artist' ? 22 : 8,
-                        artist: it.primaryArtist,
-                        kind: it.kind,
-                      ),
-                      title: Text(it.title,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: it.primaryArtist != null
-                          ? Text(it.primaryArtist!,
-                              maxLines: 1, overflow: TextOverflow.ellipsis)
-                          : null,
-                      onTap: () => Navigator.pop(c, it),
-                    );
-                  },
-                ),
+          if (filtered.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+              child: Center(
+                child: Text(context.t('lib_merge_empty'),
+                    style: TextStyle(color: p.muted)),
               ),
-          ] else ...[
-            Builder(builder: (context) {
-              final filtered = widget.candidates;
-              if (filtered.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                  child: Center(
-                    child: Text(context.t('lib_merge_empty'),
-                        style: TextStyle(color: p.muted)),
-                  ),
-                );
-              }
-              return Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
-                  itemBuilder: (c, i) {
-                    final it = filtered[i];
-                    final catalogItem = CatalogItem(
-                      id: it.id,
-                      kind: it.kind,
+            )
+          else
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: filtered.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
+                itemBuilder: (c, i) {
+                  final it = filtered[i];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CoverArt(
                       title: it.title,
-                      primaryArtist: it.primaryArtist,
                       imageUrl: it.imageUrl,
-                      source: it.id.contains(':') ? it.id.split(':').first : 'itunes',
-                      sourceId: it.id.contains(':') ? it.id.split(':').last : it.id,
-                    );
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CoverArt(
-                        title: it.title,
-                        imageUrl: it.imageUrl,
-                        size: 44,
-                        radius: it.kind == 'artist' ? 22 : 8,
-                        artist: it.primaryArtist,
-                        kind: it.kind,
-                      ),
-                      title: Text(it.title,
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: it.primaryArtist != null
-                          ? Text(it.primaryArtist!,
-                              maxLines: 1, overflow: TextOverflow.ellipsis)
-                          : null,
-                      onTap: () => Navigator.pop(c, catalogItem),
-                    );
-                  },
-                ),
-              );
-            }),
-          ],
+                      size: 44,
+                      radius: it.kind == 'artist' ? 22 : 8,
+                      artist: it.primaryArtist,
+                      kind: it.kind,
+                    ),
+                    title: Text(it.title,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: it.primaryArtist != null
+                        ? Text(it.primaryArtist!,
+                            maxLines: 1, overflow: TextOverflow.ellipsis)
+                        : null,
+                    onTap: () => Navigator.pop(c, it),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
