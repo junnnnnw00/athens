@@ -331,8 +331,13 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
   Future<void> mergeWith({
     required String primaryId,
     required String duplicateId,
+    CatalogItem? duplicateCatalogItem,
   }) async {
-    await _repo.mergeItems(primaryId: primaryId, duplicateId: duplicateId);
+    await _repo.mergeItems(
+      primaryId: primaryId,
+      duplicateId: duplicateId,
+      duplicateCatalogItem: duplicateCatalogItem,
+    );
     await _reload();
   }
 

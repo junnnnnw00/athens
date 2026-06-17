@@ -292,6 +292,7 @@ class LibraryRepository {
   Future<void> mergeItems({
     required String primaryId,
     required String duplicateId,
+    CatalogItem? duplicateCatalogItem,
   }) async {
     final primary = await _db.getItemById(primaryId);
     if (primary == null) return;
@@ -302,6 +303,21 @@ class LibraryRepository {
                 kind: primary.kind,
                 title: primary.title,
                 artist: primary.primaryArtist);
+
+    if (duplicateCatalogItem != null) {
+      await _db.upsertItem(LocalItemsCompanion(
+        id: Value(duplicateCatalogItem.id),
+        kind: Value(duplicateCatalogItem.kind),
+        source: Value(duplicateCatalogItem.source ?? 'unknown'),
+        sourceId: Value(duplicateCatalogItem.sourceId ?? duplicateCatalogItem.id),
+        title: Value(duplicateCatalogItem.title),
+        primaryArtist: Value(duplicateCatalogItem.primaryArtist),
+        imageUrl: Value(duplicateCatalogItem.imageUrl),
+        tags: Value(_encodeTags(duplicateCatalogItem.tags)),
+        canonicalKey: Value(key),
+      ));
+    }
+
     await _db.setItemCanonicalKey(primaryId, key);
     await _db.setItemCanonicalKey(duplicateId, key);
   }

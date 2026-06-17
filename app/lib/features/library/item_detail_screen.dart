@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -106,7 +107,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
 
     final messenger = ScaffoldMessenger.of(context);
     final toast = context.t('lib_merged_toast', ref: ref);
-    final selected = await showModalBottomSheet<RatedCatalogItem>(
+    final selected = await showModalBottomSheet<CatalogItem>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -116,6 +117,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     await ref.read(libraryControllerProvider.notifier).mergeWith(
           primaryId: widget.itemId,
           duplicateId: selected.id,
+          duplicateCatalogItem: selected,
         );
     messenger.showSnackBar(SnackBar(content: Text(toast)));
   }
@@ -369,11 +371,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             kind: kind,
             artist: primaryArtist ?? '',
             title: title,
-            catalogAlbum: widget.catalogItem?.album,
-            catalogAlbumSourceId: widget.catalogItem?.albumSourceId,
-            catalogTrackSourceId: widget.catalogItem?.source == 'itunes'
-                ? widget.catalogItem?.sourceId
-                : null,
+            catalogAlbum: item == null ? widget.catalogItem?.album : null,
+            catalogAlbumSourceId: item == null ? widget.catalogItem?.albumSourceId : null,
+            catalogTrackSourceId: item == null
+                ? (widget.catalogItem?.kind == 'track' ? widget.catalogItem?.sourceId : null)
+                : (item.kind == 'track' ? item.id.split(':').last : null),
           ),
           if (kind == 'album')
             _AlbumTracksSection(
@@ -1063,30 +1065,68 @@ class _AlbumTracksSection extends ConsumerWidget {
   }
 }
 
-/// Searchable picker of same-kind library items to merge into the current one.
-/// Returns the chosen item (or null on dismiss).
-class _MergePicker extends StatefulWidget {
+/// Searchable picker of same-kind library items or catalog items to merge into the current one.
+class _MergePicker extends ConsumerStatefulWidget {
   const _MergePicker({required this.current, required this.candidates});
   final RatedCatalogItem current;
   final List<RatedCatalogItem> candidates;
 
   @override
-  State<_MergePicker> createState() => _MergePickerState();
+  ConsumerState<_MergePicker> createState() => _MergePickerState();
 }
 
-class _MergePickerState extends State<_MergePicker> {
+class _MergePickerState extends ConsumerState<_MergePicker> {
   String _query = '';
+  List<CatalogItem> _searchResults = const [];
+  bool _loading = false;
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onQueryChanged(String val) {
+    _debounce?.cancel();
+    setState(() {
+      _query = val;
+      if (val.trim().isEmpty) {
+        _searchResults = const [];
+        _loading = false;
+        return;
+      }
+      _loading = true;
+    });
+
+    _debounce = Timer(const Duration(milliseconds: 400), () async {
+      if (!mounted) return;
+      try {
+        final service = ref.read(catalogServiceProvider);
+        final results = await service.search(
+          val.trim(),
+          kind: widget.current.kind,
+          limit: 20,
+        );
+        if (!mounted) return;
+        setState(() {
+          _searchResults = results.where((item) => item.id != widget.current.id).toList();
+          _loading = false;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
     final q = _query.toLowerCase().trim();
-    final filtered = q.isEmpty
-        ? widget.candidates
-        : widget.candidates.where((i) {
-            final hay = '${i.title} ${i.primaryArtist ?? ''}'.toLowerCase();
-            return hay.contains(q);
-          }).toList();
+    final isSearchMode = q.isNotEmpty;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -1110,47 +1150,109 @@ class _MergePickerState extends State<_MergePicker> {
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               hintText: context.t('lib_merge_hint'),
               isDense: true,
+              suffixIcon: _loading
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : null,
             ),
-            onChanged: (v) => setState(() => _query = v),
+            onChanged: _onQueryChanged,
           ),
           const SizedBox(height: AppSpacing.md),
-          if (filtered.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-              child: Center(
-                child: Text(context.t('lib_merge_empty'),
-                    style: TextStyle(color: p.muted)),
+          if (isSearchMode) ...[
+            if (!_loading && _searchResults.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                child: Center(
+                  child: Text(context.t('search_no_results', ref: ref),
+                      style: TextStyle(color: p.muted)),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _searchResults.length,
+                  separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
+                  itemBuilder: (c, i) {
+                    final it = _searchResults[i];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CoverArt(
+                        title: it.title,
+                        imageUrl: it.imageUrl,
+                        size: 44,
+                        radius: it.kind == 'artist' ? 22 : 8,
+                        artist: it.primaryArtist,
+                        kind: it.kind,
+                      ),
+                      title: Text(it.title,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: it.primaryArtist != null
+                          ? Text(it.primaryArtist!,
+                              maxLines: 1, overflow: TextOverflow.ellipsis)
+                          : null,
+                      onTap: () => Navigator.pop(c, it),
+                    );
+                  },
+                ),
               ),
-            )
-          else
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
-                itemBuilder: (c, i) {
-                  final it = filtered[i];
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CoverArt(
-                      title: it.title,
-                      imageUrl: it.imageUrl,
-                      size: 44,
-                      radius: it.kind == 'artist' ? 22 : 8,
-                      artist: it.primaryArtist,
+          ] else ...[
+            Builder(builder: (context) {
+              final filtered = widget.candidates;
+              if (filtered.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                  child: Center(
+                    child: Text(context.t('lib_merge_empty'),
+                        style: TextStyle(color: p.muted)),
+                  ),
+                );
+              }
+              return Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
+                  itemBuilder: (c, i) {
+                    final it = filtered[i];
+                    final catalogItem = CatalogItem(
+                      id: it.id,
                       kind: it.kind,
-                    ),
-                    title: Text(it.title,
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: it.primaryArtist != null
-                        ? Text(it.primaryArtist!,
-                            maxLines: 1, overflow: TextOverflow.ellipsis)
-                        : null,
-                    onTap: () => Navigator.pop(c, it),
-                  );
-                },
-              ),
-            ),
+                      title: it.title,
+                      primaryArtist: it.primaryArtist,
+                      imageUrl: it.imageUrl,
+                      source: it.id.contains(':') ? it.id.split(':').first : 'itunes',
+                      sourceId: it.id.contains(':') ? it.id.split(':').last : it.id,
+                    );
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CoverArt(
+                        title: it.title,
+                        imageUrl: it.imageUrl,
+                        size: 44,
+                        radius: it.kind == 'artist' ? 22 : 8,
+                        artist: it.primaryArtist,
+                        kind: it.kind,
+                      ),
+                      title: Text(it.title,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: it.primaryArtist != null
+                          ? Text(it.primaryArtist!,
+                              maxLines: 1, overflow: TextOverflow.ellipsis)
+                          : null,
+                      onTap: () => Navigator.pop(c, catalogItem),
+                    );
+                  },
+                ),
+              );
+            }),
+          ],
         ],
       ),
     );

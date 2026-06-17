@@ -228,12 +228,40 @@ class CatalogService {
   Future<List<CatalogItem>> search(String query,
       {String kind = 'all', int offset = 0, int limit = kSearchPageSize}) async {
     final itunesEntity = _kindToItunesEntity(kind);
-    return _itunesApi.search(query, entity: itunesEntity, offset: offset, limit: limit);
+    final results = await _itunesApi.search(query, entity: itunesEntity, offset: offset, limit: limit);
+
+    if (kind == 'album') {
+      final albums = <CatalogItem>[];
+      final seenIds = <String>{};
+      for (final item in results) {
+        if (item.kind == 'album') {
+          if (seenIds.add(item.id)) {
+            albums.add(item);
+          }
+        } else if (item.kind == 'track' && item.albumSourceId != null && item.album != null) {
+          final albumId = 'itunes:${item.albumSourceId}';
+          if (seenIds.add(albumId)) {
+            albums.add(CatalogItem(
+              id: albumId,
+              kind: 'album',
+              title: item.album!,
+              primaryArtist: item.primaryArtist,
+              imageUrl: item.imageUrl,
+              source: 'itunes',
+              sourceId: item.albumSourceId!,
+            ));
+          }
+        }
+      }
+      return albums;
+    }
+
+    return results;
   }
 
   static String _kindToItunesEntity(String kind) => switch (kind) {
         'track' => 'song',
-        'album' => 'album',
+        'album' => 'album,song',
         'artist' => 'musicArtist',
         _ => 'song,album,musicArtist',
       };
@@ -293,10 +321,32 @@ class CatalogService {
     final query = kind == 'artist' ? artist : '$artist $title'.trim();
     if (query.isEmpty) return null;
     try {
-      final results = await search(query, kind: kind, limit: 5);
+      var results = await search(query, kind: kind, limit: 5);
+
+      bool matchesArtist(CatalogItem r) {
+        if (artist.isEmpty) return true;
+        final rArtist = r.primaryArtist?.toLowerCase() ?? '';
+        final qArtist = artist.toLowerCase();
+        return rArtist.contains(qArtist) || qArtist.contains(rArtist);
+      }
+
       for (final r in results) {
+        if (!matchesArtist(r)) continue;
         final url = r.imageUrl;
-        if (url != null && url.isNotEmpty && !url.contains('2a96cbd8b46e442fc41c2b86b821562f')) return url;
+        if (url != null && url.isNotEmpty && !url.contains('2a96cbd8b46e442fc41c2b86b821562f')) {
+          return url;
+        }
+      }
+
+      if (kind == 'album') {
+        results = await search(query, kind: 'track', limit: 5);
+        for (final r in results) {
+          if (!matchesArtist(r)) continue;
+          final url = r.imageUrl;
+          if (url != null && url.isNotEmpty && !url.contains('2a96cbd8b46e442fc41c2b86b821562f')) {
+            return url;
+          }
+        }
       }
     } catch (_) {
       // Offline / transient — leave the item art-less for now.
