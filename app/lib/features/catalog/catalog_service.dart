@@ -24,6 +24,7 @@ class CatalogItem {
     this.tags = const [],
     this.playedAtUts,
     this.album,
+    this.albumSourceId,
   });
 
   final String id;
@@ -36,6 +37,8 @@ class CatalogItem {
   final List<CatalogTag> tags;
   final int? playedAtUts;
   final String? album;
+  /// iTunes collectionId for track items — enables direct album navigation.
+  final String? albumSourceId;
 
   CatalogItem copyWithTags(List<CatalogTag> tags) => CatalogItem(
         id: id,
@@ -48,6 +51,7 @@ class CatalogItem {
         tags: tags,
         playedAtUts: playedAtUts,
         album: album,
+        albumSourceId: albumSourceId,
       );
 
   CatalogItem copyWithImage(String? imageUrl) => CatalogItem(
@@ -61,6 +65,7 @@ class CatalogItem {
         tags: tags,
         playedAtUts: playedAtUts,
         album: album,
+        albumSourceId: albumSourceId,
       );
 }
 

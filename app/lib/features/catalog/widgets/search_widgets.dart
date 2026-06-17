@@ -316,10 +316,10 @@ class _SearchRecommendations extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
-    final recsAsync = ref.watch(genreRecommendationsProvider);
+    final selectedGenre = ref.watch(selectedGenreProvider);
+    final recsAsync = ref.watch(genreRecommendationsProvider(selectedGenre));
     final addedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
     final statsAsync = ref.watch(statsProvider);
-    final selectedGenre = ref.watch(selectedGenreProvider);
 
     return ListView(
       padding: EdgeInsets.only(

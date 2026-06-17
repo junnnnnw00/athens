@@ -114,6 +114,8 @@ class ItunesApiHttp implements ItunesApi {
             ?.replaceAll('100x100bb', '600x600bb'),
         source: 'itunes',
         sourceId: id,
+        album: kind == 'track' ? r['collectionName'] as String? : null,
+        albumSourceId: kind == 'track' ? r['collectionId']?.toString() : null,
       ));
     }
     return out;

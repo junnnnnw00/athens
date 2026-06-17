@@ -323,6 +323,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             artist: primaryArtist ?? '',
             title: title,
             catalogAlbum: widget.catalogItem?.album,
+            catalogAlbumSourceId: widget.catalogItem?.albumSourceId,
           ),
           if (kind == 'album')
             _AlbumTracksSection(
@@ -612,11 +613,13 @@ class _InfoSection extends ConsumerWidget {
     required this.artist,
     required this.title,
     this.catalogAlbum,
+    this.catalogAlbumSourceId,
   });
   final String kind;
   final String artist;
   final String title;
   final String? catalogAlbum;
+  final String? catalogAlbumSourceId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -692,8 +695,45 @@ class _InfoSection extends ConsumerWidget {
             if (albumForLink != null) ...[
               GestureDetector(
                 onTap: () async {
-                  final service = ref.read(catalogServiceProvider);
+                  final itunes = ref.read(itunesApiProvider);
+                  String? collectionId = catalogAlbumSourceId;
+                  String? resolvedAlbumName = albumForLink;
+
+                  // If no stored collectionId, search for track to get one
+                  if (collectionId == null) {
+                    try {
+                      final hits = await itunes.search(
+                          '$artist $title', entity: 'song', limit: 5);
+                      for (final h in hits) {
+                        if (h.albumSourceId != null) {
+                          collectionId = h.albumSourceId;
+                          resolvedAlbumName = h.album ?? albumForLink;
+                          break;
+                        }
+                      }
+                    } catch (_) {}
+                  }
+
+                  if (!context.mounted) return;
+
+                  if (collectionId != null) {
+                    final albumItem = CatalogItem(
+                      id: 'itunes:$collectionId',
+                      kind: 'album',
+                      title: resolvedAlbumName ?? albumForLink,
+                      primaryArtist: artist.isNotEmpty ? artist : null,
+                      source: 'itunes',
+                      sourceId: collectionId,
+                    );
+                    context.push(
+                        '/home/item/${Uri.encodeComponent(albumItem.id)}',
+                        extra: albumItem);
+                    return;
+                  }
+
+                  // Fallback: text search
                   try {
+                    final service = ref.read(catalogServiceProvider);
                     final results = await service.search(
                         '$artist $albumForLink', kind: 'album');
                     if (results.isEmpty || !context.mounted) return;

@@ -22,12 +22,14 @@ part 'widgets/search_widgets.dart';
 
 final selectedGenreProvider = StateProvider<String?>((ref) => null);
 
-final genreRecommendationsProvider = FutureProvider.autoDispose<({String genre, List<CatalogItem> items})>((ref) async {
+/// Home uses `genreRecommendationsProvider(null)` (stats-only, no bleed from search).
+/// Search uses `genreRecommendationsProvider(selectedGenre)` to swap genre via chips.
+final genreRecommendationsProvider = FutureProvider.autoDispose
+    .family<({String genre, List<CatalogItem> items}), String?>((ref, overrideGenre) async {
   final statsAsync = await ref.watch(statsProvider.future);
-  final selectedGenre = ref.watch(selectedGenreProvider);
   final defaultGenre = statsAsync.genrePreferences.firstOrNull?.name ?? 'Indie';
   final candidateGenres = <String>{
-    if (selectedGenre != null && selectedGenre.trim().isNotEmpty) selectedGenre.trim(),
+    if (overrideGenre != null && overrideGenre.trim().isNotEmpty) overrideGenre.trim(),
     if (defaultGenre.trim().isNotEmpty) defaultGenre.trim(),
     ...statsAsync.genrePreferences.map((pref) => pref.name.trim()).where((name) => name.isNotEmpty),
     'Indie',

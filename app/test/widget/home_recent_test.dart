@@ -46,7 +46,7 @@ void main() {
       lastfmUsername: 'testuser',
     );
     harness.overrides.add(
-      genreRecommendationsProvider.overrideWith((ref) => (genre: 'Indie', items: <CatalogItem>[])),
+      genreRecommendationsProvider.overrideWith((ref, arg) => (genre: 'Indie', items: <CatalogItem>[])),
     );
     addTearDown(harness.dispose);
 
@@ -72,7 +72,7 @@ void main() {
   testWidgets('user without Last.fm sees a graceful empty state', (tester) async {
     final harness = TestHarness(); // no lastfmUsername, no recentlyPlayed
     harness.overrides.add(
-      genreRecommendationsProvider.overrideWith((ref) => (genre: 'Indie', items: <CatalogItem>[])),
+      genreRecommendationsProvider.overrideWith((ref, arg) => (genre: 'Indie', items: <CatalogItem>[])),
     );
     addTearDown(harness.dispose);
 
