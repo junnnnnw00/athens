@@ -175,8 +175,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(height: AppSpacing.xxl),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                    child: Text(context.t('home_recent', ref: ref),
-                        style: Theme.of(context).textTheme.titleMedium),
+                    child: Row(
+                      children: [
+                        Icon(Icons.history_rounded, size: 16, color: p.accent),
+                        const SizedBox(width: 6),
+                        Text(context.t('home_recent', ref: ref),
+                            style: Theme.of(context).textTheme.titleMedium),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   recentAsync.when(
@@ -256,8 +262,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: AppSpacing.xxl),
-                            Text(context.t('home_friends_rated', ref: ref),
-                                style: Theme.of(context).textTheme.titleMedium),
+                            Row(
+                              children: [
+                                Icon(Icons.people_rounded, size: 16, color: p.accent),
+                                const SizedBox(width: 6),
+                                Text(context.t('home_friends_rated', ref: ref),
+                                    style: Theme.of(context).textTheme.titleMedium),
+                              ],
+                            ),
                             const SizedBox(height: AppSpacing.md),
                             Column(
                               children: shown.map((it) {
@@ -855,40 +867,11 @@ class _CompactRecentCardState extends ConsumerState<_CompactRecentCard> {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            widget.score != null
-                ? Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: p.accentSoft,
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                    ),
-                    child: Text(
-                      widget.score!.toStringAsFixed(1),
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        color: p.accentText,
-                      ),
-                    ),
-                  )
-                : SizedBox(
-                    height: 30,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadii.pill)),
-                      ),
-                      onPressed: _busy ? null : _rate,
-                      child: _busy
-                          ? const SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: CircularProgressIndicator(strokeWidth: 1))
-                          : Text(context.t('home_rate', ref: ref),
-                              style: const TextStyle(fontSize: 12)),
-                    ),
-                  ),
+            _RatingPill(
+              score: widget.score,
+              busy: _busy,
+              onRate: _rate,
+            ),
           ],
         ),
       ),
@@ -1016,34 +999,84 @@ class _FriendRecentCardState extends ConsumerState<_FriendRecentCard> {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            widget.userScore != null
-                ? Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: p.accentSoft,
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                    ),
-                    child: Text(
-                      widget.userScore!.toStringAsFixed(1),
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        color: p.accentText,
-                      ),
-                    ),
-                  )
-                : FilledButton(
-                    onPressed: _busy ? null : _rate,
-                    child: _busy
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text(context.t('home_rate', ref: ref)),
-                  ),
+            _RatingPill(
+              score: widget.userScore,
+              busy: _busy,
+              onRate: _rate,
+            ),
           ],
         ),
       ),
     );
+  }
+}
+
+class _RatingPill extends ConsumerWidget {
+  const _RatingPill({
+    required this.score,
+    required this.busy,
+    required this.onRate,
+  });
+
+  final double? score;
+  final bool busy;
+  final VoidCallback onRate;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (score != null) {
+      final color = scoreColor(score!, dark: isDark);
+      return Container(
+        height: 28,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
+        ),
+        child: Text(
+          score!.toStringAsFixed(1),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+      );
+    } else {
+      return SizedBox(
+        height: 28,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            side: BorderSide(color: p.accent.withValues(alpha: 0.35)),
+            backgroundColor: p.accent.withValues(alpha: 0.06),
+            foregroundColor: p.accentText,
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          onPressed: busy ? null : onRate,
+          child: busy
+              ? const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 1.5))
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star_border_rounded, size: 13, color: p.accentText),
+                    const SizedBox(width: 4),
+                    Text(
+                      context.t('home_rate', ref: ref),
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+        ),
+      );
+    }
   }
 }

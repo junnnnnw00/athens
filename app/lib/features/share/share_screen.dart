@@ -105,13 +105,13 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
       await Gal.putImageBytes(bytes);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('갤러리에 저장되었습니다')),
+          SnackBar(content: Text(context.t('share_saved_toast', ref: ref))),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('저장 실패: $e')),
+          SnackBar(content: Text(context.t('share_save_failed', ref: ref))),
         );
       }
     } finally {
@@ -211,7 +211,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       icon: const Icon(Icons.download_rounded),
-                      label: const Text('저장'),
+                      label: Text(context.t('lib_save', ref: ref)),
                       onPressed: _sharing || items.isEmpty ? null : () => _saveToGallery(items),
                     ),
                   ),

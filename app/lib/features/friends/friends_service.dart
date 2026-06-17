@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/repository/library_providers.dart';
 import '../../domain/score.dart';
+import '../../i18n.dart';
 import '../catalog/catalog_service.dart';
 import '../profile/profile_service.dart';
 
@@ -43,26 +44,48 @@ TastePersonality tastePersonalityFrom(double avgScore, double stdDev) {
   }
 }
 
-String tastePersonalityLabel(TastePersonality p) {
+String tastePersonalityLabel(TastePersonality p, [AppLanguage lang = AppLanguage.ko]) {
+  if (lang == AppLanguage.en) {
+    switch (p) {
+      case TastePersonality.coldCritic: return '🧊 Cold Critic';
+      case TastePersonality.selectiveObsessive: return '🎯 Selective Obsessive';
+      case TastePersonality.calmConnoisseur: return '⚖️ Calm Connoisseur';
+      case TastePersonality.moodDriven: return '🌊 Mood-Driven Listener';
+      case TastePersonality.warmSteady: return '☀️ Warm Supporter';
+      case TastePersonality.hyperReactioner: return '🔥 Hyper Reactioner';
+      case TastePersonality.noData: return 'No Data';
+    }
+  }
   switch (p) {
-    case TastePersonality.coldCritic:
-      return '🧊 냉정한 심판관';
-    case TastePersonality.selectiveObsessive:
-      return '🎯 까다로운 마니아';
-    case TastePersonality.calmConnoisseur:
-      return '⚖️ 균형잡힌 감상가';
-    case TastePersonality.moodDriven:
-      return '🌊 감성적 무드메이커';
-    case TastePersonality.warmSteady:
-      return '☀️ 따뜻한 지지자';
-    case TastePersonality.hyperReactioner:
-      return '🔥 열정적 리액셔너';
-    case TastePersonality.noData:
-      return '기록 없음';
+    case TastePersonality.coldCritic: return '🧊 냉정한 심판관';
+    case TastePersonality.selectiveObsessive: return '🎯 까다로운 마니아';
+    case TastePersonality.calmConnoisseur: return '⚖️ 균형잡힌 감상가';
+    case TastePersonality.moodDriven: return '🌊 감성적 무드메이커';
+    case TastePersonality.warmSteady: return '☀️ 따뜻한 지지자';
+    case TastePersonality.hyperReactioner: return '🔥 열정적 리액셔너';
+    case TastePersonality.noData: return '기록 없음';
   }
 }
 
-String tastePersonalityDescription(TastePersonality p) {
+String tastePersonalityDescription(TastePersonality p, [AppLanguage lang = AppLanguage.ko]) {
+  if (lang == AppLanguage.en) {
+    switch (p) {
+      case TastePersonality.coldCritic:
+        return 'Consistently low scores with strict standards. A no-nonsense critic type — a high score from them means it\'s a genuine masterpiece.';
+      case TastePersonality.selectiveObsessive:
+        return 'Usually tough, but occasionally explodes with enthusiasm for a specific track. Hidden obsessive tendencies — their favorites list is intense.';
+      case TastePersonality.calmConnoisseur:
+        return 'Evaluates music with a balanced perspective. Neither overly excited nor harshly critical — a reliably thoughtful listener.';
+      case TastePersonality.moodDriven:
+        return 'Scores vary wildly based on the day\'s mood. Generous when in a good mood, strict when not. Wide-ranging tastes.';
+      case TastePersonality.warmSteady:
+        return 'Welcomes most music warmly. Positive energy type who\'s great to listen with — a natural mood maker.';
+      case TastePersonality.hyperReactioner:
+        return 'Reacts dramatically to favorites and firmly skips the rest. Their playlist is their identity.';
+      case TastePersonality.noData:
+        return 'No rated music yet, so personality can\'t be determined.';
+    }
+  }
   switch (p) {
     case TastePersonality.coldCritic:
       return '평점이 낮고 일관적으로 인색해요. 기준이 엄격하고 흔들리지 않는 심판관 타입. 높은 점수를 받으면 진짜 명반이라는 증거입니다.';
@@ -82,29 +105,39 @@ String tastePersonalityDescription(TastePersonality p) {
 }
 
 /// Returns a compatibility description based on two personalities.
-String personalityCompatibility(TastePersonality a, TastePersonality b) {
-  // Same type
-  if (a == b) return '같은 성향끼리! 서로의 취향을 직관적으로 이해하는 드문 조합입니다.';
-
+String personalityCompatibility(TastePersonality a, TastePersonality b, [AppLanguage lang = AppLanguage.ko]) {
   final set = {a, b};
+  final isEn = lang == AppLanguage.en;
+
+  if (a == b) return isEn
+      ? 'Same type! A rare combination that intuitively understands each other\'s taste.'
+      : '같은 성향끼리! 서로의 취향을 직관적으로 이해하는 드문 조합입니다.';
 
   if (set.containsAll([TastePersonality.coldCritic, TastePersonality.hyperReactioner]) ||
       set.containsAll([TastePersonality.selectiveObsessive, TastePersonality.warmSteady])) {
-    return '정반대의 감성을 가진 두 사람! 서로에게서 완전히 새로운 음악 세계를 발견할 수 있습니다.';
+    return isEn
+        ? 'Complete opposites! You can discover entirely new musical worlds from each other.'
+        : '정반대의 감성을 가진 두 사람! 서로에게서 완전히 새로운 음악 세계를 발견할 수 있습니다.';
   }
 
   if (set.containsAll([TastePersonality.coldCritic, TastePersonality.selectiveObsessive]) ||
       set.containsAll([TastePersonality.warmSteady, TastePersonality.hyperReactioner]) ||
       set.containsAll([TastePersonality.calmConnoisseur, TastePersonality.moodDriven])) {
-    return '비슷한 듯 다른 두 성향. 같은 곡도 다른 이유로 좋아할 수 있는 흥미로운 조합입니다.';
+    return isEn
+        ? 'Similar yet different. You might like the same songs for completely different reasons.'
+        : '비슷한 듯 다른 두 성향. 같은 곡도 다른 이유로 좋아할 수 있는 흥미로운 조합입니다.';
   }
 
   if (set.contains(TastePersonality.calmConnoisseur) ||
       set.contains(TastePersonality.warmSteady)) {
-    return '한 사람이 중심을 잡아주는 안정적인 조합이에요. 음악 취향 대화가 자연스럽게 이어집니다.';
+    return isEn
+        ? 'A stable duo with a natural anchor. Music conversations flow easily.'
+        : '한 사람이 중심을 잡아주는 안정적인 조합이에요. 음악 취향 대화가 자연스럽게 이어집니다.';
   }
 
-  return '서로 다른 취향이 만나 더 풍부한 음악 탐험이 가능한 조합입니다.';
+  return isEn
+      ? 'Different tastes meet for a richer musical exploration together.'
+      : '서로 다른 취향이 만나 더 풍부한 음악 탐험이 가능한 조합입니다.';
 }
 
 

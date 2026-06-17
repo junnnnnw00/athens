@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/repository/library_providers.dart';
 import '../../domain/score.dart';
 import '../catalog/catalog_service.dart';
+import '../catalog/search_screen.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
@@ -322,6 +323,19 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
             artist: primaryArtist ?? '',
             title: title,
           ),
+          if (kind == 'album')
+            _AlbumTracksSection(
+              album: widget.catalogItem ??
+                  CatalogItem(
+                    id: widget.itemId,
+                    kind: kind,
+                    title: title,
+                    primaryArtist: primaryArtist,
+                    imageUrl: imageUrl,
+                    source: '',
+                    sourceId: null,
+                  ),
+            ),
           const SizedBox(height: AppSpacing.xxl),
           if (!isUnrated) ...[
             Row(
@@ -561,8 +575,8 @@ class _TagChip extends ConsumerWidget {
     final p = context.palette;
     return InkWell(
       onTap: () {
-        ref.read(searchQueryProvider.notifier).state = name;
-        ref.read(searchKindProvider.notifier).state = 'all';
+        ref.read(searchQueryProvider.notifier).state = '';
+        ref.read(selectedGenreProvider.notifier).state = name;
         context.go('/search');
       },
       borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -576,7 +590,7 @@ class _TagChip extends ConsumerWidget {
         child: Text(
           name,
           style: TextStyle(
-            color: p.accentText,
+            color: p.muted,
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
@@ -764,5 +778,112 @@ class _InfoSection extends ConsumerWidget {
       return '${(number / 1000).toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '')}K';
     }
     return number.toString();
+  }
+}
+
+class _AlbumTracksSection extends ConsumerWidget {
+  const _AlbumTracksSection({required this.album});
+  final CatalogItem album;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final tracksAsync = ref.watch(albumTracksProvider(album));
+
+    return tracksAsync.when(
+      loading: () => Padding(
+        padding: const EdgeInsets.only(top: AppSpacing.xl),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: p.faint),
+          ),
+        ),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (tracks) {
+        if (tracks.isEmpty) return const SizedBox.shrink();
+
+        final ratedItems = ref.watch(ratedItemsProvider);
+        final ratedKeys = {
+          for (final r in ratedItems)
+            catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist): scoreFromElo(r.elo),
+        };
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: AppSpacing.xxl),
+            Text(context.t('lib_tracklist', ref: ref),
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: AppSpacing.sm),
+            ...tracks.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final track = entry.value;
+              final key = catalogMatchKey(kind: 'track', title: track.title, artist: track.primaryArtist ?? '');
+              final score = ratedKeys[key];
+
+              return InkWell(
+                onTap: () => context.push(
+                  '/home/item/${Uri.encodeComponent(track.id)}',
+                  extra: track,
+                ),
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 2),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 28,
+                        child: Text(
+                          '${idx + 1}',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(color: p.muted, fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          track.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: score != null ? p.accentText : p.text,
+                            fontWeight: score != null ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      if (score != null) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: p.accentSoft,
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                          ),
+                          child: Text(
+                            score.toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: p.accentText,
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.chevron_right_rounded, size: 16, color: p.faint),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        );
+      },
+    );
   }
 }

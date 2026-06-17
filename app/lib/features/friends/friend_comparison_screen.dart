@@ -389,14 +389,14 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
         Row(
           children: [
             Expanded(child: _buildPersonalityCard(
-              label: tastePersonalityLabel(myP),
-              description: tastePersonalityDescription(myP),
+              label: tastePersonalityLabel(myP, _lang),
+              description: tastePersonalityDescription(myP, _lang),
               isMe: true,
             )),
             const SizedBox(width: AppSpacing.sm),
             Expanded(child: _buildPersonalityCard(
-              label: tastePersonalityLabel(theirP),
-              description: tastePersonalityDescription(theirP),
+              label: tastePersonalityLabel(theirP, _lang),
+              description: tastePersonalityDescription(theirP, _lang),
               isMe: false,
             )),
           ],
@@ -416,7 +416,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    personalityCompatibility(myP, theirP),
+                    personalityCompatibility(myP, theirP, _lang),
                     style: TextStyle(color: p.text, fontSize: 11, height: 1.4),
                   ),
                 ),
