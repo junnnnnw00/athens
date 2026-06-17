@@ -406,3 +406,39 @@ volume pushes onto Supabase **Pro ($25/mo)** regardless of this table.
 
 **Reversibility:** Drop the table + revert the two edge functions to direct
 pass-through (git). Fully reversible, no client/schema coupling.
+
+---
+
+## Decision: ISRC-based canonical identity for cross-language track dedup (2026-06-17)
+
+**Problem:** The same song/album exists as multiple catalog rows — most painfully
+non-English tracks listed under both their original title and a romanized/translated
+title (e.g. `夜に駆ける` vs `Yoru ni Kakeru` vs `Into the Night`). Each variant
+normalizes to a different `catalogMatchKey` (text-based), so rating one does not
+mark the others as rated: they show as duplicates in search/recents/library.
+Text normalization cannot bridge translations.
+
+**Decision:** Introduce a **client-side canonical key** that prefers a stable
+external identity over normalized text:
+- **track** → `isrc:<ISRC>` when known (ISRC is globally unique per recording and
+  language-independent). iTunes song results already carry `isrc`; Last.fm-sourced
+  tracks resolve theirs via a best-effort iTunes lookup at add-time.
+- **album / artist** → unchanged normalized text key (album-level ISRC equivalent =
+  MusicBrainz release-group, out of scope; album editions still merge by text).
+- Fallback for any item without an ISRC → existing `catalogMatchKey`.
+
+The canonical key is persisted in a new **local Drift column** `local_items.canonical_key`
+(schemaVersion 3→4). It drives: library dedup (`loadLibrary`), and the already-rated
+check sets in search/home/detail.
+
+**Why client-side only (no Supabase migration):** dedup is a per-user view concern.
+The shared `items` table stays keyed by `(source, source_id)`. Public web-profile
+duplicates are a separate, lower-priority concern. This keeps the change reversible
+and avoids touching RLS/shared schema.
+
+**Scope delivered:** (1) ISRC capture + canonical key + dedup; (2) background
+backfill of canonical keys for existing library items; (3) manual "merge as same
+track" action on the detail screen for residue the auto-resolution misses.
+
+**Reversibility:** Drop the Drift column (next schema bump) + revert the key
+function to `catalogMatchKey`. No remote/shared coupling.

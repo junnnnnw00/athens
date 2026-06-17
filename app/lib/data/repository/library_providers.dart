@@ -197,13 +197,30 @@ class LibraryController extends AsyncNotifier<List<RatedCatalogItem>> {
   /// then refresh. Online-only; offline iterations simply no-op per item.
   Future<void> _backfill(List<RatedCatalogItem> lib) async {
     final svc = ref.read(catalogServiceProvider);
+    final itunes = ref.read(itunesApiProvider);
     var changed = false;
     for (final item in lib) {
+      final artist =
+          item.kind == 'artist' ? item.title : (item.primaryArtist ?? '');
+
+      // Canonical-key backfill: tracks whose stored key isn't yet ISRC-based
+      // (legacy items, Last.fm scrobbles) — resolve their ISRC so cross-language
+      // duplicates collapse. Best-effort; a miss leaves the text key in place.
+      if (item.kind == 'track' && !item.canonicalKey.startsWith('isrc:')) {
+        try {
+          final isrc = await itunes.lookupIsrc(artist: artist, title: item.title);
+          if (isrc != null && isrc.isNotEmpty) {
+            await _repo.setItemCanonicalKey(item.id, 'isrc:${isrc.toUpperCase()}');
+            changed = true;
+          }
+        } catch (_) {
+          // Skip; try the rest.
+        }
+      }
+
       final needTags = item.tags.length < 15;
       final needArt = _needsArt(item.imageUrl);
       if (!needTags && !needArt) continue;
-      final artist =
-          item.kind == 'artist' ? item.title : (item.primaryArtist ?? '');
 
       if (needArt) {
         try {

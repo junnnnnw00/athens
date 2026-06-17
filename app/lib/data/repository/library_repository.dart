@@ -187,16 +187,19 @@ class LibraryRepository {
         comparisons: r.comparisons,
         tags: _decodeTags(item.tags),
         updatedAt: r.updatedAt,
+        storedCanonicalKey: item.canonicalKey,
       ));
     }
     // Collapse duplicates that refer to the same logical item — e.g. a track
     // added from search (`itunes:..`) and the same track later synced from the
-    // Last.fm feed (`lastfm:..`), which carry different ids. Keep the most-
-    // dueled (then highest-Elo) copy so ranking history isn't lost.
+    // Last.fm feed (`lastfm:..`), which carry different ids, or the same song
+    // listed under translated/transliterated titles. `canonicalKey` is the
+    // ISRC-based identity when known (collapses cross-language dupes), else the
+    // normalized text key. Keep the most-dueled (then highest-Elo) copy so
+    // ranking history isn't lost.
     final byKey = <String, RatedCatalogItem>{};
     for (final r in result) {
-      final key =
-          '${r.kind}|${r.title.toLowerCase().trim()}|${(r.primaryArtist ?? '').toLowerCase().trim()}';
+      final key = r.canonicalKey;
       final existing = byKey[key];
       if (existing == null ||
           r.comparisons > existing.comparisons ||
@@ -275,6 +278,13 @@ class LibraryRepository {
     }());
   }
 
+  /// Persists a resolved canonical (dedup) key for an item. Used by the backfill
+  /// pass to upgrade text keys to ISRC, and by the manual "merge as same track"
+  /// action. Local-only — the key is a per-user view concern (see DECISIONS.md).
+  Future<void> setItemCanonicalKey(String localId, String canonicalKey) async {
+    await _db.setItemCanonicalKey(localId, canonicalKey);
+  }
+
   Future<RatedCatalogItem?> getItem(String itemId) async {
     final all = await loadLibrary();
     for (final i in all) {
@@ -294,6 +304,10 @@ class LibraryRepository {
       primaryArtist: Value(item.primaryArtist),
       imageUrl: Value(item.imageUrl),
       tags: Value(_encodeTags(item.tags)),
+      // ISRC-based canonical key when the item carries an ISRC (iTunes song
+      // results do); otherwise the text key. The backfill pass upgrades text
+      // keys to ISRC for items that can resolve one.
+      canonicalKey: Value(item.canonicalKey),
     ));
     final existing = await _db.getRatingsForUser(userId);
     if (existing.any((r) => r.itemId == item.id)) return;

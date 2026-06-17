@@ -40,9 +40,14 @@ final genreRecommendationsProvider = FutureProvider.autoDispose
 
   final ratedItems = ref.watch(ratedItemsProvider);
   final ratedIds = ratedItems.map((e) => e.id).toSet();
-  final ratedKeys = ratedItems
-      .map((r) => catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist))
-      .toSet();
+  // Hold BOTH the canonical (ISRC) key and the normalized text key per rated
+  // item: ISRC-bearing items match other ISRC-bearing copies, while text-only
+  // candidates (Last.fm scrobbles, no ISRC) still match by text.
+  final ratedKeys = <String>{};
+  for (final r in ratedItems) {
+    ratedKeys.add(r.canonicalKey);
+    ratedKeys.add(catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist));
+  }
 
   // Recommend tracks that are ACTUALLY tagged with the genre/mood via Last.fm
   // `tag.getTopTracks` — NOT a catalog text-search for the tag word, which only
@@ -212,7 +217,20 @@ class _SearchBody extends ConsumerWidget {
     final p = context.palette;
     final s = ref.watch(searchControllerProvider);
     final kind = ref.watch(searchKindProvider);
-    final addedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
+    final ratedItems = ref.watch(ratedItemsProvider);
+    final addedIds = ratedItems.map((e) => e.id).toSet();
+    // Canonical (ISRC) + text keys of rated items, so an already-rated copy
+    // listed under a translated/transliterated title still shows as added.
+    final addedKeys = <String>{};
+    for (final r in ratedItems) {
+      addedKeys.add(r.canonicalKey);
+      addedKeys.add(catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist));
+    }
+    bool isAdded(CatalogItem i) =>
+        addedIds.contains(i.id) ||
+        addedKeys.contains(i.canonicalKey) ||
+        addedKeys.contains(
+            catalogMatchKey(kind: i.kind, title: i.title, artist: i.primaryArtist));
 
     if (s.loading) return const _SearchSkeleton();
     if (s.error) {
@@ -232,7 +250,7 @@ class _SearchBody extends ConsumerWidget {
       if (group.isEmpty) continue;
       rows.add(_SectionHeader(label: context.t('search_$k', ref: ref), count: group.length));
       for (final item in group) {
-        rows.add(_ResultRow(item: item, added: addedIds.contains(item.id)));
+        rows.add(_ResultRow(item: item, added: isAdded(item)));
         rows.add(Divider(height: 1, color: p.line, indent: AppSpacing.xl));
       }
       if (kind == 'all' && group.length >= kSearchPageSizeAll) {

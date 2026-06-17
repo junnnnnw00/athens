@@ -938,10 +938,16 @@ class _AlbumTracksSection extends ConsumerWidget {
         if (tracks.isEmpty) return const SizedBox.shrink();
 
         final ratedItems = ref.watch(ratedItemsProvider);
-        final ratedKeys = {
-          for (final r in ratedItems)
-            catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist): scoreFromElo(r.elo),
-        };
+        // Keyed by both the canonical (ISRC) key and the text key, so an
+        // album track that was rated under a translated title still shows its
+        // score (album tracks from iTunes carry ISRCs).
+        final ratedKeys = <String, double>{};
+        for (final r in ratedItems) {
+          final score = scoreFromElo(r.elo);
+          ratedKeys[r.canonicalKey] = score;
+          ratedKeys[catalogMatchKey(
+              kind: r.kind, title: r.title, artist: r.primaryArtist)] = score;
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -953,8 +959,9 @@ class _AlbumTracksSection extends ConsumerWidget {
             ...tracks.asMap().entries.map((entry) {
               final idx = entry.key;
               final track = entry.value;
-              final key = catalogMatchKey(kind: 'track', title: track.title, artist: track.primaryArtist ?? '');
-              final score = ratedKeys[key];
+              final score = ratedKeys[track.canonicalKey] ??
+                  ratedKeys[catalogMatchKey(
+                      kind: 'track', title: track.title, artist: track.primaryArtist ?? '')];
 
               return InkWell(
                 onTap: () => context.push(

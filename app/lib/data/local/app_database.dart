@@ -41,6 +41,9 @@ class LocalItems extends Table {
   TextColumn get primaryArtist => text().nullable()();
   TextColumn get imageUrl => text().nullable()();
   TextColumn get tags => text().withDefault(const Constant('[]'))();
+  /// Cross-source dedup identity (ISRC-based for tracks). Null until resolved.
+  /// See `catalogCanonicalKey`.
+  TextColumn get canonicalKey => text().nullable()();
   DateTimeColumn get createdAt => dateTime().map(const DateTimeCorrectionConverter()).withDefault(currentDateAndTime)();
 
   @override
@@ -106,7 +109,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -121,9 +124,17 @@ class AppDatabase extends _$AppDatabase {
         if (from < 3) {
           await m.createTable(localItemInfos);
         }
+        if (from < 4) {
+          await m.addColumn(localItems, localItems.canonicalKey);
+        }
       },
     );
   }
+
+  /// Updates only the canonical key for an item (used by the backfill pass).
+  Future<void> setItemCanonicalKey(String id, String canonicalKey) =>
+      (update(localItems)..where((i) => i.id.equals(id)))
+          .write(LocalItemsCompanion(canonicalKey: Value(canonicalKey)));
 
   // Cached item detail info
   Future<LocalItemInfo?> getItemInfo(String key) =>

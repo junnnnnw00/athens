@@ -90,6 +90,37 @@ void main() {
       expect(tags, isEmpty);
     });
   });
+
+  group('catalogCanonicalKey', () {
+    test('track with ISRC keys on the ISRC (uppercased), title-independent', () {
+      // Same recording listed under original + romanized titles → same key.
+      final ja = catalogCanonicalKey(
+          kind: 'track', title: '夜に駆ける', artist: 'YOASOBI', isrc: 'jpu902000123');
+      final romaji = catalogCanonicalKey(
+          kind: 'track', title: 'Yoru ni Kakeru', artist: 'YOASOBI', isrc: 'JPU902000123');
+      expect(ja, 'isrc:JPU902000123');
+      expect(ja, romaji);
+    });
+
+    test('track without ISRC falls back to the normalized text key', () {
+      final key = catalogCanonicalKey(
+          kind: 'track', title: 'Idioteque (Remastered)', artist: 'Radiohead');
+      expect(key, catalogMatchKey(kind: 'track', title: 'Idioteque', artist: 'Radiohead'));
+      expect(key.startsWith('isrc:'), isFalse);
+    });
+
+    test('album ignores ISRC and uses the text key', () {
+      final key = catalogCanonicalKey(
+          kind: 'album', title: 'Kid A', artist: 'Radiohead', isrc: 'SHOULDIGNORE');
+      expect(key, catalogMatchKey(kind: 'album', title: 'Kid A', artist: 'Radiohead'));
+    });
+
+    test('CatalogItem.canonicalKey uses its ISRC', () {
+      const item = CatalogItem(
+          id: 'itunes:1', kind: 'track', title: 'X', primaryArtist: 'Y', isrc: 'us1234567890');
+      expect(item.canonicalKey, 'isrc:US1234567890');
+    });
+  });
 }
 
 class _ThrowingLastfmApi implements LastfmApi {

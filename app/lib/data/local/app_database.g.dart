@@ -54,6 +54,12 @@ class $LocalItemsTable extends LocalItems
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('[]'));
+  static const VerificationMeta _canonicalKeyMeta =
+      const VerificationMeta('canonicalKey');
+  @override
+  late final GeneratedColumn<String> canonicalKey = GeneratedColumn<String>(
+      'canonical_key', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   late final GeneratedColumnWithTypeConverter<DateTime, DateTime> createdAt =
       GeneratedColumn<DateTime>('created_at', aliasedName, false,
@@ -71,6 +77,7 @@ class $LocalItemsTable extends LocalItems
         primaryArtist,
         imageUrl,
         tags,
+        canonicalKey,
         createdAt
       ];
   @override
@@ -126,6 +133,12 @@ class $LocalItemsTable extends LocalItems
       context.handle(
           _tagsMeta, tags.isAcceptableOrUnknown(data['tags']!, _tagsMeta));
     }
+    if (data.containsKey('canonical_key')) {
+      context.handle(
+          _canonicalKeyMeta,
+          canonicalKey.isAcceptableOrUnknown(
+              data['canonical_key']!, _canonicalKeyMeta));
+    }
     return context;
   }
 
@@ -151,6 +164,8 @@ class $LocalItemsTable extends LocalItems
           .read(DriftSqlType.string, data['${effectivePrefix}image_url']),
       tags: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}tags'])!,
+      canonicalKey: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}canonical_key']),
       createdAt: $LocalItemsTable.$convertercreatedAt.fromSql(attachedDatabase
           .typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!),
@@ -175,6 +190,10 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
   final String? primaryArtist;
   final String? imageUrl;
   final String tags;
+
+  /// Cross-source dedup identity (ISRC-based for tracks). Null until resolved.
+  /// See `catalogCanonicalKey`.
+  final String? canonicalKey;
   final DateTime createdAt;
   const LocalItem(
       {required this.id,
@@ -185,6 +204,7 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
       this.primaryArtist,
       this.imageUrl,
       required this.tags,
+      this.canonicalKey,
       required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -201,6 +221,9 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
       map['image_url'] = Variable<String>(imageUrl);
     }
     map['tags'] = Variable<String>(tags);
+    if (!nullToAbsent || canonicalKey != null) {
+      map['canonical_key'] = Variable<String>(canonicalKey);
+    }
     {
       map['created_at'] = Variable<DateTime>(
           $LocalItemsTable.$convertercreatedAt.toSql(createdAt));
@@ -222,6 +245,9 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
           ? const Value.absent()
           : Value(imageUrl),
       tags: Value(tags),
+      canonicalKey: canonicalKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(canonicalKey),
       createdAt: Value(createdAt),
     );
   }
@@ -238,6 +264,7 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
       primaryArtist: serializer.fromJson<String?>(json['primaryArtist']),
       imageUrl: serializer.fromJson<String?>(json['imageUrl']),
       tags: serializer.fromJson<String>(json['tags']),
+      canonicalKey: serializer.fromJson<String?>(json['canonicalKey']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -253,6 +280,7 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
       'primaryArtist': serializer.toJson<String?>(primaryArtist),
       'imageUrl': serializer.toJson<String?>(imageUrl),
       'tags': serializer.toJson<String>(tags),
+      'canonicalKey': serializer.toJson<String?>(canonicalKey),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -266,6 +294,7 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
           Value<String?> primaryArtist = const Value.absent(),
           Value<String?> imageUrl = const Value.absent(),
           String? tags,
+          Value<String?> canonicalKey = const Value.absent(),
           DateTime? createdAt}) =>
       LocalItem(
         id: id ?? this.id,
@@ -277,6 +306,8 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
             primaryArtist.present ? primaryArtist.value : this.primaryArtist,
         imageUrl: imageUrl.present ? imageUrl.value : this.imageUrl,
         tags: tags ?? this.tags,
+        canonicalKey:
+            canonicalKey.present ? canonicalKey.value : this.canonicalKey,
         createdAt: createdAt ?? this.createdAt,
       );
   LocalItem copyWithCompanion(LocalItemsCompanion data) {
@@ -291,6 +322,9 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
           : this.primaryArtist,
       imageUrl: data.imageUrl.present ? data.imageUrl.value : this.imageUrl,
       tags: data.tags.present ? data.tags.value : this.tags,
+      canonicalKey: data.canonicalKey.present
+          ? data.canonicalKey.value
+          : this.canonicalKey,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -306,6 +340,7 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
           ..write('primaryArtist: $primaryArtist, ')
           ..write('imageUrl: $imageUrl, ')
           ..write('tags: $tags, ')
+          ..write('canonicalKey: $canonicalKey, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -313,7 +348,7 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
 
   @override
   int get hashCode => Object.hash(id, kind, source, sourceId, title,
-      primaryArtist, imageUrl, tags, createdAt);
+      primaryArtist, imageUrl, tags, canonicalKey, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -326,6 +361,7 @@ class LocalItem extends DataClass implements Insertable<LocalItem> {
           other.primaryArtist == this.primaryArtist &&
           other.imageUrl == this.imageUrl &&
           other.tags == this.tags &&
+          other.canonicalKey == this.canonicalKey &&
           other.createdAt == this.createdAt);
 }
 
@@ -338,6 +374,7 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
   final Value<String?> primaryArtist;
   final Value<String?> imageUrl;
   final Value<String> tags;
+  final Value<String?> canonicalKey;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const LocalItemsCompanion({
@@ -349,6 +386,7 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
     this.primaryArtist = const Value.absent(),
     this.imageUrl = const Value.absent(),
     this.tags = const Value.absent(),
+    this.canonicalKey = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -361,6 +399,7 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
     this.primaryArtist = const Value.absent(),
     this.imageUrl = const Value.absent(),
     this.tags = const Value.absent(),
+    this.canonicalKey = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -377,6 +416,7 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
     Expression<String>? primaryArtist,
     Expression<String>? imageUrl,
     Expression<String>? tags,
+    Expression<String>? canonicalKey,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -389,6 +429,7 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
       if (primaryArtist != null) 'primary_artist': primaryArtist,
       if (imageUrl != null) 'image_url': imageUrl,
       if (tags != null) 'tags': tags,
+      if (canonicalKey != null) 'canonical_key': canonicalKey,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -403,6 +444,7 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
       Value<String?>? primaryArtist,
       Value<String?>? imageUrl,
       Value<String>? tags,
+      Value<String?>? canonicalKey,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return LocalItemsCompanion(
@@ -414,6 +456,7 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
       primaryArtist: primaryArtist ?? this.primaryArtist,
       imageUrl: imageUrl ?? this.imageUrl,
       tags: tags ?? this.tags,
+      canonicalKey: canonicalKey ?? this.canonicalKey,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -446,6 +489,9 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
     if (tags.present) {
       map['tags'] = Variable<String>(tags.value);
     }
+    if (canonicalKey.present) {
+      map['canonical_key'] = Variable<String>(canonicalKey.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(
           $LocalItemsTable.$convertercreatedAt.toSql(createdAt.value));
@@ -467,6 +513,7 @@ class LocalItemsCompanion extends UpdateCompanion<LocalItem> {
           ..write('primaryArtist: $primaryArtist, ')
           ..write('imageUrl: $imageUrl, ')
           ..write('tags: $tags, ')
+          ..write('canonicalKey: $canonicalKey, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -1753,6 +1800,7 @@ typedef $$LocalItemsTableCreateCompanionBuilder = LocalItemsCompanion Function({
   Value<String?> primaryArtist,
   Value<String?> imageUrl,
   Value<String> tags,
+  Value<String?> canonicalKey,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -1765,6 +1813,7 @@ typedef $$LocalItemsTableUpdateCompanionBuilder = LocalItemsCompanion Function({
   Value<String?> primaryArtist,
   Value<String?> imageUrl,
   Value<String> tags,
+  Value<String?> canonicalKey,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -1801,6 +1850,9 @@ class $$LocalItemsTableFilterComposer
 
   ColumnFilters<String> get tags => $composableBuilder(
       column: $table.tags, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get canonicalKey => $composableBuilder(
+      column: $table.canonicalKey, builder: (column) => ColumnFilters(column));
 
   ColumnWithTypeConverterFilters<DateTime, DateTime, DateTime> get createdAt =>
       $composableBuilder(
@@ -1842,6 +1894,10 @@ class $$LocalItemsTableOrderingComposer
   ColumnOrderings<String> get tags => $composableBuilder(
       column: $table.tags, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get canonicalKey => $composableBuilder(
+      column: $table.canonicalKey,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
@@ -1879,6 +1935,9 @@ class $$LocalItemsTableAnnotationComposer
   GeneratedColumn<String> get tags =>
       $composableBuilder(column: $table.tags, builder: (column) => column);
 
+  GeneratedColumn<String> get canonicalKey => $composableBuilder(
+      column: $table.canonicalKey, builder: (column) => column);
+
   GeneratedColumnWithTypeConverter<DateTime, DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -1914,6 +1973,7 @@ class $$LocalItemsTableTableManager extends RootTableManager<
             Value<String?> primaryArtist = const Value.absent(),
             Value<String?> imageUrl = const Value.absent(),
             Value<String> tags = const Value.absent(),
+            Value<String?> canonicalKey = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -1926,6 +1986,7 @@ class $$LocalItemsTableTableManager extends RootTableManager<
             primaryArtist: primaryArtist,
             imageUrl: imageUrl,
             tags: tags,
+            canonicalKey: canonicalKey,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -1938,6 +1999,7 @@ class $$LocalItemsTableTableManager extends RootTableManager<
             Value<String?> primaryArtist = const Value.absent(),
             Value<String?> imageUrl = const Value.absent(),
             Value<String> tags = const Value.absent(),
+            Value<String?> canonicalKey = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -1950,6 +2012,7 @@ class $$LocalItemsTableTableManager extends RootTableManager<
             primaryArtist: primaryArtist,
             imageUrl: imageUrl,
             tags: tags,
+            canonicalKey: canonicalKey,
             createdAt: createdAt,
             rowid: rowid,
           ),

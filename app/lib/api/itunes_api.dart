@@ -19,6 +19,10 @@ abstract class ItunesApi {
   /// Looks up the collectionId (album ID) for a given iTunes track ID.
   /// Returns null if not found or on error.
   Future<String?> lookupCollectionId(String trackId);
+
+  /// Best-effort ISRC lookup for a track by artist + title (used to canonicalize
+  /// non-iTunes-sourced tracks, e.g. Last.fm scrobbles). Returns null on miss.
+  Future<String?> lookupIsrc({required String artist, required String title});
 }
 
 class ItunesApiHttp implements ItunesApi {
@@ -85,6 +89,8 @@ class ItunesApiHttp implements ItunesApi {
         source: 'itunes',
         sourceId: id,
         album: r['collectionName'] as String?,
+        albumSourceId: r['collectionId']?.toString(),
+        isrc: r['isrc'] as String?,
       ));
     }
     return tracks;
@@ -135,8 +141,25 @@ class ItunesApiHttp implements ItunesApi {
         sourceId: id,
         album: kind == 'track' ? r['collectionName'] as String? : null,
         albumSourceId: kind == 'track' ? r['collectionId']?.toString() : null,
+        isrc: kind == 'track' ? r['isrc'] as String? : null,
       ));
     }
     return out;
+  }
+
+  @override
+  Future<String?> lookupIsrc({
+    required String artist,
+    required String title,
+  }) async {
+    final term = '$artist $title'.trim();
+    if (term.isEmpty) return null;
+    try {
+      final hits = await search(term, entity: 'song', limit: 1);
+      final isrc = hits.firstOrNull?.isrc;
+      return (isrc != null && isrc.isNotEmpty) ? isrc : null;
+    } catch (_) {
+      return null;
+    }
   }
 }

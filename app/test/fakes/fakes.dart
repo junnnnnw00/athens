@@ -29,6 +29,8 @@ class FakeItunesApi implements ItunesApi {
   Future<List<CatalogItem>> getAlbumTracks(String collectionId) async => const [];
   @override
   Future<String?> lookupCollectionId(String trackId) async => null;
+  @override
+  Future<String?> lookupIsrc({required String artist, required String title}) async => null;
 }
 
 class FakeLastfmApi implements LastfmApi {

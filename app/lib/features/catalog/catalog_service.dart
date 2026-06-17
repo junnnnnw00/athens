@@ -25,6 +25,7 @@ class CatalogItem {
     this.playedAtUts,
     this.album,
     this.albumSourceId,
+    this.isrc,
   });
 
   final String id;
@@ -39,6 +40,19 @@ class CatalogItem {
   final String? album;
   /// iTunes collectionId for track items — enables direct album navigation.
   final String? albumSourceId;
+  /// International Standard Recording Code — globally unique per recording and
+  /// language-independent. Used to collapse translated/transliterated duplicates
+  /// of the same track. iTunes song results carry it; other sources resolve it
+  /// via a best-effort iTunes lookup. See [catalogCanonicalKey].
+  final String? isrc;
+
+  /// Cross-source identity for dedup (see [catalogCanonicalKey]).
+  String get canonicalKey => catalogCanonicalKey(
+        kind: kind,
+        title: title,
+        artist: primaryArtist,
+        isrc: isrc,
+      );
 
   CatalogItem copyWithTags(List<CatalogTag> tags) => CatalogItem(
         id: id,
@@ -52,6 +66,7 @@ class CatalogItem {
         playedAtUts: playedAtUts,
         album: album,
         albumSourceId: albumSourceId,
+        isrc: isrc,
       );
 
   CatalogItem copyWithImage(String? imageUrl) => CatalogItem(
@@ -66,6 +81,22 @@ class CatalogItem {
         playedAtUts: playedAtUts,
         album: album,
         albumSourceId: albumSourceId,
+        isrc: isrc,
+      );
+
+  CatalogItem copyWithIsrc(String? isrc) => CatalogItem(
+        id: id,
+        kind: kind,
+        title: title,
+        primaryArtist: primaryArtist,
+        imageUrl: imageUrl,
+        sourceId: sourceId,
+        source: source,
+        tags: tags,
+        playedAtUts: playedAtUts,
+        album: album,
+        albumSourceId: albumSourceId,
+        isrc: isrc,
       );
 }
 
@@ -80,6 +111,7 @@ class RatedCatalogItem {
     required this.comparisons,
     required this.tags,
     required this.updatedAt,
+    this.storedCanonicalKey,
   });
 
   final String id;
@@ -91,6 +123,17 @@ class RatedCatalogItem {
   final int comparisons;
   final List<CatalogTag> tags;
   final DateTime updatedAt;
+
+  /// Persisted canonical key from `local_items.canonical_key` (resolved at
+  /// add-time / backfill). Null until resolved — falls back to the text key.
+  final String? storedCanonicalKey;
+
+  /// Cross-source identity for dedup: the persisted key when known, else the
+  /// normalized text key (see [catalogCanonicalKey]).
+  String get canonicalKey =>
+      (storedCanonicalKey != null && storedCanonicalKey!.isNotEmpty)
+          ? storedCanonicalKey!
+          : catalogMatchKey(kind: kind, title: title, artist: primaryArtist);
 
   RatedCatalogItem copyWith({
     double? elo,
@@ -106,6 +149,7 @@ class RatedCatalogItem {
       comparisons: comparisons ?? this.comparisons,
       tags: tags,
       updatedAt: updatedAt,
+      storedCanonicalKey: storedCanonicalKey,
     );
   }
 }
@@ -540,6 +584,27 @@ String normalizeMatchText(String s) {
 /// Cross-source identity key for a catalog item (kind + normalized title/artist).
 String catalogMatchKey({required String kind, required String title, String? artist}) =>
     '${kind}_${normalizeMatchText(title)}_${normalizeMatchText(artist ?? '')}';
+
+/// Best-available cross-source identity for dedup. Prefers a stable external id
+/// that survives title translation/transliteration, falling back to the
+/// normalized text key.
+///
+/// - **track**: `isrc:<ISRC>` when an ISRC is known. ISRC is globally unique per
+///   recording and language-independent, so the same song listed under its
+///   original and romanized/translated titles collapses to one identity.
+/// - **album / artist**: the normalized text key (no album-level ISRC; editions
+///   still merge by text).
+String catalogCanonicalKey({
+  required String kind,
+  required String title,
+  String? artist,
+  String? isrc,
+}) {
+  if (kind == 'track' && isrc != null && isrc.trim().isNotEmpty) {
+    return 'isrc:${isrc.trim().toUpperCase()}';
+  }
+  return catalogMatchKey(kind: kind, title: title, artist: artist);
+}
 
 final recentlyPlayedProvider = FutureProvider<List<CatalogItem>>((ref) async {
   final profile = ref.watch(myProfileProvider).valueOrNull;
