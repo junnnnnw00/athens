@@ -340,8 +340,8 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
                 Expanded(
                   child: Text(
                     match.commonCount > 0
-                        ? '같은 곡에 매긴 점수를 기반으로 분석되었습니다.'
-                        : '공통 평가 곡이 없어 장르/분위기 위주로 분석되었습니다.',
+                        ? I18n.get('cmp_score_based_note', _lang)
+                        : I18n.get('cmp_genre_based_note', _lang),
                     style: TextStyle(
                       fontSize: 11,
                       color: match.commonCount > 0 ? p.accentText : p.muted,
@@ -446,7 +446,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isMe ? '나' : '친구',
+            I18n.get(isMe ? 'cmp_me' : 'cmp_friend', _lang),
             style: TextStyle(color: p.muted, fontSize: 10, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
@@ -488,9 +488,9 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
           // Legend
           Row(
             children: [
-              _legendDot(p.accentText, '나'),
+              _legendDot(p.accentText, I18n.get('cmp_me', _lang)),
               const SizedBox(width: AppSpacing.md),
-              _legendDot(p.muted, '친구'),
+              _legendDot(p.muted, I18n.get('cmp_friend', _lang)),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -534,9 +534,9 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
-                Expanded(child: _stdDevChip('나', match.myScoreStdDev, p)),
+                Expanded(child: _stdDevChip(I18n.get('cmp_me', _lang), match.myScoreStdDev, p)),
                 const SizedBox(width: AppSpacing.sm),
-                Expanded(child: _stdDevChip('친구', match.theirScoreStdDev, p)),
+                Expanded(child: _stdDevChip(I18n.get('cmp_friend', _lang), match.theirScoreStdDev, p)),
               ],
             ),
           ],
@@ -587,11 +587,11 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
   Widget _stdDevChip(String label, double stdDev, AppPalette p) {
     String interpretation;
     if (stdDev < 1.2) {
-      interpretation = '고른 평가';
+      interpretation = I18n.get('cmp_std_even', _lang);
     } else if (stdDev < 2.2) {
-      interpretation = '적당한 호불호';
+      interpretation = I18n.get('cmp_std_moderate', _lang);
     } else {
-      interpretation = '강한 호불호';
+      interpretation = I18n.get('cmp_std_strong', _lang);
     }
 
     return Container(
@@ -626,7 +626,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
       return Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(color: p.surface2, borderRadius: BorderRadius.circular(12), border: Border.all(color: p.line)),
-        child: Text('공동 평가 곡이 없어 분석이 불가합니다.', style: TextStyle(color: p.muted, fontSize: 12)),
+        child: Text(I18n.get('cmp_no_common_analysis', _lang), style: TextStyle(color: p.muted, fontSize: 12)),
       );
     }
 
@@ -644,12 +644,12 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
         children: [
           Row(
             children: [
-              Expanded(child: _buildAgreementStat('의견 일치율', '${agreePct.toStringAsFixed(0)}%',
-                  agreePct >= 70 ? '높음' : agreePct >= 40 ? '보통' : '낮음', p)),
+              Expanded(child: _buildAgreementStat(I18n.get('cmp_agreement_rate_label', _lang), '${agreePct.toStringAsFixed(0)}%',
+                  agreePct >= 70 ? I18n.get('cmp_agreement_high', _lang) : agreePct >= 40 ? I18n.get('cmp_agreement_mid', _lang) : I18n.get('cmp_agreement_low', _lang), p)),
               Container(width: 1, height: 40, color: p.line),
-              Expanded(child: _buildAgreementStat('공통 평가', '${match.commonCount}곡', '함께 들은 곡', p)),
+              Expanded(child: _buildAgreementStat(I18n.get('cmp_common_eval_label', _lang), I18n.get('cmp_n_tracks_section', _lang, ['${match.commonCount}']), I18n.get('cmp_listened_together', _lang), p)),
               Container(width: 1, height: 40, color: p.line),
-              Expanded(child: _buildAgreementStat('의견 충돌', '$disagreeCount곡', '3점 이상 차이', p)),
+              Expanded(child: _buildAgreementStat(I18n.get('cmp_clash_label', _lang), I18n.get('cmp_n_tracks_section', _lang, ['$disagreeCount']), I18n.get('cmp_clash_sub', _lang), p)),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -668,10 +668,10 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
           const SizedBox(height: 4),
           Text(
             agreePct >= 70
-                ? '같은 곡에 비슷한 점수를 주는 편입니다.'
+                ? I18n.get('cmp_agree_high_text', _lang)
                 : agreePct >= 40
-                    ? '절반 정도의 곡에서 비슷한 감상을 나눕니다.'
-                    : '같은 곡에도 꽤 다른 평가를 내리는 편입니다.',
+                    ? I18n.get('cmp_agree_mid_text', _lang)
+                    : I18n.get('cmp_agree_low_text', _lang),
             style: TextStyle(color: p.muted, fontSize: 11),
           ),
         ],
@@ -707,7 +707,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
               Icon(Icons.people_alt_rounded, size: 14, color: p.accentText),
               const SizedBox(width: 6),
               Text(
-                '공통 아티스트 ${match.sharedArtistCount}명',
+                I18n.get('cmp_shared_artists_count', _lang, ['${match.sharedArtistCount}']),
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: p.accentText),
               ),
             ],
@@ -716,9 +716,9 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: _buildArtistColumn('나의 TOP 아티스트', match.myTopArtists)),
+              Expanded(child: _buildArtistColumn(I18n.get('cmp_my_top_artists', _lang), match.myTopArtists)),
               const SizedBox(width: AppSpacing.md),
-              Expanded(child: _buildArtistColumn('친구의 TOP 아티스트', match.theirTopArtists)),
+              Expanded(child: _buildArtistColumn(I18n.get('cmp_their_top_artists', _lang), match.theirTopArtists)),
             ],
           ),
         ],
@@ -734,7 +734,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
         children: [
           Text(title, style: TextStyle(color: p.muted, fontSize: 10, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text('데이터 없음', style: TextStyle(color: p.faint, fontSize: 11)),
+          Text(I18n.get('cmp_no_data', _lang), style: TextStyle(color: p.faint, fontSize: 11)),
         ],
       );
     }
@@ -793,12 +793,12 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
               Icon(Icons.music_off_rounded, size: 36, color: p.muted),
               const SizedBox(height: AppSpacing.md),
               Text(
-                '공동 평가한 음악이 없습니다',
+                I18n.get('cmp_no_common_tracks', _lang),
                 style: TextStyle(color: p.text, fontWeight: FontWeight.bold, fontSize: 14),
               ),
               const SizedBox(height: 4),
               Text(
-                '두 사람이 같은 곡을 평가해야\n비교가 가능합니다.',
+                I18n.get('cmp_no_common_tracks_desc', _lang),
                 style: TextStyle(color: p.muted, fontSize: 12, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -818,12 +818,12 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
 
     // Categories definition (order matters for toggle UI)
     final categories = [
-      _TrackCategory(id: -1, label: '전체',          emoji: '📋', count: match.commonItems.length, color: p.muted,               bgColor: p.chip),
-      _TrackCategory(id:  0, label: '공통 최애',      emoji: '💖', count: bothLove.length,          color: p.accentText,          bgColor: p.accentSoft.withValues(alpha: 0.18)),
-      _TrackCategory(id:  1, label: '내가 더 선호',   emoji: '👍', count: iPrefer.length,           color: const Color(0xFF6C9BFF),bgColor: const Color(0xFF6C9BFF).withValues(alpha: 0.12)),
-      _TrackCategory(id:  2, label: '친구가 더 선호', emoji: '🫶', count: theyPrefer.length,         color: const Color(0xFFFF8C69),bgColor: const Color(0xFFFF8C69).withValues(alpha: 0.12)),
-      _TrackCategory(id:  3, label: '비슷한 취향',    emoji: '💬', count: agree.length,             color: p.muted,               bgColor: p.chip),
-      _TrackCategory(id:  4, label: '취향 충돌',      emoji: '⚡', count: clash.length,             color: const Color(0xFFE3B341),bgColor: const Color(0xFFE3B341).withValues(alpha: 0.12)),
+      _TrackCategory(id: -1, label: I18n.get('cmp_cat_all', _lang),         emoji: '📋', count: match.commonItems.length, color: p.muted,               bgColor: p.chip),
+      _TrackCategory(id:  0, label: I18n.get('cmp_cat_both_love', _lang),   emoji: '💖', count: bothLove.length,          color: p.accentText,          bgColor: p.accentSoft.withValues(alpha: 0.18)),
+      _TrackCategory(id:  1, label: I18n.get('cmp_cat_i_prefer', _lang),    emoji: '👍', count: iPrefer.length,           color: const Color(0xFF6C9BFF),bgColor: const Color(0xFF6C9BFF).withValues(alpha: 0.12)),
+      _TrackCategory(id:  2, label: I18n.get('cmp_cat_they_prefer', _lang), emoji: '🫶', count: theyPrefer.length,         color: const Color(0xFFFF8C69),bgColor: const Color(0xFFFF8C69).withValues(alpha: 0.12)),
+      _TrackCategory(id:  3, label: I18n.get('cmp_cat_agree', _lang),       emoji: '💬', count: agree.length,             color: p.muted,               bgColor: p.chip),
+      _TrackCategory(id:  4, label: I18n.get('cmp_cat_clash', _lang),       emoji: '⚡', count: clash.length,             color: const Color(0xFFE3B341),bgColor: const Color(0xFFE3B341).withValues(alpha: 0.12)),
     ].where((c) => c.id == -1 || c.count > 0).toList();
 
     // Which items to render
@@ -950,19 +950,19 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
   };
 
   String _categoryLabel(int cat) => switch (cat) {
-    _kBothLove   => '공통 최애',
-    _kIPrefer    => '내가 더 선호',
-    _kTheyPrefer => '친구가 더 선호',
-    _kAgree      => '비슷한 취향',
-    _                => '취향 충돌',
+    _kBothLove   => I18n.get('cmp_cat_both_love', _lang),
+    _kIPrefer    => I18n.get('cmp_cat_i_prefer', _lang),
+    _kTheyPrefer => I18n.get('cmp_cat_they_prefer', _lang),
+    _kAgree      => I18n.get('cmp_cat_agree', _lang),
+    _                => I18n.get('cmp_cat_clash', _lang),
   };
 
   String _categorySubtitle(int cat) => switch (cat) {
-    _kBothLove   => '둘 다 7점 이상',
-    _kIPrefer    => '나 ≥ 친구 + 2점',
-    _kTheyPrefer => '친구 ≥ 나 + 2점',
-    _kAgree      => '점수 차이 2점 미만',
-    _                => '점수 차이 3점 이상',
+    _kBothLove   => I18n.get('cmp_sub_both_love', _lang),
+    _kIPrefer    => I18n.get('cmp_sub_i_prefer', _lang),
+    _kTheyPrefer => I18n.get('cmp_sub_they_prefer', _lang),
+    _kAgree      => I18n.get('cmp_sub_agree', _lang),
+    _                => I18n.get('cmp_sub_clash', _lang),
   };
 
   Color _categoryColor(int cat, AppPalette p) => switch (cat) {
@@ -1012,7 +1012,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
             ],
           ),
         ),
-        Text('$count곡', style: TextStyle(color: p.faint, fontSize: 11)),
+        Text(I18n.get('cmp_n_tracks_section', _lang, ['$count']), style: TextStyle(color: p.faint, fontSize: 11)),
       ],
     );
   }
@@ -1110,9 +1110,9 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      _scoreChip('나', myScore, p, category == _kIPrefer || category == _kBothLove),
+                      _scoreChip(I18n.get('cmp_me', _lang), myScore, p, category == _kIPrefer || category == _kBothLove),
                       const SizedBox(height: 3),
-                      _scoreChip('친구', theirScore, p, category == _kTheyPrefer || category == _kBothLove),
+                      _scoreChip(I18n.get('cmp_friend', _lang), theirScore, p, category == _kTheyPrefer || category == _kBothLove),
                     ],
                   ),
                 ],
@@ -1133,7 +1133,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        '${diff.toStringAsFixed(1)}점 차이',
+                        I18n.get('cmp_pt_gap', _lang, [diff.toStringAsFixed(1)]),
                         style: TextStyle(color: accentColor, fontSize: 9, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -1205,7 +1205,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
       children: [
         // 1. Shared Genres
         if (match.sharedGenres.isNotEmpty) ...[
-          _buildSectionTitle('공통 선호 장르'),
+          _buildSectionTitle(I18n.get('cmp_shared_genres', _lang)),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 8,
@@ -1230,7 +1230,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
 
         // 2. Shared Moods
         if (match.sharedMoods.isNotEmpty) ...[
-          _buildSectionTitle('공통 선호 분위기'),
+          _buildSectionTitle(I18n.get('cmp_shared_moods', _lang)),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 8,
@@ -1254,7 +1254,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
 
         // 3. Unique sections
         if (match.myUniqueGenres.isNotEmpty || match.myUniqueMoods.isNotEmpty) ...[
-          _buildSectionTitle('나만 평가한 독특한 취향'),
+          _buildSectionTitle(I18n.get('cmp_my_unique_taste', _lang)),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 8,
@@ -1267,7 +1267,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: p.line),
                     ),
-                    child: Text('장르: $g', style: TextStyle(color: p.muted, fontSize: 10)),
+                    child: Text(I18n.get('cmp_genre_prefix', _lang, [g]), style: TextStyle(color: p.muted, fontSize: 10)),
                   )),
               ...match.myUniqueMoods.map((m) => Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1276,7 +1276,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: p.line),
                     ),
-                    child: Text('분위기: $m', style: TextStyle(color: p.muted, fontSize: 10)),
+                    child: Text(I18n.get('cmp_mood_prefix', _lang, [m]), style: TextStyle(color: p.muted, fontSize: 10)),
                   )),
             ],
           ),
@@ -1284,7 +1284,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
         ],
 
         if (match.theirUniqueGenres.isNotEmpty || match.theirUniqueMoods.isNotEmpty) ...[
-          _buildSectionTitle('친구만 평가한 독특한 취향'),
+          _buildSectionTitle(I18n.get('cmp_their_unique_taste', _lang)),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: 8,
@@ -1297,7 +1297,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: p.line),
                     ),
-                    child: Text('장르: $g', style: TextStyle(color: p.muted, fontSize: 10)),
+                    child: Text(I18n.get('cmp_genre_prefix', _lang, [g]), style: TextStyle(color: p.muted, fontSize: 10)),
                   )),
               ...match.theirUniqueMoods.map((m) => Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1306,7 +1306,7 @@ class _FriendComparisonScreenState extends ConsumerState<FriendComparisonScreen>
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: p.line),
                     ),
-                    child: Text('분위기: $m', style: TextStyle(color: p.muted, fontSize: 10)),
+                    child: Text(I18n.get('cmp_mood_prefix', _lang, [m]), style: TextStyle(color: p.muted, fontSize: 10)),
                   )),
             ],
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../i18n.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../profile/profile_service.dart';
@@ -23,6 +24,8 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
   bool _isSearching = false;
   bool _isLoadingSearch = false;
   _FriendSort _sort = _FriendSort.recent;
+
+  AppLanguage get _lang => ref.read(localeProvider);
 
   @override
   void dispose() {
@@ -56,7 +59,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('검색 실패: $e')),
+          SnackBar(content: Text(I18n.get('fr_search_failed', _lang, ['$e']))),
         );
       }
     }
@@ -64,6 +67,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(localeProvider); // rebuild on locale change
     final p = context.palette;
     final friendsAsync = ref.watch(friendsProvider);
     final followersAsync = ref.watch(followersProvider);
@@ -74,7 +78,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('친구'),
+        title: Text(I18n.get('fr_title', _lang)),
       ),
       body: Column(
         children: [
@@ -86,7 +90,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
               cursorColor: p.accent,
               style: TextStyle(color: p.text),
               decoration: InputDecoration(
-                hintText: '핸들 또는 닉네임 검색...',
+                hintText: I18n.get('fr_search_hint', _lang),
                 hintStyle: TextStyle(color: p.muted, fontSize: 14),
                 prefixIcon: Icon(Icons.search_rounded, color: p.muted),
                 suffixIcon: _searchController.text.isNotEmpty
@@ -135,7 +139,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
     if (_searchResults.isEmpty) {
       return Center(
         child: Text(
-          '검색 결과가 없거나 본인입니다.',
+          I18n.get('fr_no_search_results', _lang),
           style: TextStyle(color: p.muted),
         ),
       );
@@ -201,7 +205,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                         final myRatings = ref.watch(ratedItemsProvider);
                         if (myRatings.isEmpty) {
                           return Text(
-                            '평가한 곡이 없습니다. 먼저 평가해 보세요!',
+                            I18n.get('fr_no_ratings', _lang),
                             style: TextStyle(color: p.faint, fontSize: 11),
                           );
                         }
@@ -224,7 +228,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                               Icon(Icons.bolt_rounded, size: 13, color: p.accentText),
                               const SizedBox(width: 2),
                               Text(
-                                '일치율 ${match.matchPercentage.toStringAsFixed(0)}%',
+                                I18n.get('fr_match_rate', _lang, [match.matchPercentage.toStringAsFixed(0)]),
                                 style: TextStyle(
                                   color: p.accentText,
                                   fontSize: 11,
@@ -233,7 +237,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                '•  공통 ${match.commonCount}곡',
+                                I18n.get('fr_common_count', _lang, ['${match.commonCount}']),
                                 style: TextStyle(
                                   color: p.faint,
                                   fontSize: 11,
@@ -262,7 +266,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                   minimumSize: const Size(60, 32),
                 ),
                 onPressed: () => _toggleFollow(user.id, isFollowed),
-                child: Text(isFollowed ? '삭제' : '추가', style: const TextStyle(fontSize: 12)),
+                child: Text(isFollowed ? I18n.get('fr_delete', _lang) : I18n.get('fr_add', _lang), style: const TextStyle(fontSize: 12)),
               ),
             ],
           ),
@@ -313,7 +317,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               Center(
-                child: Text('에러 발생: $err', style: TextStyle(color: p.text)),
+                child: Text(I18n.get('fr_error', _lang, ['\$err']), style: TextStyle(color: p.text)),
               ),
             ],
           ),
@@ -330,7 +334,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                 padding: const EdgeInsets.fromLTRB(
                     AppSpacing.xl, AppSpacing.sm, AppSpacing.xl, AppSpacing.sm),
                 child: Text(
-                  '나를 팔로우하는 사람',
+                  I18n.get('fr_followers', _lang),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -364,8 +368,8 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                             minimumSize: const Size(60, 32),
                           ),
                           onPressed: () => _toggleFollow(user.id, false),
-                          child: const Text('맞팔로우',
-                              style: TextStyle(
+                          child: Text(I18n.get('fr_follow_back', _lang),
+                              style: const TextStyle(
                                   fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ],
@@ -395,12 +399,12 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                         Icon(Icons.people_outline_rounded, size: 48, color: p.faint),
                         const SizedBox(height: AppSpacing.md),
                         Text(
-                          '아직 등록된 친구가 없어요',
+                          I18n.get('fr_empty_title', _lang),
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
-                          '위 검색창에서 친구의 핸들을 입력해 추가해 보세요.',
+                          I18n.get('fr_empty_desc', _lang),
                           textAlign: TextAlign.center,
                           style: TextStyle(color: p.muted, fontSize: 13),
                         ),
@@ -427,7 +431,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        '친구 ${friends.length}',
+                        I18n.get('fr_friends_count', _lang, ['\${friends.length}']),
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                     ),
@@ -442,12 +446,12 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                       itemBuilder: (c) => [
                         PopupMenuItem(
                           value: _FriendSort.recent,
-                          child: Text('최근 추가순',
+                          child: Text(I18n.get('fr_sort_recent', _lang),
                               style: TextStyle(color: p.text, fontSize: 14)),
                         ),
                         PopupMenuItem(
                           value: _FriendSort.match,
-                          child: Text('매칭률순',
+                          child: Text(I18n.get('fr_sort_match', _lang),
                               style: TextStyle(color: p.text, fontSize: 14)),
                         ),
                       ],
@@ -460,7 +464,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                             Icon(Icons.swap_vert_rounded, size: 16, color: p.muted),
                             const SizedBox(width: 4),
                             Text(
-                              _sort == _FriendSort.recent ? '최근 추가순' : '매칭률순',
+                              _sort == _FriendSort.recent ? I18n.get('fr_sort_recent', _lang) : I18n.get('fr_sort_match', _lang),
                               style: TextStyle(color: p.muted, fontSize: 12.5),
                             ),
                           ],
@@ -488,19 +492,19 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('친구 삭제'),
-        content: Text('${friend.displayName ?? friend.handle}님을 친구 목록에서 삭제하시겠습니까?'),
+        title: Text(I18n.get('fr_remove_title', _lang)),
+        content: Text(I18n.get('fr_remove_confirm', _lang, [friend.displayName ?? friend.handle])),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('취소', style: TextStyle(color: p.text)),
+            child: Text(I18n.get('fr_cancel', _lang), style: TextStyle(color: p.text)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _toggleFollow(friend.id, true);
             },
-            child: const Text('삭제', style: TextStyle(color: Colors.red)),
+            child: Text(I18n.get('fr_delete', _lang), style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -553,7 +557,7 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('친구 설정 실패: $e')),
+          SnackBar(content: Text(I18n.get('fr_follow_failed', _lang, ['\$e']))),
         );
       }
     }
