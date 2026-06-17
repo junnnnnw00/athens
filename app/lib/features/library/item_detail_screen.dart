@@ -102,32 +102,57 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final items = ref.read(ratedItemsProvider);
     final directItem = items.where((i) => i.id == widget.itemId).firstOrNull;
     final catalog = widget.catalogItem;
-    final selfKind = directItem?.kind ?? catalog?.kind;
+    final selfKind = directItem?.kind ?? catalog?.kind ?? 'track';
 
+    // Library items shown when the search box is empty (exclude self).
     final candidates = items.where((i) {
       if (directItem != null && i.id == directItem.id) return false;
-      if (selfKind != null && i.kind != selfKind) return false;
+      if (i.kind != selfKind) return false;
       return true;
     }).toList();
 
     final messenger = ScaffoldMessenger.of(context);
     final toast = context.t('lib_merged_toast', ref: ref);
-    final selected = await showModalBottomSheet<RatedCatalogItem>(
+    final needAnchor = context.t('lib_merge_need_anchor', ref: ref);
+    final selected = await showModalBottomSheet<CatalogItem>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _MergePicker(candidates: candidates),
+      builder: (_) => _MergePicker(
+        kind: selfKind,
+        selfId: directItem?.id ?? catalog?.id,
+        candidates: candidates,
+        // Current item is rated → search the catalog to fold an unrated dupe in.
+        // Current item is unrated → target must be a rated item, so only filter
+        // the library list (a catalog pick can't carry a score).
+        allowCatalogSearch: directItem != null,
+      ),
     );
     if (selected == null || !mounted) return;
+
     final controller = ref.read(libraryControllerProvider.notifier);
+    // Whether the chosen item is itself a rated library item.
+    final selectedRated =
+        items.where((r) => r.id == selected.id).firstOrNull;
+
     if (directItem != null) {
-      // This item is in the library: collapse the chosen item into it.
-      await controller.mergeWith(
-          primaryId: directItem.id, duplicateId: selected.id);
-    } else if (catalog != null) {
-      // This item is a search result: alias it onto the chosen rated item.
+      // Current item is rated → fold the chosen item into it.
+      if (selectedRated != null) {
+        await controller.mergeWith(
+            primaryId: directItem.id, duplicateId: selectedRated.id);
+      } else {
+        await controller.mergeCatalogInto(
+            source: selected, targetLocalId: directItem.id);
+      }
+    } else {
+      // Current item is an unrated search result → it must be aliased onto a
+      // RATED item (the score anchor).
+      if (selectedRated == null) {
+        messenger.showSnackBar(SnackBar(content: Text(needAnchor)));
+        return;
+      }
       await controller.mergeCatalogInto(
-          source: catalog, targetLocalId: selected.id);
+          source: catalog!, targetLocalId: selectedRated.id);
     }
     messenger.showSnackBar(SnackBar(content: Text(toast)));
   }
@@ -1114,29 +1139,96 @@ class _AlbumTracksSection extends ConsumerWidget {
   }
 }
 
-/// Searchable picker of rated library items to merge the current item onto.
-/// Returns the chosen rated item (or null on dismiss).
-class _MergePicker extends StatefulWidget {
-  const _MergePicker({required this.candidates});
+/// Merge picker. Typing searches the catalog (iTunes) so an item NOT in the
+/// library can be chosen; an empty box lists rated library items. Returns the
+/// chosen item as a [CatalogItem] (library items carry their local id so the
+/// caller can tell rated picks from catalog picks).
+class _MergePicker extends ConsumerStatefulWidget {
+  const _MergePicker({
+    required this.kind,
+    required this.selfId,
+    required this.candidates,
+    required this.allowCatalogSearch,
+  });
+  final String kind;
+  final String? selfId;
   final List<RatedCatalogItem> candidates;
+  final bool allowCatalogSearch;
 
   @override
-  State<_MergePicker> createState() => _MergePickerState();
+  ConsumerState<_MergePicker> createState() => _MergePickerState();
 }
 
-class _MergePickerState extends State<_MergePicker> {
+class _MergePickerState extends ConsumerState<_MergePicker> {
   String _query = '';
+  List<CatalogItem> _results = const [];
+  bool _loading = false;
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onChanged(String v) {
+    _debounce?.cancel();
+    setState(() {
+      _query = v;
+      if (v.trim().isEmpty || !widget.allowCatalogSearch) {
+        _results = const [];
+        _loading = false;
+        return;
+      }
+      _loading = true;
+    });
+    if (!widget.allowCatalogSearch) return;
+    _debounce = Timer(const Duration(milliseconds: 400), () async {
+      if (!mounted) return;
+      try {
+        final hits = await ref
+            .read(catalogServiceProvider)
+            .search(v.trim(), kind: widget.kind, limit: 20);
+        if (!mounted) return;
+        setState(() {
+          _results = hits.where((h) => h.id != widget.selfId).toList();
+          _loading = false;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _loading = false);
+      }
+    });
+  }
+
+  /// A library candidate rendered as a CatalogItem (id = local id).
+  CatalogItem _asCatalog(RatedCatalogItem r) => CatalogItem(
+        id: r.id,
+        kind: r.kind,
+        title: r.title,
+        primaryArtist: r.primaryArtist,
+        imageUrl: r.imageUrl,
+        source: r.id.contains(':') ? r.id.split(':').first : 'itunes',
+        sourceId: r.id.contains(':') ? r.id.split(':').last : r.id,
+      );
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    final q = _query.toLowerCase().trim();
-    final filtered = q.isEmpty
-        ? widget.candidates
-        : widget.candidates.where((i) {
-            final hay = '${i.title} ${i.primaryArtist ?? ''}'.toLowerCase();
-            return hay.contains(q);
-          }).toList();
+    final q = _query.trim().toLowerCase();
+    final searching = q.isNotEmpty;
+    final List<CatalogItem> items;
+    if (widget.allowCatalogSearch && searching) {
+      // Catalog (iTunes) results for folding an unrated dupe into a rated item.
+      items = _results;
+    } else {
+      // Library candidates (the rated anchors), filtered locally when typing.
+      items = widget.candidates
+          .where((r) => !searching ||
+              '${r.title} ${r.primaryArtist ?? ''}'.toLowerCase().contains(q))
+          .map(_asCatalog)
+          .toList();
+    }
 
     return Padding(
       padding: EdgeInsets.only(
@@ -1160,15 +1252,28 @@ class _MergePickerState extends State<_MergePicker> {
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               hintText: context.t('lib_merge_hint'),
               isDense: true,
+              suffixIcon: _loading
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : null,
             ),
-            onChanged: (v) => setState(() => _query = v),
+            onChanged: _onChanged,
           ),
           const SizedBox(height: AppSpacing.md),
-          if (filtered.isEmpty)
+          if (items.isEmpty && !_loading)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
               child: Center(
-                child: Text(context.t('lib_merge_empty'),
+                child: Text(
+                    searching
+                        ? context.t('search_no_results', ref: ref)
+                        : context.t('lib_merge_empty'),
                     style: TextStyle(color: p.muted)),
               ),
             )
@@ -1176,10 +1281,10 @@ class _MergePickerState extends State<_MergePicker> {
             Flexible(
               child: ListView.separated(
                 shrinkWrap: true,
-                itemCount: filtered.length,
+                itemCount: items.length,
                 separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
                 itemBuilder: (c, i) {
-                  final it = filtered[i];
+                  final it = items[i];
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CoverArt(
