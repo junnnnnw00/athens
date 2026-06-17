@@ -187,17 +187,28 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
       );
     }
 
-    final displayTags = !isUnrated ? item.tags : widget.catalogItem?.tags ?? [];
+    final String title = item == null ? widget.catalogItem!.title : item.title;
+    final String? primaryArtist = item == null ? widget.catalogItem!.primaryArtist : item.primaryArtist;
+    final String? imageUrl = item == null ? widget.catalogItem!.imageUrl : item.imageUrl;
+    final String kind = item == null ? widget.catalogItem!.kind : item.kind;
+
+    final storedTags = !isUnrated ? item.tags : widget.catalogItem?.tags ?? [];
+    final liveTags = isUnrated && storedTags.isEmpty
+        ? ref
+            .watch(itemTagsProvider((
+              kind: kind,
+              artist: primaryArtist ?? '',
+              title: title,
+            )))
+            .valueOrNull ??
+            const <CatalogTag>[]
+        : const <CatalogTag>[];
+    final displayTags = storedTags.isNotEmpty ? storedTags : liveTags;
 
     if (!isUnrated && !_loadedReview) {
       _loadedReview = true;
       _loadReview();
     }
-
-    final String title = item == null ? widget.catalogItem!.title : item.title;
-    final String? primaryArtist = item == null ? widget.catalogItem!.primaryArtist : item.primaryArtist;
-    final String? imageUrl = item == null ? widget.catalogItem!.imageUrl : item.imageUrl;
-    final String kind = item == null ? widget.catalogItem!.kind : item.kind;
 
     final double score = item == null ? 0.0 : scoreFromElo(item.elo);
 
@@ -719,21 +730,29 @@ class _InfoSection extends ConsumerWidget {
                           '$artist $title', entity: 'song', limit: 10);
                       String? fallbackId;
                       String? fallbackName;
+                      const unwantedKeywords = [
+                        'live', 'karaoke', 'tribute', 'cover version', 'covers',
+                      ];
                       for (final h in hits) {
                         if (h.albumSourceId == null) continue;
                         final hAlbum = h.album?.toLowerCase().trim() ?? '';
                         final want = albumForLink.toLowerCase().trim();
-                        // Fuzzy: one contains the other (handles deluxe/remaster editions)
-                        final nameMatch = hAlbum == want ||
-                            hAlbum.contains(want) ||
-                            want.contains(hAlbum);
-                        if (nameMatch) {
+                        // Skip live/tribute/karaoke unless the target album itself has those keywords
+                        final isUnwanted = unwantedKeywords.any(
+                            (kw) => hAlbum.contains(kw) && !want.contains(kw));
+                        // Exact match first, then fuzzy (handles deluxe/remaster editions)
+                        final exactMatch = hAlbum == want;
+                        final fuzzyMatch = !isUnwanted &&
+                            (hAlbum.contains(want) || want.contains(hAlbum));
+                        if (exactMatch || fuzzyMatch) {
                           collectionId = h.albumSourceId;
                           resolvedAlbumName = h.album;
                           break;
                         }
-                        fallbackId ??= h.albumSourceId;
-                        fallbackName ??= h.album;
+                        if (!isUnwanted) {
+                          fallbackId ??= h.albumSourceId;
+                          fallbackName ??= h.album;
+                        }
                       }
                       collectionId ??= fallbackId;
                       resolvedAlbumName ??= fallbackName ?? albumForLink;

@@ -298,6 +298,22 @@ class CatalogService {
   }
 }
 
+/// Lazily fetches Last.fm + MusicBrainz tags for an item not yet in the library.
+/// Used in the detail screen to show tags for unrated items.
+final itemTagsProvider = FutureProvider.autoDispose
+    .family<List<CatalogTag>, ({String kind, String artist, String title})>(
+        (ref, args) async {
+  final service = ref.read(catalogServiceProvider);
+  final dummy = CatalogItem(
+    id: '${args.kind}:${args.artist}:${args.title}',
+    kind: args.kind,
+    title: args.title,
+    primaryArtist: args.artist.isNotEmpty ? args.artist : null,
+    source: '',
+  );
+  return service.enrichTags(dummy);
+});
+
 // Providers — wire the real network implementations. Tests override these with
 // test doubles (see test/fakes/); runtime code never imports one.
 final itunesApiProvider = Provider<ItunesApi>((ref) => ItunesApiHttp());
