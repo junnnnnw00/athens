@@ -139,7 +139,11 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(localItemInfos);
         }
         if (from < 4) {
-          await m.addColumn(localItems, localItems.canonicalKey);
+          try {
+            await m.addColumn(localItems, localItems.canonicalKey);
+          } catch (_) {
+            // Column may already exist from a partial migration on this device.
+          }
         }
         if (from < 5) {
           await m.createTable(localAliases);
