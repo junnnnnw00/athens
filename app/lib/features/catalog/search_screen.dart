@@ -10,6 +10,7 @@ import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../api/lastfm_api.dart' show LastfmRecentTrack;
 import '../../widgets/cover_art.dart';
+import '../../widgets/score_ring.dart';
 import '../../widgets/filter_chips.dart';
 import '../../widgets/initial_score_dialog.dart';
 import '../stats/stats_screen.dart';
@@ -230,15 +231,22 @@ class _SearchBody extends ConsumerWidget {
     // items, so an already-rated copy listed under a translated/transliterated
     // title — or one manually merged — still shows as added.
     final addedKeys = <String>{};
+    final scoreMap = <String, double>{}; // canonical/text key → 0-10 score
     for (final r in ratedItems) {
-      addedKeys.add(resolveCanonicalKey(
+      final rk = resolveCanonicalKey(
         kind: r.kind,
         title: r.title,
         artist: r.primaryArtist,
         storedCanonicalKey: r.storedCanonicalKey,
         aliases: aliases,
-      ));
-      addedKeys.add(catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist));
+      );
+      final tk = catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist);
+      final s = scoreFromElo(r.elo);
+      addedKeys.add(rk);
+      addedKeys.add(tk);
+      scoreMap[r.id] = s;
+      scoreMap[rk] = s;
+      scoreMap[tk] = s;
     }
     bool isAdded(CatalogItem i) =>
         addedIds.contains(i.id) ||
@@ -246,6 +254,12 @@ class _SearchBody extends ConsumerWidget {
             kind: i.kind, title: i.title, artist: i.primaryArtist, isrc: i.isrc, aliases: aliases)) ||
         addedKeys.contains(
             catalogMatchKey(kind: i.kind, title: i.title, artist: i.primaryArtist));
+    double? getScore(CatalogItem i) {
+      if (scoreMap.containsKey(i.id)) return scoreMap[i.id];
+      final k1 = resolveCanonicalKey(kind: i.kind, title: i.title, artist: i.primaryArtist, isrc: i.isrc, aliases: aliases);
+      if (scoreMap.containsKey(k1)) return scoreMap[k1];
+      return scoreMap[catalogMatchKey(kind: i.kind, title: i.title, artist: i.primaryArtist)];
+    }
 
     if (s.loading) return const _SearchSkeleton();
     if (s.error) {
@@ -265,7 +279,7 @@ class _SearchBody extends ConsumerWidget {
       if (group.isEmpty) continue;
       rows.add(_SectionHeader(label: context.t('search_$k', ref: ref), count: group.length));
       for (final item in group) {
-        rows.add(_ResultRow(item: item, added: isAdded(item)));
+        rows.add(_ResultRow(item: item, added: isAdded(item), score: getScore(item)));
         rows.add(Divider(height: 1, color: p.line, indent: AppSpacing.xl));
       }
       if (kind == 'all' && group.length >= kSearchPageSizeAll) {

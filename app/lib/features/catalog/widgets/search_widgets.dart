@@ -122,9 +122,10 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _ResultRow extends ConsumerStatefulWidget {
-  const _ResultRow({required this.item, required this.added});
+  const _ResultRow({required this.item, required this.added, this.score});
   final CatalogItem item;
   final bool added;
+  final double? score;
 
   @override
   ConsumerState<_ResultRow> createState() => _ResultRowState();
@@ -235,7 +236,9 @@ class _ResultRowState extends ConsumerState<_ResultRow> {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            if (added)
+            if (added && widget.score != null)
+              ScoreRing(score: widget.score!, size: 38)
+            else if (added)
               Icon(Icons.check_circle_rounded, color: context.palette.accent)
             else
               FilledButton(

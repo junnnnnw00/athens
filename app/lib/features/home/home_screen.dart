@@ -46,6 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final friendsRecentAsync = ref.watch(friendsRecentRatingsProvider);
     final libraryAsync = ref.watch(libraryControllerProvider);
     final ratedItems = ref.watch(ratedItemsProvider);
+    final aliases = ref.watch(canonicalAliasesMapProvider);
 
 
     return PopScope(
@@ -218,15 +219,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       }
 
                       final taken = items.take(30).toList();
-                      // Build key→score lookup so rated tracks can show their score.
-                      final keyToScore = <String, double>{
-                        for (final r in ratedItems)
-                          catalogMatchKey(
-                            kind: r.kind,
-                            title: r.title,
-                            artist: r.primaryArtist,
-                          ): scoreFromElo(r.elo),
-                      };
+                      // Build key→score lookup so rated/merged tracks can show their score.
+                      final keyToScore = <String, double>{};
+                      for (final r in ratedItems) {
+                        final s = scoreFromElo(r.elo);
+                        keyToScore[r.id] = s;
+                        keyToScore[catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist)] = s;
+                        keyToScore[resolveCanonicalKey(
+                          kind: r.kind, title: r.title, artist: r.primaryArtist,
+                          storedCanonicalKey: r.storedCanonicalKey, aliases: aliases,
+                        )] = s;
+                      }
 
                       // 2-row Horizontal Grid Layout
                       return SizedBox(
@@ -244,9 +247,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           itemCount: taken.length,
                           itemBuilder: (context, index) {
                             final it = taken[index];
-                            final key = catalogMatchKey(
-                                kind: it.kind, title: it.title, artist: it.primaryArtist);
-                            return _CompactRecentCard(item: it, score: keyToScore[key]);
+                            final textKey = catalogMatchKey(kind: it.kind, title: it.title, artist: it.primaryArtist);
+                            final canonKey = resolveCanonicalKey(kind: it.kind, title: it.title, artist: it.primaryArtist, aliases: aliases);
+                            final score = keyToScore[it.id] ?? keyToScore[canonKey] ?? keyToScore[textKey];
+                            return _CompactRecentCard(item: it, score: score);
                           },
                         ),
                       );
@@ -260,11 +264,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     data: (items) {
                       if (items.isEmpty) return const SizedBox.shrink();
 
-                      final friendKeyToScore = <String, double>{
-                        for (final r in ratedItems)
-                          catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist):
-                              scoreFromElo(r.elo),
-                      };
+                      final friendKeyToScore = <String, double>{};
+                      for (final r in ratedItems) {
+                        final s = scoreFromElo(r.elo);
+                        friendKeyToScore[r.id] = s;
+                        friendKeyToScore[catalogMatchKey(kind: r.kind, title: r.title, artist: r.primaryArtist)] = s;
+                        friendKeyToScore[resolveCanonicalKey(kind: r.kind, title: r.title, artist: r.primaryArtist, storedCanonicalKey: r.storedCanonicalKey, aliases: aliases)] = s;
+                      }
                       final shown = items.take(_friendsShowCount).toList();
                       final hasMore = items.length > _friendsShowCount;
 
@@ -285,9 +291,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             const SizedBox(height: AppSpacing.md),
                             Column(
                               children: shown.map((it) {
-                                final key = catalogMatchKey(
-                                    kind: it.kind, title: it.title, artist: it.primaryArtist);
-                                return _FriendRecentCard(item: it, userScore: friendKeyToScore[key]);
+                                final textKey = catalogMatchKey(kind: it.kind, title: it.title, artist: it.primaryArtist);
+                                final canonKey = resolveCanonicalKey(kind: it.kind, title: it.title, artist: it.primaryArtist, aliases: aliases);
+                                final userScore = friendKeyToScore[it.id] ?? friendKeyToScore[canonKey] ?? friendKeyToScore[textKey];
+                                return _FriendRecentCard(item: it, userScore: userScore);
                               }).toList(),
                             ),
                             if (hasMore)
