@@ -320,11 +320,63 @@ class _SearchRecommendations extends ConsumerWidget {
     final recsAsync = ref.watch(genreRecommendationsProvider(selectedGenre));
     final addedIds = ref.watch(ratedItemsProvider).map((e) => e.id).toSet();
     final statsAsync = ref.watch(statsProvider);
+    final history = ref.watch(searchHistoryProvider);
 
     return ListView(
       padding: EdgeInsets.only(
           top: AppSpacing.lg, bottom: AppLayout.scrollBottomInset(context)),
       children: [
+        // ── Recent searches ──────────────────────────────────────────────
+        if (history.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.xs),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  context.t('search_history_title', ref: ref),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: p.muted,
+                        letterSpacing: 0.5,
+                      ),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      ref.read(searchHistoryProvider.notifier).clear(),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    context.t('search_history_clear', ref: ref),
+                    style: TextStyle(fontSize: 12, color: p.accentText),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.lg),
+            child: Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.xs,
+              children: history
+                  .map((q) => _HistoryChip(
+                        query: q,
+                        onTap: () =>
+                            ref.read(searchQueryProvider.notifier).state = q,
+                        onRemove: () =>
+                            ref.read(searchHistoryProvider.notifier).remove(q),
+                      ))
+                  .toList(),
+            ),
+          ),
+          Divider(height: 1, color: p.line),
+          const SizedBox(height: AppSpacing.md),
+        ],
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
           child: statsAsync.when(
@@ -617,6 +669,136 @@ class _RecommendationsSkeleton extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Search history chip ──────────────────────────────────────────────────────
+
+class _HistoryChip extends StatelessWidget {
+  const _HistoryChip({
+    required this.query,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  final String query;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+        decoration: BoxDecoration(
+          color: p.chip,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(color: p.line),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.history_rounded, size: 12, color: p.muted),
+            const SizedBox(width: 4),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(
+                query,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: p.text),
+              ),
+            ),
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: onRemove,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Icon(Icons.close_rounded, size: 12, color: p.muted),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Library tag filter body ──────────────────────────────────────────────────
+
+class _LibraryTagBody extends ConsumerWidget {
+  const _LibraryTagBody({required this.tag});
+  final String tag;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    if (tag.isEmpty) {
+      return _Hint(
+          icon: Icons.tag_rounded,
+          text: context.t('search_tag_hint', ref: ref));
+    }
+
+    final items = ref.watch(ratedItemsProvider);
+    final matches = items
+        .where((i) =>
+            i.tags.any((t) => t.name.toLowerCase().contains(tag.toLowerCase())))
+        .toList()
+      ..sort((a, b) => b.elo.compareTo(a.elo));
+
+    if (matches.isEmpty) {
+      return _Hint(
+          icon: Icons.tag_rounded,
+          text: context.t('lib_tag_filter_empty', ref: ref));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xl, AppSpacing.lg, AppSpacing.xl, AppSpacing.sm),
+          child: Text(
+            context.t('search_tag_results', args: [tag], ref: ref),
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall
+                ?.copyWith(color: p.muted, letterSpacing: 0.5),
+          ),
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding:
+                EdgeInsets.only(bottom: AppLayout.scrollBottomInset(context)),
+            itemCount: matches.length,
+            separatorBuilder: (_, __) =>
+                Divider(height: 1, color: p.line, indent: AppSpacing.xl),
+            itemBuilder: (_, i) {
+              final item = matches[i];
+              final catalogItem = CatalogItem(
+                id: item.id,
+                kind: item.kind,
+                title: item.title,
+                primaryArtist: item.primaryArtist,
+                imageUrl: item.imageUrl,
+                source: item.id.contains(':')
+                    ? item.id.split(':').first
+                    : 'itunes',
+                sourceId: item.id.contains(':')
+                    ? item.id.substring(item.id.indexOf(':') + 1)
+                    : item.id,
+                tags: item.tags,
+              );
+              return _ResultRow(item: catalogItem, added: true);
+            },
+          ),
+        ),
+      ],
     );
   }
 }

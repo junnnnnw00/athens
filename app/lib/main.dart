@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -7,6 +9,8 @@ import 'dev_seed.dart';
 import 'router.dart';
 import 'theme/app_theme.dart';
 
+import 'api/notification_service.dart';
+import 'api/notification_providers.dart';
 import 'api/supabase.dart';
 import 'api/platform_storage.dart';
 import 'data/offline_support.dart' show kLastUserIdKey;
@@ -86,14 +90,25 @@ Future<void> main() async {
   // Home as "local-user", blocking the landing/login screen. Genuine offline
   // returning users keep their cached id and never reach this point.
 
+  // Init local notifications (web-safe; no-op on web)
+  unawaited(NotificationService.initialize());
+
   if (kDevSeed) {
     await seedDevData(container);
   }
 
-  void runTheApp() => runApp(UncontrolledProviderScope(
-        container: container,
-        child: const AthensApp(),
-      ));
+  void runTheApp() {
+    runApp(UncontrolledProviderScope(
+      container: container,
+      child: const AthensApp(),
+    ));
+    // Check for unrated tracks + friend activity after app has loaded
+    unawaited(Future.delayed(const Duration(seconds: 5), () async {
+      try {
+        await checkStartupNotifications(container);
+      } catch (_) {}
+    }));
+  }
 
   if (_kSentryDsn.isNotEmpty) {
     await SentryFlutter.init(

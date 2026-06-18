@@ -533,7 +533,7 @@ class SearchController extends Notifier<SearchState> {
     _offset = 0;
     _seen.clear();
     final gen = ++_generation;
-    if (query.isEmpty) {
+    if (query.isEmpty || query.toLowerCase().startsWith('tag:')) {
       return const SearchState();
     }
     _load(query, kind, first: true, gen: gen);

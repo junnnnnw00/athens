@@ -14,6 +14,7 @@ import '../../widgets/filter_chips.dart';
 import '../../widgets/initial_score_dialog.dart';
 import '../stats/stats_screen.dart';
 import 'catalog_service.dart';
+import 'search_history_provider.dart';
 import '../../i18n.dart';
 
 part 'widgets/search_widgets.dart';
@@ -150,6 +151,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
     _debounce = Timer(widget.debounceDuration, () {
       ref.read(searchQueryProvider.notifier).state = value;
+      if (value.trim().isNotEmpty) {
+        ref.read(searchHistoryProvider.notifier).add(value.trim());
+      }
     });
   }
 
@@ -204,7 +208,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ),
       body: query.trim().isEmpty
           ? const _SearchRecommendations()
-          : const _SearchBody(),
+          : query.trim().toLowerCase().startsWith('tag:')
+              ? _LibraryTagBody(tag: query.trim().substring(4).trim())
+              : const _SearchBody(),
     );
   }
 }

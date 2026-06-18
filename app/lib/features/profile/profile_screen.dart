@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../api/notification_service.dart';
+import '../../api/notification_providers.dart';
 import '../../data/repository/library_providers.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
@@ -304,6 +306,20 @@ class ProfileScreen extends ConsumerWidget {
             );
           }),
           _Tile(
+              icon: Icons.notifications_outlined,
+              title: context.t('profile_notif_title', ref: ref),
+              subtitle: context.t('profile_notif_desc', ref: ref),
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  ),
+                  builder: (_) => const _NotifSettingsSheet(),
+                );
+              }),
+          _Tile(
               icon: Icons.chat_bubble_outline_rounded,
               title: context.t('profile_feedback_title', ref: ref),
               subtitle: context.t('profile_feedback_subtitle', ref: ref),
@@ -522,6 +538,134 @@ class _Tile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Notification settings bottom sheet ───────────────────────────────────────
+
+class _NotifSettingsSheet extends ConsumerStatefulWidget {
+  const _NotifSettingsSheet();
+
+  @override
+  ConsumerState<_NotifSettingsSheet> createState() => _NotifSettingsSheetState();
+}
+
+class _NotifSettingsSheetState extends ConsumerState<_NotifSettingsSheet> {
+  bool _requesting = false;
+
+  Future<void> _ensurePermission() async {
+    setState(() => _requesting = true);
+    await NotificationService.requestPermission();
+    if (mounted) setState(() => _requesting = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final settingsAsync = ref.watch(notifSettingsProvider);
+    final lang = ref.watch(localeProvider);
+    final settings = settingsAsync.valueOrNull ?? const NotifSettings();
+    final bottom = MediaQuery.of(context).padding.bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(0, AppSpacing.lg, 0, bottom + AppSpacing.lg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.xl, 0, AppSpacing.xl, AppSpacing.md),
+            child: Text(
+              context.t('profile_notif_title', ref: ref),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          Divider(height: 1, color: p.line),
+          // ── Friend activity ──────────────────────────────────────────
+          SwitchListTile(
+            value: settings.friendEnabled,
+            onChanged: settingsAsync.isLoading
+                ? null
+                : (v) async {
+                    if (v) await _ensurePermission();
+                    await ref
+                        .read(notifSettingsProvider.notifier)
+                        .setFriendEnabled(v);
+                  },
+            title: Text(context.t('notif_friend_toggle', ref: ref)),
+            secondary: const Icon(Icons.people_outline_rounded),
+          ),
+          // ── Unrated tracks ───────────────────────────────────────────
+          SwitchListTile(
+            value: settings.unratedEnabled,
+            onChanged: settingsAsync.isLoading
+                ? null
+                : (v) async {
+                    if (v) await _ensurePermission();
+                    await ref
+                        .read(notifSettingsProvider.notifier)
+                        .setUnratedEnabled(v);
+                  },
+            title: Text(context.t('notif_unrated_toggle', ref: ref)),
+            secondary: const Icon(Icons.music_note_outlined),
+          ),
+          // ── Duel reminder ────────────────────────────────────────────
+          SwitchListTile(
+            value: settings.duelReminderEnabled,
+            onChanged: settingsAsync.isLoading
+                ? null
+                : (v) async {
+                    if (v) await _ensurePermission();
+                    final hour = settings.duelReminderHour;
+                    final minute = settings.duelReminderMinute;
+                    await ref.read(notifSettingsProvider.notifier).setDuelReminder(
+                          enabled: v,
+                          hour: hour,
+                          minute: minute,
+                          title: I18n.get('notif_duel_reminder_title', lang),
+                          body: I18n.get('notif_duel_reminder_body', lang),
+                        );
+                  },
+            title: Text(context.t('notif_duel_reminder_toggle', ref: ref)),
+            secondary: const Icon(Icons.bolt_outlined),
+          ),
+          if (settings.duelReminderEnabled) ...[
+            ListTile(
+              leading: const Icon(Icons.access_time_rounded),
+              title: Text(context.t('notif_duel_reminder_time', ref: ref)),
+              trailing: Text(
+                '${settings.duelReminderHour.toString().padLeft(2, '0')}:'
+                '${settings.duelReminderMinute.toString().padLeft(2, '0')}',
+                style: TextStyle(color: p.accentText, fontWeight: FontWeight.w600),
+              ),
+              onTap: () async {
+                final picked = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay(
+                    hour: settings.duelReminderHour,
+                    minute: settings.duelReminderMinute,
+                  ),
+                );
+                if (picked == null || !mounted) return;
+                await ref.read(notifSettingsProvider.notifier).setDuelReminder(
+                      enabled: true,
+                      hour: picked.hour,
+                      minute: picked.minute,
+                      title: I18n.get('notif_duel_reminder_title', lang),
+                      body: I18n.get('notif_duel_reminder_body', lang),
+                    );
+              },
+            ),
+          ],
+          if (_requesting)
+            const Padding(
+              padding: EdgeInsets.all(AppSpacing.md),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+        ],
       ),
     );
   }

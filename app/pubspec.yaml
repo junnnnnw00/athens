@@ -57,6 +57,10 @@ dependencies:
   flutter_cache_manager: ^3.4.1
   connectivity_plus: ^6.1.0
 
+  # Local notifications (duel reminders, unrated tracks, friend activity)
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

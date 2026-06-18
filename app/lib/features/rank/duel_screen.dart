@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/repository/library_providers.dart';
+import '../../domain/elo.dart';
 import '../../domain/pair_selector.dart';
 import '../../domain/score.dart';
 import '../../theme/tokens.dart';
@@ -62,6 +63,12 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
   (RatedCatalogItem, RatedCatalogItem)? _pair;
   String? _picked;
+
+  // Score change badges shown after a pick (cleared on next pair)
+  double? _scoreDeltaA;
+  double? _scoreDeltaB;
+  double? _newScoreA;
+  double? _newScoreB;
 
   /// Active duel kind (free mode only). Placement uses the focus item's kind.
   String? _kind;
@@ -154,7 +161,27 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     final winner = winnerId == a.id ? a : b;
     final loser = winnerId == a.id ? b : a;
 
-    setState(() => _picked = winnerId);
+    // Compute score change immediately from Elo formula — no network wait
+    final (newWinnerElo, newLoserElo) = Elo.update(winner.elo, loser.elo);
+    final winnerScoreBefore = scoreFromElo(winner.elo);
+    final loserScoreBefore = scoreFromElo(loser.elo);
+    final winnerDelta = scoreFromElo(newWinnerElo) - winnerScoreBefore;
+    final loserDelta = scoreFromElo(newLoserElo) - loserScoreBefore;
+
+    setState(() {
+      _picked = winnerId;
+      if (winnerId == a.id) {
+        _scoreDeltaA = winnerDelta;
+        _newScoreA = scoreFromElo(newWinnerElo);
+        _scoreDeltaB = loserDelta;
+        _newScoreB = scoreFromElo(newLoserElo);
+      } else {
+        _scoreDeltaB = winnerDelta;
+        _newScoreB = scoreFromElo(newWinnerElo);
+        _scoreDeltaA = loserDelta;
+        _newScoreA = scoreFromElo(newLoserElo);
+      }
+    });
     await ref
         .read(libraryControllerProvider.notifier)
         .recordComparison(winnerId: winnerId, loserId: loserId);
@@ -179,6 +206,10 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
     final fresh = ref.read(ratedItemsProvider);
     setState(() {
       _picked = null;
+      _scoreDeltaA = null;
+      _scoreDeltaB = null;
+      _newScoreA = null;
+      _newScoreB = null;
       if (showNudge) {
         _streakText = streakText;
         _showStreakNudge = true;
@@ -349,6 +380,8 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                             dim: _picked != null && _picked != a.id,
                             win: _picked == a.id,
                             onTap: () => _pick(a.id),
+                            scoreDelta: _scoreDeltaA,
+                            newScore: _newScoreA,
                           ),
                         ),
                         const SizedBox(width: AppSpacing.md),
@@ -358,6 +391,8 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
                             dim: _picked != null && _picked != b.id,
                             win: _picked == b.id,
                             onTap: () => _pick(b.id),
+                            scoreDelta: _scoreDeltaB,
+                            newScore: _newScoreB,
                           ),
                         ),
                       ],
@@ -588,12 +623,16 @@ class _DuelCard extends StatelessWidget {
     required this.dim,
     required this.win,
     required this.onTap,
+    this.scoreDelta,
+    this.newScore,
   });
 
   final RatedCatalogItem item;
   final bool dim;
   final bool win;
   final VoidCallback onTap;
+  final double? scoreDelta;
+  final double? newScore;
 
   @override
   Widget build(BuildContext context) {
@@ -637,6 +676,15 @@ class _DuelCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Score change badge — appears instantly on pick
+                if (scoreDelta != null && newScore != null)
+                  Align(
+                    alignment: Alignment.center,
+                    child: _ScoreChangeBadge(
+                      delta: scoreDelta!,
+                      newScore: newScore!,
+                    ),
+                  ),
                 Align(
                   alignment: Alignment.bottomLeft,
                   child: Padding(
@@ -718,6 +766,104 @@ class _DuelArt extends ConsumerWidget {
       fit: BoxFit.cover,
       placeholder: (_, __) => ColoredBox(color: fallback),
       errorWidget: (_, __, ___) => ColoredBox(color: fallback),
+    );
+  }
+}
+
+// ── Score change badge ────────────────────────────────────────────────────────
+
+class _ScoreChangeBadge extends StatefulWidget {
+  const _ScoreChangeBadge({required this.delta, required this.newScore});
+  final double delta;
+  final double newScore;
+
+  @override
+  State<_ScoreChangeBadge> createState() => _ScoreChangeBadgeState();
+}
+
+class _ScoreChangeBadgeState extends State<_ScoreChangeBadge>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  late final Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..forward();
+    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isWin = widget.delta > 0;
+    final sign = isWin ? '+' : '';
+    // Winner: accent orange; Loser: semi-transparent dark
+    final bgColor = isWin
+        ? const Color(0xFFF93902) // Athens accent orange
+        : Colors.black.withValues(alpha: 0.65);
+    final textColor = Colors.white;
+
+    return FadeTransition(
+      opacity: _fade,
+      child: ScaleTransition(
+        scale: _scale,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: isWin
+                    ? const Color(0xFFF93902).withValues(alpha: 0.45)
+                    : Colors.black.withValues(alpha: 0.3),
+                blurRadius: 16,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isWin ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                color: textColor,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.newScore.toStringAsFixed(1),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$sign${widget.delta.toStringAsFixed(1)}',
+                style: TextStyle(
+                  color: textColor.withValues(alpha: 0.85),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

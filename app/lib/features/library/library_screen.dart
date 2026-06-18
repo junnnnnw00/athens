@@ -205,6 +205,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final filter = ref.watch(_libraryFilterProvider);
     final lang = ref.watch(localeProvider);
 
+    // Sync search field when tag chips set the filter programmatically
+    ref.listen<String>(_librarySearchProvider, (_, next) {
+      if (next.isNotEmpty && !_searchOpen) {
+        setState(() => _searchOpen = true);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _searchFocus.requestFocus();
+        });
+      }
+      if (_searchController.text != next) {
+        _searchController.text = next;
+      }
+    });
+
     final options = ['All', 'Albums', 'Tracks', 'Artists'];
     String getOptionLabel(String opt) {
       if (lang == AppLanguage.ko) {
@@ -303,14 +316,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
           final query = ref.watch(_librarySearchProvider).trim().toLowerCase();
           final sort = ref.watch(_librarySortProvider);
+          // tag:shoegaze → filter by tag only; otherwise title/artist/tag match
+          final tagPrefix = query.startsWith('tag:') ? query.substring(4).trim() : null;
           final searched = query.isEmpty
               ? kindFiltered
-              : kindFiltered
-                  .where((i) =>
-                      i.title.toLowerCase().contains(query) ||
-                      (i.primaryArtist ?? '').toLowerCase().contains(query) ||
-                      i.tags.any((t) => t.name.toLowerCase().contains(query)))
-                  .toList();
+              : tagPrefix != null
+                  ? kindFiltered
+                      .where((i) => i.tags.any((t) => t.name.toLowerCase().contains(tagPrefix)))
+                      .toList()
+                  : kindFiltered
+                      .where((i) =>
+                          i.title.toLowerCase().contains(query) ||
+                          (i.primaryArtist ?? '').toLowerCase().contains(query) ||
+                          i.tags.any((t) => t.name.toLowerCase().contains(query)))
+                      .toList();
 
           // Default view keeps the post-duel reorder animation; search/sort show
           // the computed order directly (and reset the animation state).
@@ -455,7 +474,12 @@ class _LibraryRow extends ConsumerWidget {
                       runSpacing: 4,
                       children: item.tags
                           .take(3)
-                          .map((t) => _MiniTag(t.name))
+                          .map((t) => _MiniTag(
+                                t.name,
+                                onTap: () {
+                                  ref.read(_librarySearchProvider.notifier).state = 'tag:${t.name}';
+                                },
+                              ))
                           .toList(),
                     ),
                   ],
@@ -472,14 +496,14 @@ class _LibraryRow extends ConsumerWidget {
 }
 
 class _MiniTag extends StatelessWidget {
-  const _MiniTag(this.name);
+  const _MiniTag(this.name, {this.onTap});
   final String name;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
-    return ConstrainedBox(
-      // Cap width so a long tag name ellipsizes instead of spilling past the card.
+    final chip = ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 120),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -493,11 +517,12 @@ class _MiniTag extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           softWrap: false,
-          style:
-              TextStyle(color: p.muted, fontSize: 10.5, fontWeight: FontWeight.w600),
+          style: TextStyle(color: p.muted, fontSize: 10.5, fontWeight: FontWeight.w600),
         ),
       ),
     );
+    if (onTap == null) return chip;
+    return GestureDetector(onTap: onTap, child: chip);
   }
 }
 

@@ -443,6 +443,33 @@ class I18n {
     'fr_remove_confirm': {AppLanguage.ko: '{0}님을 친구 목록에서 삭제하시겠습니까?', AppLanguage.en: 'Remove {0} from your friends?'},
     'fr_cancel': {AppLanguage.ko: '취소', AppLanguage.en: 'Cancel'},
     'fr_follow_failed': {AppLanguage.ko: '친구 설정 실패: {0}', AppLanguage.en: 'Could not update friend: {0}'},
+
+    // ── Notifications ─────────────────────────────────────────────────────
+    'notif_unrated_title': {AppLanguage.ko: '평가할 곡이 쌓였어요', AppLanguage.en: 'Songs waiting to be rated'},
+    'notif_unrated_body': {AppLanguage.ko: '최근 들은 곡 중 {0}곡을 아직 평가하지 않았어요.', AppLanguage.en: 'You have {0} recently played songs to rate.'},
+    'notif_friend_activity_title': {AppLanguage.ko: '친구 활동', AppLanguage.en: 'Friend activity'},
+    'notif_friend_activity_body': {AppLanguage.ko: '친구가 새로운 음악 {0}곡을 평가했어요.', AppLanguage.en: 'Your friends rated {0} new tracks.'},
+    'notif_duel_reminder_title': {AppLanguage.ko: '오늘 듀얼 하셨나요?', AppLanguage.en: 'Ready for today\'s duel?'},
+    'notif_duel_reminder_body': {AppLanguage.ko: '오늘 랭킹을 갱신해보세요.', AppLanguage.en: 'Update your rankings today.'},
+    'profile_notif_title': {AppLanguage.ko: '알림 설정', AppLanguage.en: 'Notification Settings'},
+    'profile_notif_desc': {AppLanguage.ko: '듀얼 리마인더, 친구 활동 알림', AppLanguage.en: 'Duel reminders, friend activity'},
+    'notif_duel_reminder_toggle': {AppLanguage.ko: '매일 듀얼 리마인더', AppLanguage.en: 'Daily duel reminder'},
+    'notif_duel_reminder_time': {AppLanguage.ko: '알림 시간', AppLanguage.en: 'Reminder time'},
+    'notif_unrated_toggle': {AppLanguage.ko: '미평가 Last.fm 트랙 알림', AppLanguage.en: 'Unrated Last.fm tracks'},
+    'notif_friend_toggle': {AppLanguage.ko: '친구 활동 알림', AppLanguage.en: 'Friend activity'},
+    'notif_permission_required': {AppLanguage.ko: '알림 권한이 필요해요', AppLanguage.en: 'Notification permission required'},
+    'notif_permission_desc': {AppLanguage.ko: '알림을 받으려면 권한을 허용해주세요.', AppLanguage.en: 'Please allow notifications to receive alerts.'},
+    'notif_permission_allow': {AppLanguage.ko: '권한 허용', AppLanguage.en: 'Allow'},
+
+    // ── Search history ────────────────────────────────────────────────────
+    'search_history_title': {AppLanguage.ko: '최근 검색', AppLanguage.en: 'Recent searches'},
+    'search_history_clear': {AppLanguage.ko: '전체 삭제', AppLanguage.en: 'Clear all'},
+
+    // ── Tag filter ────────────────────────────────────────────────────────
+    'search_tag_results': {AppLanguage.ko: '태그 결과: #{0}', AppLanguage.en: 'Tag results: #{0}'},
+    'search_tag_hint': {AppLanguage.ko: 'tag:shoegaze 형식으로 태그 검색', AppLanguage.en: 'Use tag:shoegaze to filter by tag'},
+    'lib_tag_filter_hint': {AppLanguage.ko: 'tag: 로 태그 검색 가능', AppLanguage.en: 'Use tag: to filter by tag'},
+    'lib_tag_filter_empty': {AppLanguage.ko: '해당 태그의 항목이 없어요', AppLanguage.en: 'No items with that tag'},
   };
 
   static String get(String key, AppLanguage lang, [List<String>? args]) {
