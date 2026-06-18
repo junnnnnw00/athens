@@ -96,6 +96,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
   // -------- placement --------
   void _ensurePlacementPair(List<RatedCatalogItem> items) {
     if (_done) return;
+    if (_pair != null) return; // keep current pair until _pick clears it
     final focus = items.where((i) => i.id == widget.focusId).firstOrNull;
     if (focus == null) {
       _done = true;
@@ -163,10 +164,8 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
 
     // Compute score change immediately from Elo formula — no network wait
     final (newWinnerElo, newLoserElo) = Elo.update(winner.elo, loser.elo);
-    final winnerScoreBefore = scoreFromElo(winner.elo);
-    final loserScoreBefore = scoreFromElo(loser.elo);
-    final winnerDelta = scoreFromElo(newWinnerElo) - winnerScoreBefore;
-    final loserDelta = scoreFromElo(newLoserElo) - loserScoreBefore;
+    final winnerDelta = scoreFromElo(newWinnerElo) - scoreFromElo(winner.elo);
+    final loserDelta = scoreFromElo(newLoserElo) - scoreFromElo(loser.elo);
 
     setState(() {
       _picked = winnerId;
@@ -201,7 +200,7 @@ class _DuelScreenState extends ConsumerState<DuelScreen> {
       showNudge = true;
     }
 
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    await Future<void>.delayed(const Duration(milliseconds: 1000));
     if (!mounted) return;
     final fresh = ref.read(ratedItemsProvider);
     setState(() {
@@ -605,7 +604,13 @@ class _PlacementDone extends ConsumerWidget {
               SizedBox(
                 width: 240,
                 child: TextButton(
-                  onPressed: () => context.go('/search'),
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/search');
+                    }
+                  },
                   child: Text(context.t('duel_add_more', ref: ref)),
                 ),
               ),
@@ -839,24 +844,24 @@ class _ScoreChangeBadgeState extends State<_ScoreChangeBadge>
               Icon(
                 isWin ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
                 color: textColor,
-                size: 18,
+                size: 16,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               Text(
                 widget.newScore.toStringAsFixed(1),
                 style: TextStyle(
                   color: textColor,
-                  fontSize: 22,
+                  fontSize: 28,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               Text(
-                '$sign${widget.delta.toStringAsFixed(1)}',
+                '$sign${widget.delta.toStringAsFixed(2)}',
                 style: TextStyle(
-                  color: textColor.withValues(alpha: 0.85),
-                  fontSize: 13,
+                  color: textColor.withValues(alpha: 0.80),
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),

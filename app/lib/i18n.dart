@@ -113,7 +113,7 @@ class I18n {
     'lib_sort_alpha': {AppLanguage.ko: '가나다순', AppLanguage.en: 'Alphabetical'},
     'lib_sort_most_dueled': {AppLanguage.ko: '듀얼 많은순', AppLanguage.en: 'Most dueled'},
     'lib_close_tooltip': {AppLanguage.ko: '닫기', AppLanguage.en: 'Close'},
-    'lib_search_hint': {AppLanguage.ko: '내 라이브러리 검색…', AppLanguage.en: 'Search your library…'},
+    'lib_search_hint': {AppLanguage.ko: '태그 또는 제목으로 검색', AppLanguage.en: 'Search by tag or title'},
     'lib_clear_tooltip': {AppLanguage.ko: '지우기', AppLanguage.en: 'Clear'},
     'lib_search_tooltip': {AppLanguage.ko: '검색', AppLanguage.en: 'Search'},
     'lib_sync_tooltip': {AppLanguage.ko: '동기화 대기 {0}개 · 탭하여 동기화', AppLanguage.en: '{0} pending · tap to sync'},

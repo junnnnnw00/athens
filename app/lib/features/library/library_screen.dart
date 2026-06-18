@@ -358,6 +358,21 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   },
                 ),
               ),
+              // Tag autocomplete suggestions (visible when search bar open)
+              if (_searchOpen)
+                Padding(
+                  padding: const EdgeInsets.only(
+                      top: AppSpacing.xs, bottom: AppSpacing.sm),
+                  child: _LibraryTagSuggestions(
+                    allItems: items,
+                    tagQuery: tagPrefix,
+                    onTagSelect: (tag) {
+                      final v = 'tag:$tag';
+                      ref.read(_librarySearchProvider.notifier).state = v;
+                      _searchController.text = v;
+                    },
+                  ),
+                ),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _refresh,
@@ -622,4 +637,92 @@ class _LibrarySkeleton extends StatelessWidget {
         decoration:
             BoxDecoration(color: c, borderRadius: BorderRadius.circular(r)),
       );
+}
+
+// ── Library tag suggestions ──────────────────────────────────────────────────
+
+class _LibraryTagSuggestions extends StatelessWidget {
+  const _LibraryTagSuggestions({
+    required this.allItems,
+    required this.tagQuery,
+    required this.onTagSelect,
+  });
+
+  final List<RatedCatalogItem> allItems;
+  final String? tagQuery; // non-null when query starts with "tag:"
+  final void Function(String tag) onTagSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+
+    // Count tag frequency across all items
+    final freq = <String, int>{};
+    for (final item in allItems) {
+      for (final t in item.tags) {
+        freq[t.name] = (freq[t.name] ?? 0) + 1;
+      }
+    }
+
+    // Filter by tag query prefix
+    final q = tagQuery?.toLowerCase() ?? '';
+    final tags = freq.entries
+        .where((e) => q.isEmpty || e.key.toLowerCase().contains(q))
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    if (tags.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        itemCount: tags.length,
+        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+        itemBuilder: (_, i) {
+          final tag = tags[i].key;
+          final count = tags[i].value;
+          final isActive = tagQuery != null &&
+              tagQuery!.toLowerCase() == tag.toLowerCase();
+          return GestureDetector(
+            onTap: () => onTagSelect(tag),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: isActive ? p.accent.withValues(alpha: 0.15) : p.chip,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                border: Border.all(
+                  color: isActive ? p.accent : p.line,
+                  width: isActive ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (isActive) ...[
+                    Icon(Icons.check_rounded, size: 11, color: p.accentText),
+                    const SizedBox(width: 3),
+                  ],
+                  Text(
+                    '#$tag',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      color: isActive ? p.accentText : p.text,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$count',
+                    style: TextStyle(fontSize: 10, color: p.muted),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
