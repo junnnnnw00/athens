@@ -683,7 +683,17 @@ String resolveCanonicalKey({
       : catalogCanonicalKey(kind: kind, title: title, artist: artist, isrc: isrc);
   if (aliases.isEmpty) return natural;
   final textKey = catalogMatchKey(kind: kind, title: title, artist: artist);
-  return aliases[natural] ?? aliases[textKey] ?? natural;
+  // Follow the alias chain (A→B→C) to its end so a re-merged target still
+  // resolves correctly. A `visited` set breaks any accidental cycle (A→B→A)
+  // instead of looping forever ("circular dependency").
+  var current = aliases[natural] ?? aliases[textKey] ?? natural;
+  final visited = <String>{natural, textKey};
+  while (visited.add(current)) {
+    final next = aliases[current];
+    if (next == null) break;
+    current = next;
+  }
+  return current;
 }
 
 /// The set of keys that should all be aliased onto a merge target so the item

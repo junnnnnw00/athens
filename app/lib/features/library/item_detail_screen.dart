@@ -193,6 +193,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
 
     setState(() => _busy = true);
     final lang = ref.read(localeProvider);
+    final unlinkedToast = context.t('lib_merge_unlinked_toast', ref: ref);
 
     try {
       await ref.read(libraryControllerProvider.notifier).unlinkItem(
@@ -202,7 +203,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
         isrc: catalog?.isrc,
         storedCanonicalKey: directItem?.canonicalKey,
       );
-      _showSnackBar(context.t('lib_merge_unlinked_toast', ref: ref));
+      _showSnackBar(unlinkedToast);
     } catch (e) {
       _showSnackBar(I18n.get('lib_merge_unlink_failed', lang, ['$e']));
     } finally {
@@ -241,8 +242,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     if (widget.catalogItem == null) return;
     final item = widget.catalogItem!;
     final router = GoRouter.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    
+
     final score = await showDialog<double>(
       context: context,
       builder: (c) => InitialScoreDialog(
@@ -1443,7 +1443,8 @@ class _MergePickerState extends ConsumerState<_MergePicker> {
           else
             Flexible(
               child: ListView.separated(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                padding: const EdgeInsets.only(bottom: AppSpacing.xl),
+                shrinkWrap: true,
                 itemCount: items.length,
                 separatorBuilder: (_, __) => Divider(height: 1, color: p.line),
                 itemBuilder: (c, i) {
