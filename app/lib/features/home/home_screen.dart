@@ -8,6 +8,7 @@ import '../../domain/score.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/cover_art.dart';
+import '../../widgets/skeleton.dart';
 import '../catalog/catalog_service.dart';
 import '../friends/friends_service.dart';
 import '../../i18n.dart';
@@ -123,7 +124,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // actually loaded — otherwise the "취향 찾기" card flashes on a
                   // cold (esp. offline) start before local data resolves.
                   if (!libraryAsync.hasValue)
-                    const SizedBox.shrink()
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                      child: SkeletonBox(height: 88, radius: AppRadii.card),
+                    )
                   else
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
@@ -134,7 +138,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   // 1. Recommended tracks (추천곡) - 가로 스크롤 캐러셀 적용
                   recsAsync.when(
-                    loading: () => const SizedBox.shrink(),
+                    loading: () => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: AppSpacing.xxl),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                          child: SkeletonBox(height: 18, width: 180),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(
+                          height: 258,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                            itemCount: 5,
+                            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+                            itemBuilder: (_, __) => const SkeletonBox(width: 140, height: 258, radius: AppRadii.card),
+                          ),
+                        ),
+                      ],
+                    ),
                     error: (_, __) => const SizedBox.shrink(),
                     data: (data) {
                       if (data.items.isEmpty) return const SizedBox.shrink();
@@ -259,7 +283,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   // 2. Recommended Friend Ratings Section (친구 평가 음악)
                   friendsRecentAsync.when(
-                    loading: () => const SizedBox.shrink(),
+                    loading: () => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: AppSpacing.xxl),
+                          SkeletonBox(height: 18, width: 160),
+                          const SizedBox(height: AppSpacing.md),
+                          for (int i = 0; i < 3; i++) ...[
+                            const SkeletonRow(),
+                            if (i < 2) const SizedBox(height: AppSpacing.xs),
+                          ],
+                        ],
+                      ),
+                    ),
                     error: (_, __) => const SizedBox.shrink(),
                     data: (items) {
                       if (items.isEmpty) return const SizedBox.shrink();

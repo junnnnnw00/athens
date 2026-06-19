@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../api/platform_storage.dart';
 import '../../i18n.dart';
 import '../../theme/tokens.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/skeleton.dart';
 import '../profile/profile_service.dart';
 import 'friends_service.dart';
 import '../../data/repository/library_providers.dart';
+
+const _kFriendSortKey = 'friend_sort_v1';
 
 enum _FriendSort { recent, match }
 
@@ -26,6 +30,18 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
   _FriendSort _sort = _FriendSort.recent;
 
   AppLanguage get _lang => ref.read(localeProvider);
+
+  @override
+  void initState() {
+    super.initState();
+    PlatformStorage.read(key: _kFriendSortKey).then((v) {
+      if (v != null && mounted) {
+        setState(() {
+          _sort = v == 'match' ? _FriendSort.match : _FriendSort.recent;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -310,7 +326,10 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
         }
       },
       child: friendsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => ListView.builder(
+          itemCount: 6,
+          itemBuilder: (_, __) => const SkeletonRow(avatarRadius: 24),
+        ),
         error: (err, _) => Center(
           child: ListView(
             shrinkWrap: true,
@@ -437,7 +456,13 @@ class _FriendListScreenState extends ConsumerState<FriendListScreen> {
                     ),
                     PopupMenuButton<_FriendSort>(
                       initialValue: _sort,
-                      onSelected: (v) => setState(() => _sort = v),
+                      onSelected: (v) {
+                        setState(() => _sort = v);
+                        PlatformStorage.write(
+                          key: _kFriendSortKey,
+                          value: v == _FriendSort.match ? 'match' : 'recent',
+                        );
+                      },
                       color: p.surface2,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppRadii.card),
