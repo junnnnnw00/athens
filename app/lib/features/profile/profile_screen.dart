@@ -555,6 +555,19 @@ class _NotifSettingsSheet extends ConsumerStatefulWidget {
 class _NotifSettingsSheetState extends ConsumerState<_NotifSettingsSheet> {
   bool _requesting = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Request permission immediately when the sheet opens so the user sees
+    // the system dialog before touching any toggle.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      setState(() => _requesting = true);
+      await NotificationService.requestPermission();
+      if (mounted) setState(() => _requesting = false);
+    });
+  }
+
   Future<void> _ensurePermission() async {
     setState(() => _requesting = true);
     await NotificationService.requestPermission();
@@ -567,7 +580,7 @@ class _NotifSettingsSheetState extends ConsumerState<_NotifSettingsSheet> {
     final settingsAsync = ref.watch(notifSettingsProvider);
     final lang = ref.watch(localeProvider);
     final settings = settingsAsync.valueOrNull ?? const NotifSettings();
-    final bottom = MediaQuery.of(context).padding.bottom;
+    final bottom = AppLayout.floatingNavHeight + MediaQuery.of(context).viewPadding.bottom;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(0, AppSpacing.lg, 0, bottom + AppSpacing.lg),
