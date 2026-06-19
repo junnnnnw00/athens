@@ -44,7 +44,7 @@ Future<void> main() async {
     // Wait for the first auth event (initial session recovery) to prevent route flashing
     try {
       await Supabase.instance.client.auth.onAuthStateChange.first.timeout(
-        const Duration(milliseconds: 300),
+        const Duration(milliseconds: 2000),
       );
     } catch (_) {}
   }

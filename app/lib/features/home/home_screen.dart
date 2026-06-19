@@ -223,9 +223,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   recentAsync.when(
-                    loading: () => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
-                      child: _skeletonList(p),
+                    loading: () => SizedBox(
+                      height: 188,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                        itemCount: 5,
+                        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+                        itemBuilder: (_, __) => SizedBox(
+                          width: 280,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              SkeletonBox(height: 90, radius: AppRadii.card),
+                              SkeletonBox(height: 90, radius: AppRadii.card),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                     error: (e, _) => Padding(
                       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
@@ -356,20 +371,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ));
   }
 
-  Widget _skeletonList(AppPalette p) => Column(
-        children: List.generate(
-          3,
-          (_) => Container(
-            margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-            height: 72,
-            decoration: BoxDecoration(
-              color: p.surface,
-              borderRadius: BorderRadius.circular(AppRadii.card),
-              border: Border.all(color: p.line),
-            ),
-          ),
-        ),
-      );
 }
 
 class _DuelCallout extends ConsumerWidget {
