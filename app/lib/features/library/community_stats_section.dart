@@ -10,6 +10,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/cover_art.dart';
 import '../stats/community_stats_service.dart';
 import '../../i18n.dart';
+import '../../widgets/skeleton.dart';
 
 /// Community rating statistics for one item, shown on the detail screen:
 /// average + distribution + community trend (all accounts), the signed-in
@@ -22,14 +23,20 @@ class CommunityStatsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(communityItemDataProvider(itemId));
     return async.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-        child: Center(
-          child: SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.5),
-          ),
+      loading: () => Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xxl, AppSpacing.xl, AppSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SkeletonBox(height: 14, width: 120),
+            const SizedBox(height: AppSpacing.md),
+            SkeletonBox(height: 110),
+            const SizedBox(height: AppSpacing.lg),
+            for (int i = 0; i < 2; i++) ...[
+              const SkeletonRow(),
+              if (i < 1) const SizedBox(height: AppSpacing.xs),
+            ],
+          ],
         ),
       ),
       error: (_, __) => const SizedBox.shrink(),

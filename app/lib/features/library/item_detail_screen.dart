@@ -17,6 +17,7 @@ import 'item_info_cache.dart';
 import '../share/review_share.dart';
 import '../friends/friends_service.dart';
 import '../../i18n.dart';
+import '../../widgets/skeleton.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
   const ItemDetailScreen({super.key, required this.itemId, this.catalogItem});
@@ -691,7 +692,10 @@ class _FriendRatingsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = context.palette;
     final async = ref.watch(friendRatingsForItemProvider(itemId));
-    return async.when(
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+      child: async.when(
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
       data: (ratings) {
@@ -759,6 +763,7 @@ class _FriendRatingsSection extends ConsumerWidget {
           ],
         );
       },
+    ),
     );
   }
 }
@@ -1082,15 +1087,13 @@ class _InfoSection extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.xl),
-        child: Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2.5),
-          ),
-        ),
+      loading: () => Column(
+        children: [
+          for (int i = 0; i < 5; i++) ...[
+            const SkeletonRow(),
+            if (i < 4) const SizedBox(height: AppSpacing.xs),
+          ],
+        ],
       ),
       error: (_, __) => const SizedBox.shrink(),
     );
@@ -1118,13 +1121,14 @@ class _AlbumTracksSection extends ConsumerWidget {
 
     return tracksAsync.when(
       loading: () => Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.xl),
-        child: Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: p.faint),
-          ),
+        padding: const EdgeInsets.only(top: AppSpacing.md),
+        child: Column(
+          children: [
+            for (int i = 0; i < 4; i++) ...[
+              const SkeletonRow(),
+              if (i < 3) const SizedBox(height: AppSpacing.xs),
+            ],
+          ],
         ),
       ),
       error: (_, __) => const SizedBox.shrink(),
