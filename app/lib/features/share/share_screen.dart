@@ -34,13 +34,35 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   bool _sharing = false;
   int _topsterCount = 16;
 
-  Widget _card(List<RatedCatalogItem> items, AppLanguage lang) {
+  /// The items actually rendered for the current template.
+  List<RatedCatalogItem> _displayItems(List<RatedCatalogItem> items) =>
+      switch (_template) {
+        ShareTemplate.top5 => items.take(5).toList(),
+        ShareTemplate.topster => _topsterItems(items, _topsterCount),
+      };
+
+  /// Resolve an item's cover URL with the same fallback as the in-app
+  /// [CoverArt]: usable art as-is, else iTunes artwork. Pass [watch] = true
+  /// from build (so the preview rebuilds + the cache warms once iTunes
+  /// resolves) and false from capture handlers (read the warmed cache).
+  String? _resolveUrl(RatedCatalogItem it, {required bool watch}) {
+    if (hasUsableArt(it.imageUrl)) return it.imageUrl;
+    final artist = it.primaryArtist;
+    if (artist == null || artist.isEmpty) return null;
+    final pv = artworkUrlProvider((kind: it.kind, artist: artist, title: it.title));
+    return (watch ? ref.watch(pv) : ref.read(pv)).valueOrNull;
+  }
+
+  Widget _card(List<RatedCatalogItem> items, AppLanguage lang,
+      {required bool watch}) {
     final handle = ref.read(myProfileProvider).valueOrNull?.handle;
+    final display = _displayItems(items);
+    final urls = [for (final it in display) _resolveUrl(it, watch: watch)];
     return switch (_template) {
       ShareTemplate.top5 => ShareCard.top5(
-          items: items.take(5).toList(), lang: lang, handle: handle, dark: _dark),
+          items: display, resolvedUrls: urls, lang: lang, handle: handle, dark: _dark),
       ShareTemplate.topster => ShareCard.topster(
-          items: _topsterItems(items, _topsterCount), lang: lang, handle: handle, dark: _dark, topsterCount: _topsterCount),
+          items: display, resolvedUrls: urls, lang: lang, handle: handle, dark: _dark, topsterCount: _topsterCount),
     };
   }
 
@@ -71,7 +93,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
   Future<Uint8List> _capture(List<RatedCatalogItem> items) async {
     final lang = ref.read(localeProvider);
     return _controller.captureFromWidget(
-      _card(items, lang),
+      _card(items, lang, watch: false),
       pixelRatio: 3,
       targetSize: ShareCard.designSize(_template),
     );
@@ -188,7 +210,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
                   child: SizedBox(
                     width: size.width,
                     height: size.height,
-                    child: _card(items, lang),
+                    child: _card(items, lang, watch: true),
                   ),
                 ),
               ),
@@ -250,6 +272,7 @@ class _ShareScreenState extends ConsumerState<ShareScreen> {
 class ShareCard extends StatelessWidget {
   const ShareCard._(
       {required this.items,
+      required this.resolvedUrls,
       required this.template,
       required this.lang,
       this.handle,
@@ -258,23 +281,27 @@ class ShareCard extends StatelessWidget {
 
   factory ShareCard.top5(
           {required List<RatedCatalogItem> items,
+          required List<String?> resolvedUrls,
           required AppLanguage lang,
           String? handle,
           bool dark = true}) =>
       ShareCard._(
           items: items,
+          resolvedUrls: resolvedUrls,
           template: ShareTemplate.top5,
           lang: lang,
           handle: handle,
           dark: dark);
   factory ShareCard.topster(
           {required List<RatedCatalogItem> items,
+          required List<String?> resolvedUrls,
           required AppLanguage lang,
           String? handle,
           bool dark = true,
           int topsterCount = 16}) =>
       ShareCard._(
           items: items,
+          resolvedUrls: resolvedUrls,
           template: ShareTemplate.topster,
           lang: lang,
           handle: handle,
@@ -282,6 +309,10 @@ class ShareCard extends StatelessWidget {
           topsterCount: topsterCount);
 
   final List<RatedCatalogItem> items;
+
+  /// Cover URL per item, pre-resolved (iTunes fallback applied) on-tree before
+  /// off-tree capture. Same length/order as [items].
+  final List<String?> resolvedUrls;
   final ShareTemplate template;
   final AppLanguage lang;
   final String? handle;
@@ -361,7 +392,7 @@ class ShareCard extends StatelessWidget {
                 ),
                 CoverArtStatic(
                     title: items[i].title,
-                    imageUrl: items[i].imageUrl,
+                    imageUrl: resolvedUrls[i],
                     size: 110,
                     dark: dark),
                 const SizedBox(width: 24),
@@ -421,7 +452,7 @@ class ShareCard extends StatelessWidget {
     }
     final it = items[index];
     return CoverArtStatic(
-        title: it.title, imageUrl: it.imageUrl, size: cellSize, dark: dark, radius: 0);
+        title: it.title, imageUrl: resolvedUrls[index], size: cellSize, dark: dark, radius: 0);
   }
 
 
@@ -446,13 +477,15 @@ class CoverArtStatic extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = dark ? AppPalette.dark : AppPalette.light;
     final url = imageUrl;
+    // Same gate as the in-app CoverArt: a Last.fm blank-art placeholder is not
+    // usable, so it falls back to a monogram tile instead of an empty box.
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius ?? AppRadii.cover),
       child: SizedBox(
         width: size,
         height: size,
-        child: url != null && url.isNotEmpty
-            ? Image.network(url,
+        child: hasUsableArt(url)
+            ? Image.network(url!,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _fallback(p))
             : _fallback(p),

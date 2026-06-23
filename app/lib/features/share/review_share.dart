@@ -10,8 +10,10 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../theme/tokens.dart';
+import '../../widgets/cover_art.dart' show hasUsableArt;
 import '../../widgets/score_ring.dart';
 import '../../i18n.dart';
+import '../catalog/catalog_service.dart' show artworkUrlProvider;
 import '../profile/profile_service.dart';
 import 'share_screen.dart' show CoverArtStatic;
 
@@ -43,10 +45,23 @@ Future<void> showReviewShareSheet(
       var dark = true;
       return StatefulBuilder(
         builder: (sheetContext, setSheetState) {
+          return Consumer(
+            builder: (consumerContext, consumerRef, _) {
+          // Match the in-app cover logic: keep usable art, else fall back to
+          // iTunes artwork (same provider the rest of the app uses) so share
+          // cards never render an empty/placeholder cover.
+          final resolvedImageUrl = hasUsableArt(imageUrl)
+              ? imageUrl
+              : (artist != null && artist.isNotEmpty
+                  ? consumerRef
+                      .watch(artworkUrlProvider(
+                          (kind: 'track', artist: artist, title: title)))
+                      .valueOrNull
+                  : null);
           final card = ReviewShareCard(
             title: title,
             artist: artist,
-            imageUrl: imageUrl,
+            imageUrl: resolvedImageUrl,
             score: score,
             review: review,
             handle: handle,
@@ -150,6 +165,8 @@ Future<void> showReviewShareSheet(
               ),
             ),
           );
+            },
+          );
         },
       );
     },
@@ -201,9 +218,11 @@ class ReviewShareCard extends StatelessWidget {
   static bool _hasReview(String? review) =>
       review != null && review.trim().isNotEmpty;
 
-  /// Wide banner canvas; a bit taller when a review caption is shown.
+  /// Banner canvas. Heights are tuned so that, with the even all-round padding
+  /// below, the vertically-centred content leaves top/bottom margins close to
+  /// the left/right margins (no cramped or lopsided whitespace).
   static Size designSize(String? review) =>
-      _hasReview(review) ? const Size(1080, 520) : const Size(1080, 400);
+      _hasReview(review) ? const Size(1080, 580) : const Size(1080, 360);
 
   AppPalette get _p => dark ? AppPalette.dark : AppPalette.light;
 
@@ -228,7 +247,7 @@ class ReviewShareCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         child: Container(
           color: _p.bg,
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(48),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,

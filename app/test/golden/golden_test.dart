@@ -150,14 +150,18 @@ void main() {
     final h = TestHarness();
     addTearDown(h.dispose);
     final c = await seededContainer(h);
-    final items = c.read(ratedItemsProvider);
+    final items = c.read(ratedItemsProvider).take(5).toList();
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(body: ShareCard.top5(items: items.take(5).toList(), lang: AppLanguage.ko)),
+      home: Scaffold(
+          body: ShareCard.top5(
+              items: items,
+              resolvedUrls: [for (final it in items) it.imageUrl],
+              lang: AppLanguage.ko)),
     ));
     await tester.pumpAndSettle();
     await expectLater(
